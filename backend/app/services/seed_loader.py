@@ -156,7 +156,7 @@ def load_all(session, seeds_dir: Path | None = None):
     counts["batches"] = len(data["batches"])
     counts["file_intake"] = sum(len(b.get("detail") or []) for b in data["batches"])
 
-    # ---- audit_events（FN-0-10 装载；链计算 WP1.4）----
+    # ---- audit_events（FN-0-10 装载；链式 SHA-256 于末尾 build_chain 计算并自检，WP1.4）----
     data = jl("audit_events.json")
     if data["chain"]["head_blk"] != max(e["blk"] for e in data["events"]):
         raise EnumViolation("audit_events chain.head_blk 与最大 blk 不一致")
@@ -168,12 +168,14 @@ def load_all(session, seeds_dir: Path | None = None):
             raise EnumViolation(f"audit blk {ev['blk']}: trace 不符 pattern")
         if ev.get("caseId") and ev["caseId"] not in case_ids:
             raise EnumViolation(f"audit blk {ev['blk']}: caseId {ev['caseId']} 不在 cases 种子")
+        from app.services.audit_chain import scope_of
         session.add(m.AuditBlock(
             blk=ev["blk"], ts=ev["ts"], trace=ev.get("trace"), actor=ev["actor"], act=ev["act"],
             category=ev.get("category"), case_id=ev.get("caseId"), from_state=ev.get("from"),
             to_state=ev.get("to"), note=ev.get("note"), op_component=ev.get("op_component"),
-            hash_display=ev["hash"], prev_hash=None,  # 真实链式 SHA-256 于 WP1.4 建链时计算
+            hash_display=ev["hash"], prev_hash=None,  # build_chain() 于装载末尾统一填充（见下）
             instance=case_inst.get(ev.get("caseId")) if ev.get("caseId") else None,
+            chain_scope=scope_of(ev.get("caseId")),
         ))
     counts["audit_blocks"] = len(data["events"])
 
@@ -277,6 +279,14 @@ def load_all(session, seeds_dir: Path | None = None):
     counts["kpi_snapshots"] = len(data["instances"])
 
     session.commit()
+
+    # ---- WP1.4 建链：装载即前向计算链式 SHA-256（prev→this），并自检全链（违例中止装载）----
+    from app.services.audit_chain import build_chain, verify_chain
+    counts["audit_chains"] = len(build_chain(session))
+    check = verify_chain(session, verifier="seed-loader")
+    if not check["ok"]:
+        raise EnumViolation(f"种子链自检失败 @ blk#{check['bad_blk']}（{check['scope']}）: {check['detail']}")
+
     return counts
 
 

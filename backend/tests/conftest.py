@@ -74,6 +74,49 @@ def client(engine_url, session_factory):
         yield c
 
 
+@pytest.fixture()
+def api_client(tmp_path, monkeypatch):
+    """受控写 API 冒烟专用：独立临时库 + TestClient（函数级隔离，不污染 session 级共享库）。"""
+    from fastapi.testclient import TestClient
+    from app.services import persistence
+    from app.domain import models as m
+    from app.services.seed_loader import load_all
+
+    url = f"sqlite:///{(tmp_path / 'api.db').as_posix()}"
+    monkeypatch.setenv("INVOICE_HUB_DATABASE_URL", url)
+    persistence.reset_engine()
+    eng = persistence.get_engine()
+    m.Base.metadata.create_all(eng)
+    s = persistence.get_session()
+    load_all(s)
+    s.close()
+    from app.main import app
+    with TestClient(app) as c:
+        yield c
+    persistence.reset_engine()
+
+
+@pytest.fixture
+def fresh_session(tmp_path):
+    """独立临时库 + 全量种子装载（函数级）：状态机/哈希链/受控写等会改数据的测试专用，
+    不污染 session 级共享库（保证 seed 深比对与只读契约测试稳定）。"""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.domain import models as m
+    from app.services.seed_loader import load_all
+
+    eng = create_engine(f"sqlite:///{(tmp_path / 'fresh.db').as_posix()}")
+    m.Base.metadata.create_all(eng)
+    maker = sessionmaker(bind=eng, expire_on_commit=False)
+    s = maker()
+    load_all(s)
+    try:
+        yield s
+    finally:
+        s.close()
+        eng.dispose()
+
+
 # ---------- 契约 Schema 校验（镜像 tools/validate_contracts.py 的 referencing 口径） ----------
 
 def _to_file_uri(name: str) -> str:

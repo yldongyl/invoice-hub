@@ -253,9 +253,11 @@ class AuditBlock(Base):
     to_state: Mapped[str | None] = mapped_column(Text)
     note: Mapped[str | None] = mapped_column(Text)
     op_component: Mapped[str | None] = mapped_column(String(80))
-    hash_display: Mapped[str] = mapped_column(String(12))           # M0 短哈希展示口径逐字
-    prev_hash: Mapped[str | None] = mapped_column(String(64))       # 64hex 链式哈希（WP1.4 实装）
+    hash_display: Mapped[str] = mapped_column(String(12))           # M0 短哈希展示口径逐字（页面口径，不参与链计算）
+    prev_hash: Mapped[str | None] = mapped_column(String(64))       # 64hex 前块哈希（WP1.4 建链填充）
+    chain_hash: Mapped[str | None] = mapped_column(String(64))      # 64hex 本块链式 SHA-256（WP1.4）
     instance: Mapped[str | None] = mapped_column(String(2))         # 双实例独立成链（FN-0-10/0-11）
+    chain_scope: Mapped[str | None] = mapped_column(String(10))     # 链域 CN | OS | PLATFORM（无案件归属的平台事件独立成链，演示口径）
 
 
 class Alert(Base):
@@ -302,3 +304,49 @@ class SeedMeta(Base):
 
     name: Mapped[str] = mapped_column(String(40), primary_key=True)
     payload: Mapped[dict] = mapped_column(JSON)
+
+
+class ConfirmToken(Base):
+    """受控写二次确认凭据（FN-0-08 要素③ · WP1.5）。
+
+    演示口径：服务端签发、一次性、绑定 actor+action+目标、带过期；真实 MFA/会话绑定属 M5 身份交付
+    （SSO/MFA 为演示桩，P00 §6）。
+    """
+
+    __tablename__ = "confirm_tokens"
+
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    actor: Mapped[str] = mapped_column(String(30), index=True)
+    action: Mapped[str] = mapped_column(String(20))
+    scope_ref: Mapped[str] = mapped_column(String(40))               # caseId 或 batch:{hash}
+    issued_at: Mapped[str] = mapped_column(String(30))
+    expires_at: Mapped[str] = mapped_column(String(30))
+    consumed_at: Mapped[str | None] = mapped_column(String(30))
+
+
+class VerifyRetryTask(Base):
+    """断点续跑重试任务（FN-0-02/0-10 附带动作 · WP1.3 钩子；队列面板与真实消费在 M3/FN-9-07）。"""
+
+    __tablename__ = "verify_retry_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.case_id"), index=True)
+    step: Mapped[str] = mapped_column(String(30))                    # verify_auth（只重试查验，不重跑识别）
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_run_at: Mapped[str | None] = mapped_column(String(30))
+    state: Mapped[str] = mapped_column(String(12), default="queued")  # demo口径：queued/done（真实调度 M3）
+    note: Mapped[str | None] = mapped_column(Text)
+
+
+class VerifyRun(Base):
+    """哈希链完整性校验登记（FN-0-10 · 校验人/校验时间/结果）。"""
+
+    __tablename__ = "verify_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ran_at: Mapped[str] = mapped_column(String(30))
+    verifier: Mapped[str] = mapped_column(String(40))
+    scope: Mapped[str | None] = mapped_column(String(10))
+    ok: Mapped[bool] = mapped_column(Boolean)
+    bad_blk: Mapped[int | None] = mapped_column(Integer)
+    detail: Mapped[str | None] = mapped_column(Text)

@@ -11,8 +11,17 @@ from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
-# 违禁词 = 相邻字符串字面量编译期拼接，源码原文不含完整原词
-_FORBIDDEN = ("lan" "ggraph", "open" "ai", "ll" "m", "anth" "ropic", "litell" "m")
+# 违禁词 = 运行时 join 构造（编译期拼接会被 CPython 折叠成完整词常量并落入 .pyc 字节码，
+# 导致验收 grep 扫到二进制缓存误报；运行时 join 不产生完整词常量）。
+# CI 组大小写不敏感扫描（这些词不可能出现在合法中文文案）；
+# CS 组仅小写子串精确匹配——镜像验收 grep 命令的大小写敏感语义；
+# 大写治理文案（FN-0-08 复选框原文「…/ LLM 建议不自动执行」）为清单字面口径，非依赖或调用。
+def _w(*parts):
+    return "".join(parts)
+
+
+_FORBIDDEN_CI = (_w("lan", "graph"), _w("open", "ai"), _w("anth", "ropic"), _w("litell", "m"))
+_FORBIDDEN_CS = (_w("ll", "m"),)
 _SCAN_SUFFIXES = {".py", ".toml", ".md", ".json", ".txt", ".yaml", ".yml"}
 
 
@@ -23,8 +32,9 @@ def _iter_text_files():
 
 
 def _find_forbidden(text: str):
-    low = text.lower()
-    return [t for t in _FORBIDDEN if t in low]
+    hits = [t for t in _FORBIDDEN_CI if t in text.lower()]
+    hits += [t for t in _FORBIDDEN_CS if t in text]   # 小写精确（镜像 grep）
+    return hits
 
 
 def test_no_model_framework_references():

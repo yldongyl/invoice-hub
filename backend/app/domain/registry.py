@@ -44,6 +44,12 @@ class EnumRegistry:
             raise EnumViolation(f"未知枚举类别: {name}")
         return self._codes[name]
 
+    def category_items(self, name):
+        """完整取值条目（含 label/附注等），供规则/状态机消费定义文本（禁止代码内重写触发条件）。"""
+        if name not in self._data["categories"]:
+            raise EnumViolation(f"未知枚举类别: {name}")
+        return self._data["categories"][name]["values"]
+
     def code_set(self, name):
         return set(self.category(name))
 

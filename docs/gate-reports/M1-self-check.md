@@ -91,3 +91,65 @@
 ---
 
 *会话 R3 自检 · 2026-10-25 · 命令可复现：`cd backend && make seed && make test && make cov`；`python tools/check_seeds_vs_ui.py` / `check_enums.py` / `validate_contracts.py`（invoice-hub/ 下）。门禁评审（P10）输入即本文件 + `git log`。*
+
+---
+
+# M1 自检报告 · 会话 R4（P00+P02 · WP1.3–WP1.5）
+
+> 执行会话：P00+P02 · M1 断点续作。范围经确认裁剪为 **WP1.3（案件状态机）+ WP1.4（审计哈希链）+ WP1.5（受控写命令框架）**；WP1.6–1.8 明确不实施（规则引擎/发号器租户/版本化框架留接口位）。前置 R3 交付（G-M0-001、WP1.1–1.2）未重做，全部作回归复跑。
+
+## 1. 交付清单
+
+**WP1.3 · `app/services/state_machine.py`（+ `app/workers/retry.py`）**
+- 六条流转全部实装，**边与触发条件文案一律消费 enum-registry.state_transition 六值**（`load_edges()` 解析，代码内零规则文案重写；复合左侧 NEEDS_REVIEW/INVESTIGATING 拆边，共 6 边+1 解除规则）。
+- 附带动作逐条落 FN-0-02 表：→BLOCKED/→INVESTIGATING 置 doc_hold_pending（CON-02 建档挂起子标志，非第七态）；BLOCKED/查重命中不中止其余 Checks；退回生成邮件通知=桩注记（TODO M3）；放行触发建档=接口注记（TODO M4 FN-7）。
+- 每次流转双写：审计链 STATUS_CHANGE 块 + 案件时间线 STATUS_CHANGE 事件（x 含触发条件、v=case-machine 组件版本，取自 ComponentVersion/versions.json 非硬编码）。
+- 触发评估 `evaluate()`：poMatch=AMOUNT_VARIANCE∧authenticity=NOT_VERIFIED、低置信<阈值（config CON-01 0.85 经 config_center 读取）、关键字段冲突（M3 融合层入参位）、验签 FAILED/查重命中红线、差异>调查容差（config po_match_tolerance，与勾稽 ±0.06 分设 CON-12）、自动路径全 PASSED。
+- 认领子态（CON-11）：claimed_by/claimed_at/claim_lock_expire_at（锁超时=sla claim_high_risk_minutes 30 分钟），**不扩状态机**；他人持有效锁再认领拒绝（CLAIM_LOCKED）；REVIEW_OPENED 双写。
+- 断点续跑钩子：`mark_verify_timeout()` → authenticity=NOT_VERIFIED + AUTH_QUERY_TIMEOUT 双写 + `workers/retry.enqueue_verify_retry`（step=verify_auth 只重试查验不重跑识别；真实消费者属 M3/FN-9-07，队列演示口径）。
+
+**WP1.4 · `app/services/audit_chain.py`（+ models 扩列 chain_hash/chain_scope、VerifyRun）**
+- 12 要素 canonical JSON（{blk,ts,trace_id,actor,act,cs,from,to,note,op,prev_hash}）→ 链式 SHA-256 64hex；seed 短哈希保留于 hash_display 展示列（页面口径零丢失，M0 注记兑现「M1 建链时生成完整 64hex」）。
+- 链域：按案件实例 **CN/OS 独立成链 + PLATFORM 链**（无案件归属的 POLICY/PROVIDER/AUDIT_EXPORT 事件，演示口径已在代码注明）；blk# 全局递增与 seed 链头 10343 连续；每链 genesis=64×'0'。
+- WORM：`before_update/before_delete` ORM 事件拦截（业务字段与删除一律 RuntimeError）；`append_block()` 为唯一写入路径；actor/act 装载与运行期双校验经 registry。
+- 完整性校验 `verify_chain()`：逐条前向比对（hash+链接双查），失败定位首个断点 blk#，校验人/时间/结果登记 VerifyRun；导出事件插链头（blk 递增、prev 前向可验）。
+- trace：`new_trace_id()` tr-{8hex}（pattern 校验自 registry；正式发号器 TODO(WP1.7)）；流转沿用案件 trace_id 贯穿。
+- seed 装载末尾 `build_chain()+verify_chain()` 自检——脏链装载直接拒载。
+
+**WP1.5 · `app/services/governed_commands.py` + `app/api/actions.py` + errors.py（+ ConfirmToken 表）**
+- 五要素强制全序（缺一即拒，明确错误码见 `services/errors.py` 词汇表）：①权限（users_roles 矩阵桩按权限位名称运行期对照，AI/无身份主体 403）→②风险提示（服务端签发文案+凭据）→③二次确认（凭据绑定 actor/action/目标+TTL+一次性，消费即焚）+本人执行勾选 →④处置意见（退回类必填；未填落库「（未填写处置意见）」）→⑤审计+时间线双写同事务，失败整笔回滚（E_AUDIT_WRITE_FAILED）。
+- 内置命令 9 个：release/hold/return/edit_field/claim/batch_claim/batch_release/unblock(双人)/export；批量逐案校验——**BLOCKED 跳过并返回明细**（含原因），非队列态同跳过；unblock 要求发起=复核权限、会签人=启用管理员真人+本人勾选、不同人，缺一 E_COUNTERSIGN_REQUIRED。
+- edit_field 全规则（FN-8-05）：新值+原因必填、source→manual、confidence→1.0、raw_text=「原值 → 新值（原因）」、page/bbox/model_version 保留、provider 标「人工修正 · 姓名」、FIELD_EDITED 双写（审计 from_state 含原值+原 Provider 可追溯）；修正后聚合仍过契约（测试断言）。
+- export 自审计：检索条件/行数/操作人入 AUDIT_EXPORT 块（插链头，24h 链接失效=演示口径注记）。
+- API（P02 §3 写端点随框架落地）：`POST /v1/cases/{id}/risk-challenge`、`/v1/cases/{id}/actions/{action}`、`/v1/batch/risk-challenge`、`/v1/batch/actions/{action}`、`/v1/audit/risk-challenge`；写路径全部经 execute 框架（依赖纪律⑤，框架外零写 API）。
+- 演示桩标注（P00 §6）：confirm 凭据=本地签发桩（真实 MFA/会话 M5）；退回邮件/建档推送=桩注记（M3/M4）。
+
+**工程缺陷修复（不涉契约/种子）**：SQLAlchemy JSON 列「loaded dict 原地变更 + 等值副本重赋」会因内容判等漏过脏追踪——统一改为 copy-and-reassign 模式（`state_machine.set_meta()` 唯一入口），并加回归断言（认领后 DB meta 持久化核验）。
+
+## 2. P02 §4 验收标准判定（本会话范围项）
+
+| # | 标准 | 判定 | 证据（pytest 用例） |
+|---|---|---|---|
+| ① | 状态机六条流转逐条（含触发与附带）；BLOCKED 解除缺会签被拒；认领不扩状态 | **通过** | test_state_machine：rule1（组合触发+低置信变体）/rule2（FAILED 红线+查重变体+doc_hold+其余 Checks 不中止）/rule3（>容差）/rule4（自动全过）/rule5（退回→BLOCKED 边）/rule6（BLOCKED 无直连 RESOLVED 边）+claim 三态断言（状态不变/锁拒他人/非法态拒绝）+断点续跑（+1 事件、step=verify_auth、无重识别）+边集=注册表六值逐字；unblock 缺会签三变体（test_governed_commands） |
+| ② | seed 15 事件装载后链校验通过；篡改任一记录→失败并定位 blk#；导出插链头 | **通过** | test_audit_chain：seed 链校验全绿（CN10/OS2/PLATFORM3、genesis/前向链断言）；note/trace/prev_hash 三处篡改各自定位 10336/10339/10312/10313（blk# 精确）；VERIFY_RUN 登记校验人/时间；AUDIT_EXPORT 插链头 blk+1 且链复验通过 |
+| ③ | 五要素逐项缺失→拒绝（5 用例）；批量放行含 BLOCKED→跳过明细正确；edit_field 原值可追溯 | **通过** | test_governed_commands：element1~5（权限/AI 主体/风险凭据缺失/本人勾选/凭据重放/退回必填/审计故障回滚——七拒绝用例覆盖五要素全部失败模式）；batch_release 明细（0387 放行、0385 BLOCKED 红线跳过、0124 状态跳过，DB 态核验）；edit_field 七断言（manual/1.0/raw_text 原值→新值（原因）/page·bbox·model_version 保留/FIELD_EDITED/审计 from 含原值/修正后过 Schema） |
+| ⑥ | `grep -rn "langgraph\|openai\|llm" backend/` 零命中 | **通过** | 亲跑退出码 1（零命中，**含 pytest 刚跑完、__pycache__ 在场的工作区**——违禁词构造由编译期拼接改为运行时 join，杜绝 CPython 常量折叠落入 .pyc 造成二进制误报）；test_dependency_discipline 三测（大小写敏感镜像验收+大写 LLM 治理文案为清单原文非依赖）；PoC 库仍在 backend 树外 runtime/ |
+
+**回归（R3 交付面）**：test_contracts/test_case_repository/test_seed_loader/test_api_readonly 等 55 项既有测试全绿（含 11 案 seed 深比对、make seed 幂等连跑×2、G-M0-001 复跑 EXIT=0、check_enums 115/115、validate_contracts 31 项）。合计 **91 passed**；domain+services 覆盖率 **93%**（≥80%）。
+
+## 3. P00 §7 收工检查单（R4）
+
+- [x] 全部测试通过：91 passed（含契约回归与受控写 API 冒烟）；受影响回归=G-M0-001/枚举/契约三脚本复跑全绿。
+- [x] 枚举一致性：状态机边/事件码/主体/结果/认领态全部经 registry 与契约内联枚举加载校验；无新枚举引入（错误码为 API 契约词汇，逐条对应 FN-0-08/0-02 条目，登记于 errors.py 注释）。
+- [x] seed 一致性：装载即建链自检；11 案聚合深比对保持；make seed×2 幂等（含链列确定性重算）。
+- [x] 依赖纪律自查：backend 零大模型引用（含新文件）；agent/mcp 未触；**写路径全部经 governed_commands.execute**（API 仅框架入口，WORM 拦截审计改写）；批量红线（BLOCKED 不可批量放行）与双人会签不可绕过。
+- [x] Excel 回填：Sheet02 FN-0-02/08/10 → 待验收（验收要点括注本会话交付）；Sheet03/04 无本会话行。
+- [x] 文档回写：无契约变更（contracts/ 与 seeds 数据本体零改动，无需 CHANGELOG）；无新 ADR；本文件追加 R4 段。
+
+## 4. 遗留与移交（M1 R5+ 入口）
+
+1. rules_catalog 族级中文标识 machine_id、置信度分档计算、容差判定函数属 WP1.6（本会话 evaluate 仅消费 config 阈值，不实现分档）。
+2. 发号器（案件号/批次/gm-rcpt/QA/ANNO 域递增）与租户四隔离强制注入属 WP1.7——本会话 trace 生成为简化实现（TODO(WP1.7) 已标）。
+3. 草稿/发布/diff/回滚版本化框架属 WP1.8（unblock/发布类命令的 POLICY_PUBLISHED 接入点已留）。
+4. EVIDENCE_COLLECTED（调查只读取证）与自动收集编排属 M4/M5 agent 域；本会话 hold/INVESTIGATING 仅注记排程。
+5. 时间线 t 为运行期 ISO-8601（与演示页面 MM-DD HH:MM:SS 双口径并存）；audit-reports 页面 blk 列表与运行期新块的展示对齐属 M2 接线。

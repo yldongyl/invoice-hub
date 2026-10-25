@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """FastAPI 应用入口（WP1.1 · ADR-0001 双轨制：backend 确定性核心，零大模型依赖）。
 
-本入口只装配只读 API 面 + /healthz（M1 首阶段范围）；受理流水线（WP1.6）、
-受控写入口（WP1.5）、状态机（WP1.3）等在后续工作包挂载路由位。
+只读 API 面 + /healthz（WP1.2）与受控写命令入口（WP1.5：risk-challenge / actions /
+batch / export，全部经 governed_commands 五要素框架）；受理流水线（WP1.6）等后续工作包挂载。
 """
 
 from fastapi import FastAPI
 
-from app.api import cases as cases_api
+from app.api import actions as actions_api, cases as cases_api
 from app.domain.registry import get_registry
 from app.services import persistence
 
-APP_VERSION = "0.1.0-m1-wp1.1-1.2"
+APP_VERSION = "0.2.0-m1-wp1.3-1.5"
 
 
 def create_app() -> FastAPI:
@@ -21,6 +21,7 @@ def create_app() -> FastAPI:
         version=APP_VERSION,
     )
     app.include_router(cases_api.router)
+    app.include_router(actions_api.router)
 
     @app.get("/healthz")
     def healthz():
