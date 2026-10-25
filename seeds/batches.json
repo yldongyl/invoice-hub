@@ -53,6 +53,8 @@
   ],
   "known_page_discrepancies": [
     "BT-20261020-004/005 文件命名字段的供应商与 A.1 案件供应商存在 0381/0383 交叉（页面文件名口径 vs Sheet09 主数据集口径）；seed 逐字保留两侧原值，收敛需求登记于 gate-reports/M0-self-check.md（CON-B4 核对项）",
-    "BT-20261020-008 含扩展案件 INV-SG-2026-0121（dashboard os.cases 同源），不在 Sheet09 A.1 主数据集 11 案内；M1 装载时作为列表级案件补录（gate report 登记）"
+    "BT-20261020-008 含扩展案件 INV-SG-2026-0121（dashboard os.cases 同源），不在 Sheet09 A.1 主数据集 11 案内；M1 装载时作为列表级案件补录（gate report 登记）",
+    "dashboard-overview os.cases INV-SG-2026-0124 状态显示 RECOGNIZED（受理时点）vs cases.json 取 A.1 终态 VERIFYING（D11 流转记法「RECOGNIZED→VERIFYING」，M0 自检已登记取终态口径）；kpi.json 逐字保留页面时点值；收敛归 M2 接线联动（G-M0-001 交叉校验脚本 M1 R3 登记）",
+    "matching-mapping QUEUE INV-CN-2026-0381 金额 页面 '¥5,650.00'（票面 OCR 值）vs A.1/cases.json '¥5,680.00（XML 口径）'——本案为多源冲突案（OCR vs XML 差 ¥30 超容差），页面队列卡显示票面值、主数据取 XML 口径；收敛归 M2/M4 匹配口径（G-M0-001 交叉校验脚本 M1 R3 登记）"
   ]
 }
