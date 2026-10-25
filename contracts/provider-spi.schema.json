@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice-hub:provider-spi:v1",
+  "title": "Provider SPI 南向插拔契约（FN-A-05 · FN-2-13 归一化）",
+  "description": "新增 OCR/查验 Provider（百望云、诺诺、客户自有 OCR、私有化 VLM、海外 e-invoicing、人工兜底=平台内置）只需实现本 SPI 三方法并注册路由，不改平台内核。商业 Provider 一律 SPI stub（演示口径：契约返回归一化结果与模拟时延/成本——实施规划 §6）。所有 Provider 输出必须归一化为 ProviderResult 后进入内核（FN-2-13，归一化后事件 INBOUND_ACCEPTED）。",
+  "spi_methods": {
+    "capabilities": {
+      "title": "能力声明（供路由调度）",
+      "request": "无参（或 instance 上下文）",
+      "response": { "$ref": "#/$defs/CapabilitiesDeclaration" },
+      "rules": "声明支持的票种/地区/文件格式、识别或查验类型、并发与 SLA；路由引擎按声明匹配（FN-2-08 三条件：地区｜票种｜载体）"
+    },
+    "recognize": {
+      "title": "识别（文件引用 + 实例上下文 → 归一化结果）",
+      "request": { "$ref": "#/$defs/RecognizePayload" },
+      "response": { "$ref": "#/$defs/ProviderResult" },
+      "rules": "禁止 canned_fixture 固定返回——真实系统禁止，仅 Mock 允许并显式标记（FN-2-14）；字段级证据（bbox/raw_text/model_version）必填，缺一即黑盒"
+    },
+    "verify": {
+      "title": "查验（可选，查验类 Provider 必需）",
+      "request": { "$ref": "#/$defs/VerifyPayload" },
+      "response": { "$ref": "#/$defs/VerifyResult" },
+      "rules": "验真必须走授权渠道，模型不得自行宣称发票真实（FN-0-09 红线）；回执可留存（gm-rcpt-* 归档）；同票查验结果缓存避免重复计费（FN-5-02）；超时→NOT_VERIFIED→单独排定重试（断点续跑）——演示口径模拟通道"
+    }
+  },
+  "source_vocabulary_note": "本契约 fields[].source 约束为 enum-registry.field_source 六枚举（唯一全站口径）。SPI 侧若使用细粒度词（pdf_text/vlm/verify_api），必须在 Provider 端归一后输出：pdf_text→xml_direct、vlm→model、verify_api→webhook（裁决见 docs/adr/0004 附#1，对照表 contracts/field-alias.md §6）。",
+  "$defs": {
+    "CapabilitiesDeclaration": {
+      "type": "object",
+      "required": ["provider_id", "display_name", "provider_label", "deploy_mode", "invoice_types", "regions", "formats", "services", "sla"],
+      "properties": {
+        "provider_id": { "type": "string", "description": "注册 ID（如 bwyun-cn / nuonuo-cn / customer-ocr / selfhosted-vlm / overseas-einv-sg / human-fallback）" },
+        "display_name": { "type": "string" },
+        "provider_label": { "type": "string", "enum": ["商业厂商", "客户已有", "私有化", "平台内置"], "description": "档案标签（FN-2-02）" },
+        "deploy_mode": { "type": "string", "enum": ["API（SaaS）", "客户环境 API", "私有化自托管（GPU）", "平台复核工作台"], "description": "部署模式（FN-2-02）" },
+        "invoice_types": { "type": "array", "items": { "type": "string" }, "description": "支持票种（FN-4-01 分类口径）" },
+        "regions": { "type": "array", "items": { "type": "string", "enum": ["CN", "APAC", "EU", "US"] } },
+        "formats": { "type": "array", "items": { "type": "string", "enum": ["xml", "ofd", "pdf_text", "pdf_scan", "image", "peppol_ubl"] }, "description": "载体格式（路由三条件之一）" },
+        "services": { "type": "array", "items": { "type": "string", "enum": ["recognize", "verify"] }, "description": "recognize 必备；verify 仅查验类 Provider（授权验真/名录校验）" },
+        "concurrency": { "type": "integer", "minimum": 1, "description": "并发声明" },
+        "sla": {
+          "type": "object",
+          "required": ["availability_pct", "p95_latency_ms"],
+          "properties": {
+            "availability_pct": { "type": "number", "description": "可用率（seeds/providers.json 口径：99.95 等；warn 阈值可配——超阈值告警态 FN-2-05）" },
+            "p95_latency_ms": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "lock": { "type": "boolean", "description": "true=不可停用（仅「人工兜底」平台内置 Provider，FN-2-03；停用请求被拒绝并提示）" },
+        "compliance_note": { "type": ["string", "null"], "description": "「不留存、不训练」条款登记（合同 §/DPA 附录，FN-2-07；Provider 留存/训练/跨境问题为蓝图待确认项）" }
+      },
+      "additionalProperties": false
+    },
+    "RecognizePayload": {
+      "type": "object",
+      "required": ["file_ref", "mime_type", "sha256", "instance"],
+      "properties": {
+        "file_ref": { "type": "string" },
+        "mime_type": { "type": "string" },
+        "sha256": { "type": "string" },
+        "instance": { "type": "string", "enum": ["CN", "OS"] },
+        "doc_type_hint": { "type": ["string", "null"] },
+        "request_id": { "type": "string", "description": "SPI 调用幂等/追踪（入 trace）" }
+      },
+      "additionalProperties": false
+    },
+    "ProviderResult": {
+      "type": "object",
+      "description": "归一化结果（FN-2-13 结构基准 + api-portal SPI 页面示例；Provider 端必须完成归一化）",
+      "required": ["fields", "meta"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "value", "confidence", "source", "raw_text", "model_version"],
+            "properties": {
+              "name": { "type": "string", "description": "统一 Schema 字段路径（invoice-schema.json 基准，如 total.gross_amount）" },
+              "value": { "type": ["string", "number", "boolean", "null"] },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "source": { "type": "string", "enum": ["xml_direct", "ocr", "qr_code", "model", "manual", "webhook"], "description": "六枚举（source_vocabulary_note）" },
+              "bbox": { "type": ["array", "string", "null"], "items": { "type": "integer" }, "minItems": 4, "maxItems": 4, "description": "页面坐标 [x1,y1,x2,y2]；直读类允许「—（XML 节点）」字符串" },
+              "raw_text": { "type": "string" },
+              "model_version": { "type": ["string", "null"], "description": "如 ocr-vlm-2026-10 / bwyun-ocr v4.1.2（演示口径命名）" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "meta": {
+          "type": "object",
+          "required": ["provider_id", "latency_ms", "cost"],
+          "properties": {
+            "provider_id": { "type": "string" },
+            "latency_ms": { "type": "number", "description": "模拟时延（stub 演示口径；成本统计 FN-2-06 消费）" },
+            "cost": {
+              "type": "object",
+              "required": ["currency", "amount"],
+              "properties": {
+                "currency": { "type": "string", "enum": ["CNY", "SGD", "USD"] },
+                "amount": { "type": "number", "description": "单张成本（¥0.08 / S$0.05 / GPU 分摊 ¥0.02 / 客户内部结算 ¥0）" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyPayload": {
+      "type": "object",
+      "required": ["caseId", "fields", "channel"],
+      "properties": {
+        "caseId": { "type": "string", "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$" },
+        "fields": { "type": "object", "description": "查验要素键值（CN=发票代码/号码/价税合计/开票日期/税号；OS=Tax ID/UEN 名录项）" },
+        "channel": { "type": "string", "description": "授权渠道标识（税务总局授权查验经 Provider 执行，FN-5-02；海外=名录校验 webhook-sg 通道 FN-5-03；演示口径模拟通道）" }
+      },
+      "additionalProperties": false
+    },
+    "VerifyResult": {
+      "type": "object",
+      "required": ["result", "receipt"],
+      "properties": {
+        "result": { "type": "string", "enum": ["PASSED", "NOT_VERIFIED", "FAILED"], "description": "查验类不产生 AMOUNT_VARIANCE（check_result 子集）；FAILED→红线 BLOCKED（FN-5-01/05）；超时/未回→NOT_VERIFIED+排定重试" },
+        "receipt": {
+          "type": ["object", "null"],
+          "required": ["receipt_no", "archived"],
+          "properties": {
+            "receipt_no": { "type": "string", "pattern": "^gm-rcpt-\\d{4}$", "description": "验签/查验回执号（gm-rcpt-NNNN，FN-0-13；SM2 算法真实、证书链模拟——实施规划 §6 演示口径）" },
+            "archived": { "type": "boolean", "description": "PASS/FAILED 均产生回执并随案归档（不可篡改；失败回执可司法取证）" }
+          },
+          "additionalProperties": false
+        },
+        "note": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

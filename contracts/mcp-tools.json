@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "status": "v1 · FROZEN（M0，2026-10-25）",
+  "title": "MCP Server 工具契约（FN-A-04 · 6 工具 = 4 只读 + 2 受控写）",
+  "description": "集成 API（contracts/openapi.yaml）之上的 MCP 协议封装，北向 Agent 生态（SAP Joule / 第三方 Agent / 平台 Agent 工作台同源复用，禁止私有旁路 FN-8-08）。受控边界（与蓝图 §10 / FN-0-09 一致）：只读工具任意调用无副作用；写工具必须携带人工确认 token（confirm_token）+ 操作人身份（operator），AI 禁止静默执行业务写操作。transport 与 auth 样例见 ui-design/api-portal.html §②（页面口径）。",
+  "transport": {
+    "type": "streamable-http",
+    "endpoint": "https://api.invoice-hub.example.com/mcp/v1"
+  },
+  "auth": {
+    "type": "oauth2",
+    "grant": "client_credentials",
+    "token_url": "https://auth.invoice-hub.example.com/oauth/token",
+    "client_id": "${INVOICE_HUB_CLIENT_ID}",
+    "client_secret": "${INVOICE_HUB_CLIENT_SECRET}",
+    "scopes": ["invoice.read", "invoice.write.controlled"],
+    "scope_binding": "只读工具要求 invoice.read；受控写工具额外要求 invoice.write.controlled"
+  },
+  "policy": {
+    "write_tools_require_human_confirm_token": true,
+    "confirm_token": {
+      "description": "人工确认凭据：由已完成 FN-0-08 五要素交互（权限校验→风险提示→二次确认+本人执行勾选→处置意见→审计留痕）的人类操作会话签发，一次性、短时效、绑定 caseId 与 action；缺失/失效/非人类会话签发 → 拒绝并审计",
+      "required_for": ["invoices.recognize", "case.action"]
+    },
+    "operator_required": true,
+    "operator_note": "写工具必须携带操作人身份（与 confirm_token 主体一致；AI/LLM 不持有 RBAC 角色，FN-0-09）",
+    "ai_silent_write_forbidden": true,
+    "audit": "所有工具调用（含被拒调用）全量入不可篡改审计链（FN-0-10），trace 贯穿",
+    "enum_reference": "工具名与级别 = enum-registry.mcp_tool（六项，validate_contracts.py 一致性断言）"
+  },
+  "tools": [
+    {
+      "name": "case.search",
+      "access": "read",
+      "scope": "invoice.read",
+      "description": "案件搜索（enum-registry.mcp_tool 口径：案件搜索(supplier/status/date_range/keyword)）",
+      "parameters": {
+        "supplier": { "type": "string", "required": false },
+        "status": { "type": "string", "required": false, "enum": ["RECOGNIZED", "VERIFYING", "NEEDS_REVIEW", "INVESTIGATING", "RESOLVED", "BLOCKED"] },
+        "date_range": { "type": "string", "required": false, "description": "受理时间窗（如 2026-10-18..2026-10-20）" },
+        "keyword": { "type": "string", "required": false, "description": "案件号/供应商关键字" }
+      },
+      "returns": "案件摘要列表（caseId/status/facts 摘要/meta 关键字段；同源 REST GET /v1/cases 查询面）"
+    },
+    {
+      "name": "case.get_evidence",
+      "access": "read",
+      "scope": "invoice.read",
+      "description": "字段级证据读取（字段级证据读取(caseId/field)）",
+      "parameters": {
+        "caseId": { "type": "string", "required": true, "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$" },
+        "field": { "type": "string", "required": false, "description": "Schema 字段路径过滤（如 total.gross_amount）；缺省返回全量" }
+      },
+      "returns": "evidence[]（invoice-case.schema.json #/$defs/evidenceEntry 全要素）"
+    },
+    {
+      "name": "dedup.report",
+      "access": "read",
+      "scope": "invoice.read",
+      "description": "查重报告（查重报告(invoice_no/supplier/amount)）",
+      "parameters": {
+        "invoice_no": { "type": "string", "required": false },
+        "supplier": { "type": "string", "required": false },
+        "amount": { "type": "number", "required": false }
+      },
+      "returns": "查重报告（业务键口径=CON-05：CN 发票代码+号码+价税合计（税号辅助）；OS 号码+金额+供应商；命中记录与拦截状态）"
+    },
+    {
+      "name": "provider.list",
+      "access": "read",
+      "scope": "invoice.read",
+      "description": "Provider 清单（Provider清单(capability/instance)）",
+      "parameters": {
+        "capability": { "type": "string", "required": false, "description": "能力过滤（如 verify / ocr / e-invoicing）" },
+        "instance": { "type": "string", "required": false, "enum": ["CN", "OS"] }
+      },
+      "returns": "Provider 档案列表（seeds/providers.json 同源：名称/标签/类型/部署/SLA/成本/合规备注/lock）"
+    },
+    {
+      "name": "invoices.recognize",
+      "access": "controlled_write",
+      "scope": "invoice.read + invoice.write.controlled",
+      "confirm_token_required": true,
+      "description": "识别受理提交（识别受理提交(file_ref/instance/po_ref/callback)）；等同 REST POST /v1/invoices:recognize，写路径必须经受控命令框架（FN-0-08 五要素）",
+      "parameters": {
+        "file_ref": { "type": "string", "required": true, "description": "文件引用（对象存储路径 + sha256，见 openapi RecognizeRequest.file）" },
+        "instance": { "type": "string", "required": true, "enum": ["CN", "OS"] },
+        "po_ref": { "type": "string", "required": false },
+        "callback": { "type": "string", "required": false, "description": "Webhook 回调地址" },
+        "confirm_token": { "type": "string", "required": true },
+        "operator": { "type": "string", "required": true }
+      },
+      "returns": "InvoiceCase（同步快速路径）或 {caseId, accepted:true}（转异步）"
+    },
+    {
+      "name": "case.action",
+      "access": "controlled_write",
+      "scope": "invoice.read + invoice.write.controlled",
+      "confirm_token_required": true,
+      "description": "案件处置（案件处置(caseId/action=RELEASE|HOLD|REJECT/confirm_token/operator)）；AI 禁止静默写。BLOCKED 不可批量放行；解除拦截走双人审批流程（FN-8-06），不属本工具的单动作",
+      "parameters": {
+        "caseId": { "type": "string", "required": true, "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$" },
+        "action": { "type": "string", "required": true, "enum": ["RELEASE", "HOLD", "REJECT"] },
+        "opinion": { "type": ["string", "null"], "required": false, "description": "处置意见（REJECT 退回类必填，FN-0-08；未填落库「（未填写处置意见）」）" },
+        "confirm_token": { "type": "string", "required": true },
+        "operator": { "type": "string", "required": true }
+      },
+      "returns": "处置结果 + 时间线事件（ACTION_RELEASE / ACTION_HOLD / ACTION_RETURN）+ trace"
+    }
+  ]
+}

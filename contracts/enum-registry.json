@@ -1,0 +1,250 @@
+{
+  "version": "1.0.0",
+  "status": "v1 · FROZEN（M0，2026-10-25 随 CON 决议冻结）",
+  "description": "全站枚举注册表——Excel Sheet08《枚举字典》全 115 行机器可读化，唯一实现依据（CON-B1）。禁止硬编码字面量、禁止造词；前后端徽章与本表同源（FN-0-15）。每个 values 条目的 code/label/color_raw/note 四字段与 Sheet08 的「值/代码、标签/含义、颜色/级别、备注」四列逐字一致，由 tools/check_enums.py 逐行比对；color 为语义色板 token（见 ui-design/design-system.md §2），为附加字段不参与逐字比对；个别类别附机器字段（如 actor/enabled/access/pattern/min-max），亦为附加。",
+  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx · Sheet08 枚举字典（115 行数据，第 5–119 行）· 上游口径：清单 MD §2 / 附录 A.4 / FN-0-10 / FN-0-13",
+  "notes": [
+    "置信度中档上界按清单 FN-0-06/Sheet08 取 80–94%（design-system.md §3 所写 80–95% 为笔误，裁决见 docs/adr/0004 附#2）",
+    "字段来源六枚举为全站唯一口径；SPI/Provider 侧细粒度词表按 docs/adr/0004 附#1 归一映射（pdf_text→xml_direct、vlm→model、verify_api→webhook），映射表见 contracts/field-alias.md",
+    "案件状态/来源/结果/主体四类徽章配色全站唯一（FN-0-15）；状态流转（state_transition）与四校验项（check_item）为 Sheet08 规则型类别，非取值枚举"
+  ],
+  "color_tokens": {
+    "primary": "蓝 #165DFF",
+    "success": "绿 #00B42A",
+    "warning": "橙 #FF7D00",
+    "danger": "红 #F53F3F",
+    "purple": "紫（页面扩展 token，OCR/VLM/Provider 族）",
+    "gray": "中性灰（未验证/停用/预设族）"
+  },
+  "categories": {
+    "case_status": {
+      "s08_category": "案件状态 status",
+      "desc": "案件六态（FN-0-02 · CON-02 决议：唯一实现模型）",
+      "values": [
+        { "code": "RECOGNIZED", "label": "已识别", "color": "primary", "color_raw": "蓝(primary)", "note": "识别完成，进入自动校验链" },
+        { "code": "VERIFYING", "label": "查验中", "color": "primary", "color_raw": "蓝(primary)", "note": "验真/查验/名录校验进行中" },
+        { "code": "NEEDS_REVIEW", "label": "待复核", "color": "warning", "color_raw": "橙(warning)", "note": "命中人工复核条件，进复核队列" },
+        { "code": "INVESTIGATING", "label": "调查中", "color": "warning", "color_raw": "橙(warning)", "note": "差异超阈值，系统主动调查（只读取证）" },
+        { "code": "RESOLVED", "label": "已解决", "color": "success", "color_raw": "绿(success)", "note": "复核完成/自动路径完成，可推送建档" },
+        { "code": "BLOCKED", "label": "已拦截", "color": "danger", "color_raw": "红(danger)", "note": "命中红线（重复票/验签失败），冻结建档" }
+      ]
+    },
+    "state_transition": {
+      "s08_category": "状态流转",
+      "desc": "状态机流转规则（规则引擎驱动，非模型推断；FN-0-02 流转表）",
+      "values": [
+        { "code": "RECOGNIZED→NEEDS_REVIEW", "label": "poMatch=AMOUNT_VARIANCE ∧ authenticity=NOT_VERIFIED；或低置信；或关键字段冲突", "color_raw": "—", "note": "路由对应共享中心复核队列+通知" },
+        { "code": "RECOGNIZED→BLOCKED", "label": "authenticity=FAILED（验签红线）或查重命中", "color_raw": "—", "note": "建档挂起；高风险30分钟认领；其余Checks不中止" },
+        { "code": "NEEDS_REVIEW→INVESTIGATING", "label": "金额差异>调查阈值（如±S$50）", "color_raw": "—", "note": "自动收集PO/GRN/合同证据（只读），建档挂起" },
+        { "code": "NEEDS_REVIEW/INVESTIGATING→RESOLVED", "label": "人工放行（受控Action）或自动路径全部通过", "color_raw": "—", "note": "触发目标系统建档" },
+        { "code": "INVESTIGATING→BLOCKED", "label": "人工退回供应商（受控Action）", "color_raw": "—", "note": "邮件退回通知，不推送建档" },
+        { "code": "BLOCKED→解除", "label": "复核员+管理员双人审批会签", "color_raw": "—", "note": "全程留痕；解除后按调查结论重新流转" }
+      ]
+    },
+    "field_source": {
+      "s08_category": "字段来源 source",
+      "desc": "字段级证据来源六枚举（FN-0-05 · 全站统一徽章）",
+      "values": [
+        { "code": "xml_direct", "label": "XML 直读", "color": "primary", "color_raw": "蓝", "note": "结构化原件直读（免 Provider）" },
+        { "code": "ocr", "label": "OCR", "color": "purple", "color_raw": "紫", "note": "OCR Provider 识别" },
+        { "code": "qr_code", "label": "二维码解码", "color": "success", "color_raw": "绿", "note": "票面二维码/条码" },
+        { "code": "model", "label": "VLM 模型", "color": "purple", "color_raw": "紫", "note": "文档理解模型输出（仅作证据源）" },
+        { "code": "manual", "label": "人工", "color": "warning", "color_raw": "橙", "note": "人工修正（原识别值保留可追溯）" },
+        { "code": "webhook", "label": "外部查验回执", "color": "primary", "color_raw": "蓝", "note": "授权查验/名录校验回执" }
+      ]
+    },
+    "check_result": {
+      "s08_category": "Checks 结果",
+      "desc": "四校验统一结果枚举（FN-0-07 · 规则引擎判定）",
+      "values": [
+        { "code": "PASSED", "label": "通过", "color": "success", "color_raw": "绿", "note": "—" },
+        { "code": "NOT_VERIFIED", "label": "未验证", "color": "gray", "color_raw": "灰", "note": "如授权查验超时→单独排定重试" },
+        { "code": "AMOUNT_VARIANCE", "label": "金额差异", "color": "warning", "color_raw": "橙", "note": "如含税vs PO净额口径差异" },
+        { "code": "FAILED", "label": "失败", "color": "danger", "color_raw": "红", "note": "如SM2验签失败→红线BLOCKED" }
+      ]
+    },
+    "check_item": {
+      "s08_category": "四校验项 checks",
+      "desc": "四校验项定义（相互独立执行；BLOCKED 不中止其余校验）",
+      "values": [
+        { "code": "supplierMatch", "label": "供应商匹配：名称+税号/Tax ID vs 主数据SUP-ID", "color_raw": "—", "note": "规则 supplier_master_match / tax_id_checksum" },
+        { "code": "authenticity", "label": "验真：CN=SM2验签+授权查验；OS=Tax ID名录校验", "color_raw": "—", "note": "验真必须走授权渠道，模型不得自行宣称真实" },
+        { "code": "duplicate", "label": "查重：业务键全局发票池比对", "color_raw": "—", "note": "CN键=发票代码(null→空串)+号码+价税合计；OS=Invoice No+Amount+供应商" },
+        { "code": "poMatch", "label": "PO匹配：金额口径/行覆盖/容差判定", "color_raw": "—", "note": "勾稽容差±0.06；PO匹配容差±S$50（两套，CON-12）" }
+      ]
+    },
+    "confidence_band": {
+      "s08_category": "置信度分档",
+      "desc": "展示分档三档（FN-0-06 · 阈值路由与展示分档分离，路由阈值见 config.json）",
+      "values": [
+        { "code": "≥95%", "label": "高", "color": "success", "color_raw": "绿", "note": "—", "min": 95, "max": 100 },
+        { "code": "80–94%", "label": "中", "color": "warning", "color_raw": "橙", "note": "—", "min": 80, "max": 94 },
+        { "code": "<80%", "label": "低", "color": "danger", "color_raw": "红", "note": "强制人工，禁止自动放行", "min": 0, "max": 79 }
+      ]
+    },
+    "timeline_actor": {
+      "s08_category": "时间线主体 actor",
+      "desc": "时间线/审计执行者四枚举（FN-0-10 · AI 仅建议不执行）",
+      "values": [
+        { "code": "system", "label": "系统", "color": "primary", "color_raw": "蓝点", "note": "—" },
+        { "code": "provider", "label": "Provider", "color": "purple", "color_raw": "紫点", "note": "—" },
+        { "code": "human", "label": "人工", "color": "success", "color_raw": "绿点", "note": "—" },
+        { "code": "ai", "label": "AI 建议", "color": "warning", "color_raw": "橙点", "note": "仅建议不执行" }
+      ]
+    },
+    "timeline_event": {
+      "s08_category": "事件码 act",
+      "desc": "案件时间线事件码字典（FN-0-10 · events.schema.json 的 act 取值域；color_raw 列在 Sheet08 中记录默认执行者主体）",
+      "values": [
+        { "code": "CHANNEL_RECEIVED", "label": "渠道受理·信封解析·SHA-256摘要登记", "actor": "system", "color": "primary", "color_raw": "system", "note": "①接入层" },
+        { "code": "CARRIER_ROUTED", "label": "载体检测分流（能直读的不送OCR）", "actor": "system", "color": "primary", "color_raw": "system", "note": "①接入层" },
+        { "code": "XML_PARSED", "label": "XML直读解析（23字段·Schema校验）", "actor": "system", "color": "primary", "color_raw": "system", "note": "②识别层" },
+        { "code": "OCR_RECOGNIZED", "label": "OCR识别（Provider，字段带坐标+原文证据）", "actor": "provider", "color": "purple", "color_raw": "provider", "note": "②识别层" },
+        { "code": "OCR_CROSS_CHECK", "label": "OCR交叉验证（异源互证）", "actor": "provider", "color": "purple", "color_raw": "provider", "note": "④融合层" },
+        { "code": "OCR_CROSS_CHECK_CONFLICT", "label": "多源冲突（双方证据留存，置信度降级转人工）", "actor": "provider", "color": "purple", "color_raw": "provider", "note": "④融合层" },
+        { "code": "INBOUND_ACCEPTED", "label": "识别结果接收·Schema归一化", "actor": "system", "color": "primary", "color_raw": "system", "note": "④融合层" },
+        { "code": "SM2_VERIFY", "label": "SM2验签PASS（回执gm-rcpt-*归档）", "actor": "provider", "color": "purple", "color_raw": "provider", "note": "⑤合规层" },
+        { "code": "SM2_VERIFY_FAILED", "label": "验签FAILED（失败回执归档，可司法取证）", "actor": "provider", "color": "purple", "color_raw": "provider", "note": "⑤合规层·红线" },
+        { "code": "AUTH_QUERY_TIMEOUT", "label": "授权查验超时→NOT_VERIFIED，单独排定重试", "actor": "provider", "color": "purple", "color_raw": "provider", "note": "断点续跑" },
+        { "code": "TAXID_CHECK", "label": "海外Tax ID名录校验", "actor": "system", "color": "primary", "color_raw": "system", "note": "⑤合规层" },
+        { "code": "DEDUP_CHECK", "label": "查重执行", "actor": "system", "color": "primary", "color_raw": "system", "note": "⑤合规层" },
+        { "code": "DEDUP_PO_CHECK", "label": "PO维度查重", "actor": "system", "color": "primary", "color_raw": "system", "note": "⑤合规层" },
+        { "code": "DEDUP_BLOCKED", "label": "重复票拦截（付款/建档前）", "actor": "system", "color": "primary", "color_raw": "system", "note": "⑤合规层·红线" },
+        { "code": "PO_MATCH", "label": "PO关联匹配", "actor": "system", "color": "primary", "color_raw": "system", "note": "⑥匹配层" },
+        { "code": "PO_MATCH_VARIANCE", "label": "PO金额差异→INVESTIGATING主动调查", "actor": "system", "color": "primary", "color_raw": "system", "note": "⑥匹配层" },
+        { "code": "BTP_MATCH", "label": "BTP匹配/Check（海外链路）", "actor": "system", "color": "primary", "color_raw": "system", "note": "0918字面链路环节" },
+        { "code": "EVIDENCE_COLLECTED", "label": "调查证据自动收集（只读）", "actor": "system", "color": "primary", "color_raw": "system", "note": "INVESTIGATING" },
+        { "code": "LLM_ADVICE", "label": "AI差异解释/处置建议生成（仅建议）", "actor": "ai", "color": "warning", "color_raw": "ai", "note": "带置信度+模型版本" },
+        { "code": "LLM_ADVICE_REJECTED", "label": "不采纳AI建议（留痕，卡片保留可追溯）", "actor": "human", "color": "success", "color_raw": "human", "note": "—" },
+        { "code": "REVIEW_OPENED", "label": "人工认领开始复核（复核员+所属中心）", "actor": "human", "color": "success", "color_raw": "human", "note": "BLOCKED案含管理员会签人" },
+        { "code": "FIELD_EDITED", "label": "人工修正字段（原因必填，原值保留）", "actor": "human", "color": "success", "color_raw": "human", "note": "—" },
+        { "code": "ACTION_RELEASE", "label": "受控Action：放行→RESOLVED", "actor": "human", "color": "success", "color_raw": "human", "note": "五要素齐备后执行" },
+        { "code": "ACTION_HOLD", "label": "受控Action：挂起→INVESTIGATING", "actor": "human", "color": "success", "color_raw": "human", "note": "—" },
+        { "code": "ACTION_RETURN", "label": "受控Action：退回供应商→BLOCKED", "actor": "human", "color": "success", "color_raw": "human", "note": "对外动作，理由必填" },
+        { "code": "STATUS_CHANGE", "label": "状态机流转（含触发条件）", "actor": "system", "color": "primary", "color_raw": "system", "note": "—" },
+        { "code": "POLICY_PUBLISHED", "label": "路由策略发布（版本递增+diff+回滚点）", "actor": "human", "color": "success", "color_raw": "human", "note": "平台级事件" },
+        { "code": "PROVIDER_DISABLED", "label": "Provider停用（路由链自动跳过降级）", "actor": "human", "color": "success", "color_raw": "human", "note": "平台级事件" },
+        { "code": "AUDIT_EXPORT", "label": "审计导出（导出行为自审计入链头）", "actor": "human", "color": "success", "color_raw": "human", "note": "平台级事件" }
+      ]
+    },
+    "diff_type": {
+      "s08_category": "差异类型徽章",
+      "desc": "匹配就绪化差异类型（FN-6-02 · matching Tab1 五色徽章）",
+      "values": [
+        { "code": "税额口径", "label": "含税vs不含税口径差异", "color": "primary", "color_raw": "蓝(primary)", "note": "如0387差=13%税额" },
+        { "code": "尾差", "label": "金额勾稽尾差/多源冲突", "color": "warning", "color_raw": "橙(warning)", "note": "如0381差¥30>±0.06判多源冲突" },
+        { "code": "PO 外费用", "label": "PO无对应行的费用（如运费）", "color": "purple", "color_raw": "紫(purple)", "note": "行项目表黄底高亮" },
+        { "code": "红字待关联", "label": "红字票未建立冲减Link", "color": "danger", "color_raw": "红(danger)", "note": "重复付款风险" },
+        { "code": "Credit Note 待关联", "label": "CN未建立冲减Link", "color": "warning", "color_raw": "橙(warning)", "note": "—" }
+      ]
+    },
+    "risk_label": {
+      "s08_category": "风险标签 risk",
+      "desc": "案件风险标签（附录 A.4 · workbench/dashboard 同源；label 列为级别）",
+      "values": [
+        { "code": "PO 金额差异", "label": "warning", "color": "warning", "color_raw": "橙", "note": "—" },
+        { "code": "重复票", "label": "danger", "color": "danger", "color_raw": "红", "note": "付款前/建档前拦截" },
+        { "code": "红字票待关联原票", "label": "warning", "color": "warning", "color_raw": "橙", "note": "—" },
+        { "code": "价税合计口径冲突", "label": "warning", "color": "warning", "color_raw": "橙", "note": "—" },
+        { "code": "SM2 验签失败", "label": "danger", "color": "danger", "color_raw": "红", "note": "—" },
+        { "code": "含税 vs PO 净额差异", "label": "warning", "color": "warning", "color_raw": "橙", "note": "—" },
+        { "code": "Credit Note 未关联原票", "label": "warning", "color": "warning", "color_raw": "橙", "note": "—" }
+      ]
+    },
+    "batch_status": {
+      "s08_category": "批次进度状态",
+      "desc": "批次进度状态（FN-1-06 · 进度%=(成功+异常)/文件数）",
+      "values": [
+        { "code": "受理中 / 识别中", "label": "进行中", "color": "primary", "color_raw": "蓝", "note": "附进度条" },
+        { "code": "已完成", "label": "完成", "color": "success", "color_raw": "绿", "note": "进度100%" },
+        { "code": "部分异常", "label": "含异常文件", "color": "danger", "color_raw": "红", "note": "整行淡红底；异常件转人工不阻断批次" }
+      ]
+    },
+    "adapter_status": {
+      "s08_category": "Adapter 状态",
+      "desc": "Adapter 三态（FN-7-01）",
+      "values": [
+        { "code": "已对接 ✓ (live)", "label": "生产可用，开放配置与测试建档", "color": "success", "color_raw": "绿", "note": "Ariba/Oracle/自研/Data Lake" },
+        { "code": "适配中 ◐ (wip)", "label": "联调中，展示进度面板", "color": "warning", "color_raw": "橙", "note": "Coupa（预计2026-11）" },
+        { "code": "规划中 ○ (plan)", "label": "仅规划范围展示", "color": "gray", "color_raw": "灰", "note": "S/4HANA（2027-Q1评估）" }
+      ]
+    },
+    "anno_status": {
+      "s08_category": "标注任务状态",
+      "desc": "标注任务四态（FN-8-13）",
+      "values": [
+        { "code": "排队中 (queue)", "label": "待分配", "color": "gray", "color_raw": "灰", "note": "—" },
+        { "code": "标注中 (doing)", "label": "进行中", "color": "primary", "color_raw": "蓝", "note": "双人背靠背" },
+        { "code": "三审仲裁 (review)", "label": "分歧样本仲裁", "color": "warning", "color_raw": "橙", "note": "—" },
+        { "code": "已完成·已沉淀 (done)", "label": "沉淀为规则", "color": "success", "color_raw": "绿", "note": "版本化+可回滚" }
+      ]
+    },
+    "alert_level": {
+      "s08_category": "告警级别",
+      "desc": "告警引擎三级（FN-9-08 · P0 红线不可停用）",
+      "values": [
+        { "code": "P0 · 红线", "label": "错误自动放行率>0.05%", "color": "danger", "color_raw": "红(danger)", "note": "不可停用；关闭尝试被拦截且留痕；通知含短信", "level": "P0" },
+        { "code": "P1 · 重要", "label": "如GPU利用率>90%", "color": "warning", "color_raw": "橙", "note": "webhook", "level": "P1" },
+        { "code": "P2 · 警告", "label": "如Provider P95超阈值、队列积压>5000", "color": "warning/primary", "color_raw": "黄/蓝", "note": "邮件+webhook", "level": "P2" }
+      ]
+    },
+    "fallback_trigger": {
+      "s08_category": "兜底触发条件",
+      "desc": "全局降级兜底五项触发条件（FN-2-10 · 任一命中进复核工作台 NEEDS_REVIEW）",
+      "values": [
+        { "code": "最终置信度低于阈值", "label": "默认开", "color_raw": "—", "note": "任一命中即进复核工作台", "enabled_default": true },
+        { "code": "关键字段冲突（金额/税额/发票号）", "label": "默认开", "color_raw": "—", "note": "—", "enabled_default": true },
+        { "code": "验真/验签失败", "label": "默认开", "color_raw": "—", "note": "—", "enabled_default": true },
+        { "code": "Provider全链路降级失败", "label": "默认开", "color_raw": "—", "note": "—", "enabled_default": true },
+        { "code": "新客户首月全量复核", "label": "默认关", "color_raw": "—", "note": "校准阈值与映射规则用", "enabled_default": false }
+      ]
+    },
+    "mcp_tool": {
+      "s08_category": "MCP 工具",
+      "desc": "MCP 六工具（FN-A-04 · 只读任意调用；受控写必须 confirm_token，AI 禁止静默写）",
+      "values": [
+        { "code": "case.search", "label": "案件搜索(supplier/status/date_range/keyword)", "color": "primary", "color_raw": "只读·蓝", "note": "—", "access": "read" },
+        { "code": "case.get_evidence", "label": "字段级证据读取(caseId/field)", "color": "primary", "color_raw": "只读·蓝", "note": "—", "access": "read" },
+        { "code": "dedup.report", "label": "查重报告(invoice_no/supplier/amount)", "color": "primary", "color_raw": "只读·蓝", "note": "—", "access": "read" },
+        { "code": "provider.list", "label": "Provider清单(capability/instance)", "color": "primary", "color_raw": "只读·蓝", "note": "—", "access": "read" },
+        { "code": "invoices.recognize", "label": "识别受理提交(file_ref/instance/po_ref/callback)", "color": "danger", "color_raw": "受控写·橙红", "note": "需人工确认token", "access": "controlled_write" },
+        { "code": "case.action", "label": "案件处置(caseId/action=RELEASE|HOLD|REJECT/confirm_token/operator)", "color": "danger", "color_raw": "受控写·橙红", "note": "AI禁止静默写", "access": "controlled_write" }
+      ]
+    },
+    "webhook_event": {
+      "s08_category": "Webhook 事件",
+      "desc": "Webhook 四事件（FN-A-03 · X-Signature HMAC-SHA256 + X-Event-Id 幂等，指数退避重试≤8次）",
+      "values": [
+        { "code": "case.recognized", "label": "识别完成（进入RECOGNIZED/NEEDS_REVIEW）", "color_raw": "—", "note": "消费方拉详情驱动上游流转" },
+        { "code": "case.blocked", "label": "红线拦截（blockReason/ruleId/evidenceRef）", "color_raw": "—", "note": "冻结下游建档/付款前置" },
+        { "code": "case.resolved", "label": "复核完成（resolution/operator/actionTrailRef）", "color_raw": "—", "note": "触发目标系统建档" },
+        { "code": "check.failed", "label": "单项校验失败（不必然整案拦截）", "color_raw": "—", "note": "提示业务侧关注差异" }
+      ]
+    },
+    "mapping_source": {
+      "s08_category": "映射来源三分类",
+      "desc": "字段/税码映射来源三分类（FN-6-07/08 · FN-7-03 · 治理四步 FN-4-07）",
+      "values": [
+        { "code": "预设 (preset)", "label": "出厂规则 v1.0", "color": "gray", "color_raw": "灰", "note": "随CN/OS扩展包出厂，客户可覆写", "machine": "preset" },
+        { "code": "人工沉淀 (manual)", "label": "人工确认后沉淀，带时间与场景标注", "color": "primary", "color_raw": "蓝", "note": "确认一次长期复用", "machine": "manual" },
+        { "code": "AI 生成 (ai)", "label": "映射助手推荐，带版本+置信度", "color": "warning", "color_raw": "橙✦", "note": "待人工确认后生效，确认动作留痕", "machine": "ai" }
+      ]
+    },
+    "id_format": {
+      "s08_category": "编号规则",
+      "desc": "编号与标识符规则（FN-0-13 · 发号器与校验唯一依据；pattern 为附加机器字段）",
+      "values": [
+        { "code": "案件号", "label": "INV-{CN|SG}-2026-NNNN", "color_raw": "—", "note": "按实例分域发号（CON-04）", "pattern": "^INV-(CN|SG)-(\\d{4})-(\\d{4})$" },
+        { "code": "批次号", "label": "BT-YYYYMMDD-NNN", "color_raw": "—", "note": "一次拉取/一次提交=一批次", "pattern": "^BT-(\\d{8})-(\\d{3})$" },
+        { "code": "trace ID", "label": "tr-{8位hex}", "color_raw": "—", "note": "贯穿全链路", "pattern": "^tr-[0-9a-f]{8}$" },
+        { "code": "验签回执", "label": "gm-rcpt-NNNN", "color_raw": "—", "note": "含失败回执，随案归档", "pattern": "^gm-rcpt-\\d{4}$" },
+        { "code": "建档回执", "label": "AID-* / AP Invoice ID / 受理号", "color_raw": "—", "note": "按目标系统" },
+        { "code": "供应商主数据", "label": "SUP-NNNNN", "color_raw": "—", "note": "—", "pattern": "^SUP-\\d{5}$" },
+        { "code": "租户 ID", "label": "TENANT-{区域}-{名称}-{序号}", "color_raw": "—", "note": "如TENANT-CN-LANWU-001", "pattern": "^TENANT-[A-Z]{2}-[A-Z]+-\\d{3}$" },
+        { "code": "抽检批次", "label": "QA-YYYY-Wnn-NN", "color_raw": "—", "note": "每周1批", "pattern": "^QA-\\d{4}-W\\d{2}-\\d{2}$" },
+        { "code": "标注任务", "label": "ANNO-YYYY-NNNN", "color_raw": "—", "note": "—", "pattern": "^ANNO-\\d{4}-\\d{4}$" },
+        { "code": "原件摘要", "label": "SHA-256", "color_raw": "—", "note": "受理即登记，贯穿生命周期", "pattern": "^([0-9a-f]{4})…([0-9a-f]{4})$|^[0-9a-f]{64}$" }
+      ]
+    }
+  }
+}

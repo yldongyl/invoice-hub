@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice-hub:invoice-case:v1",
+  "title": "InvoiceCase 持久化案件聚合（FN-0-01 · 蓝图 §4.7）",
+  "description": "每张票据对应的持久化处理单元（状态机 + 证据链 + Action 审计 + 断点续跑的共同地基）。本文件为案件查询 API（FN-A-02）与 MCP case.get/search 返回、seeds/cases.json、M1 领域聚合的共同契约。枚举取值一律引用 contracts/enum-registry.json（下方 inline enum 与其一致性由 tools/validate_contracts.py 断言，禁止各自造词）。自检基准：0387 / 0379 / 0125 三演示案件必须通过本 Schema 校验（由 seeds/cases.json 承载验证）。",
+  "type": "object",
+  "properties": {
+    "caseId": {
+      "type": "string",
+      "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$",
+      "description": "案件号（INV-{CN|SG}-2026-NNNN，按实例分域发号——CON-04 决议；FN-0-13）"
+    },
+    "detail_level": {
+      "type": "string",
+      "enum": ["full", "list"],
+      "description": "种子数据分层口径（P01 WP0.7：三演示案件为完整详情级，其余为列表级+关键时间线）。full 案件必须携带 checks/evidence/timeline/links/items/file/nextAction 全要素（见 allOf 约束）；list 案件仅携带列表页（FN-8-01 dashboard/workbench）要素 + 已文档化的关键时间线，详情视图数据在 M1/M3 由服务生成或补录。"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["RECOGNIZED", "VERIFYING", "NEEDS_REVIEW", "INVESTIGATING", "RESOLVED", "BLOCKED"],
+      "description": "案件六态（enum-registry.case_status；CON-02 决议唯一实现模型）"
+    },
+    "summary": {
+      "type": ["string", "null"],
+      "description": "队列摘要（规则引擎结论，FN-8-01 列口径；非模型生成）"
+    },
+    "meta": {
+      "type": "object",
+      "description": "案件元信息（FN-0-01 全量口径；status 只存顶层，meta 不再冗余状态位）",
+      "properties": {
+        "region": { "type": "string", "description": "地区（region：CN·中国 / APAC·新加坡 / EU·欧盟…，UI 文案含中文名）", "examples": ["CN · 中国", "APAC · 新加坡"] },
+        "instance": { "type": "string", "enum": ["CN", "OS"], "description": "双实例路由域（FN-0-11；案件号段 CN|SG 与本字段对应：CN 实例=CN 段，海外实例=SG 段）" },
+        "ext": { "type": "string", "description": "Schema 扩展标签（如「CN Extension · 数电票」「Core + APAC Extension」）", "examples": ["CN Extension · 数电票", "Core + APAC Extension"] },
+        "type": { "type": "string", "description": "票据类型（统一枚举 FN-4-01 口径的票种文案）", "examples": ["数电票（增值税专用发票）", "Supplier Invoice（海外供应商发票）", "Credit Note"] },
+        "invoice_type_machine": { "type": ["string", "null"], "description": "票种机器码（SUPPLIER_INVOICE / CREDIT_NOTE / DEBIT_NOTE / E_INVOICE_VAT_SPECIAL / E_INVOICE_VAT_GENERAL / VAT_SPECIAL_PAPER / VAT_GENERAL_PAPER / RED_INVOICE；统一枚举刷新待 FN-4-01 版本化，当前演示口径）" },
+        "po": { "type": ["string", "null"], "description": "关联 PO" },
+        "supplier": { "type": "string", "description": "供应商名称" },
+        "supplier_id": { "type": ["string", "null"], "pattern": "^(SUP-\\d{5})?$", "description": "供应商主数据 ID（FN-0-13）" },
+        "amount_display": { "type": "string", "description": "金额（含币种符号；红字/Credit Note 为负数，UI 红色显示 FN-0-15）", "examples": ["¥113,000.00", "US$-2,450.00"] },
+        "received_at": { "type": ["string", "null"], "description": "受理时间（演示口径含时区注记，如「2026-10-19 08:47（SGT）」）" },
+        "channel": { "type": ["string", "null"], "description": "接入渠道（FN-1-01~04：供应商邮箱 / API / 门户上传 / SAP DOX）" },
+        "adapter": { "type": ["string", "null"], "description": "目标适配（如「SAP Ariba · cXML InvoiceDetailRequest」）" },
+        "sm2": {
+          "type": ["object", "null"],
+          "description": "CN SM2 验签卡（FN-5-01；OS 案件为 null，见 vat）",
+          "properties": {
+            "ok": { "type": "boolean" },
+            "text": { "type": "string" },
+            "receipt_no": { "type": ["string", "null"], "pattern": "^(gm-rcpt-\\d{4})?$", "description": "验签回执号（gm-rcpt-NNNN，PASS/FAILED 均产生并随案归档）" }
+          },
+          "required": ["ok", "text"],
+          "additionalProperties": false
+        },
+        "vat": { "type": ["string", "null"], "description": "OS Tax ID 校验结果文案（FN-5-03；CN 案件为 null）" },
+        "risk_label": { "type": ["string", "null"], "enum": ["PO 金额差异", "重复票", "红字票待关联原票", "价税合计口径冲突", "SM2 验签失败", "含税 vs PO 净额差异", "Credit Note 未关联原票", null], "description": "风险标签（enum-registry.risk_label；无风险为 null）" },
+        "confidence": { "type": ["integer", "null"], "minimum": 0, "maximum": 100, "description": "整案置信度（展示分档由 enum-registry.confidence_band 计算）" },
+        "provider": { "type": "string", "description": "识别来源 Provider 展示名（XML 直读案件为「XML 直读（免 Provider）」）" },
+        "claimed_by": { "type": ["string", "null"], "description": "认领复核员（CON-11 决议：NEEDS_REVIEW 子态字段，不扩状态机）" },
+        "claimed_at": { "type": ["string", "null"], "description": "认领时间" },
+        "claim_lock_expire_at": { "type": ["string", "null"], "description": "认领锁超时时刻（锁超时策略）" },
+        "doc_hold_pending": { "type": "boolean", "description": "建档挂起标记（CON-02 决议：规格 pending_review = 本子标志，非案件状态）" },
+        "document_created_receipt": { "type": ["string", "null"], "description": "建档回执（规格 document_created = RESOLVED 后的建档回执事件承载于此，如 AID-2026-90218 / 3024556781 / AP-2026-118207）" },
+        "trace_id": { "type": ["string", "null"], "pattern": "^tr-[0-9a-f]{8}$", "description": "全链路 trace（FN-0-10/FN-9-12）" }
+      },
+      "required": ["region", "instance", "type", "supplier", "amount_display"],
+      "additionalProperties": false
+    },
+    "facts": {
+      "type": "object",
+      "description": "关键事实数值（FN-0-01：invoiceAmount/poAmount/taxAmount/currency；金额机读口径，展示以 meta.amount_display 与 evidence 为准）",
+      "properties": {
+        "invoiceAmount": { "type": "number", "description": "票面金额（价税合计 gross；红字/CN 为负）" },
+        "poAmount": { "type": ["number", "null"], "description": "PO 金额（无 PO 时为 null）" },
+        "taxAmount": { "type": ["number", "null"], "description": "税额" },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "description": "ISO-4217" },
+        "variance": { "type": ["number", "null"], "description": "票面-PO 差异额（规则引擎口径，如 0387=13000.00 / 0125=5600.00）" }
+      },
+      "required": ["invoiceAmount", "currency"],
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "object",
+      "description": "四校验（FN-0-07 · 规则引擎判定，模型输出不得写入；每项附判定说明 note；BLOCKED 不中止其余校验）",
+      "properties": {
+        "supplierMatch": { "$ref": "#/$defs/checkResult" },
+        "authenticity": { "$ref": "#/$defs/checkResult" },
+        "duplicate": { "$ref": "#/$defs/checkResult" },
+        "poMatch": { "$ref": "#/$defs/checkResult" }
+      },
+      "required": ["supplierMatch", "authenticity", "duplicate", "poMatch"],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "array",
+      "description": "字段级证据数组（FN-0-05 最小数据契约——可解释识别的强制要求：每字段=值+证据，缺一即黑盒）。UI 字段分组可由 group 标签还原（演示口径）。",
+      "items": { "$ref": "#/$defs/evidenceEntry" }
+    },
+    "timeline": {
+      "type": "array",
+      "description": "案件时间线（FN-0-10 事件模型 {t,a,act,d,x,v}，引用 contracts/events.schema.json；运行时受控写实时追加）",
+      "items": { "$ref": "events.schema.json" }
+    },
+    "links": {
+      "type": "object",
+      "description": "对象-Link 结构化关系（FN-0-04；case-detail Link 关系图与建档前校验的数据源）",
+      "properties": {
+        "invoice": { "type": "string", "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$" },
+        "supplier": { "type": "string" },
+        "supplier_id": { "type": ["string", "null"], "pattern": "^(SUP-\\d{5})?$" },
+        "po": { "type": ["string", "null"], "description": "匹配关系目标 PO" },
+        "po_state": { "type": ["string", "null"], "enum": ["PASSED", "NOT_VERIFIED", "AMOUNT_VARIANCE", "FAILED", null], "description": "PO 匹配状态（check_result 同源）" },
+        "grn": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "grn_no": { "type": "string" },
+              "note": { "type": ["string", "null"], "description": "收货注记（如「部分收货」）" }
+            },
+            "required": ["grn_no"],
+            "additionalProperties": false
+          }
+        },
+        "credit_note": {
+          "type": ["object", "null"],
+          "description": "红字/CN 冲减关系（FN-4-06 候选→FN-6-10 人工确认后方可建立；建档前自动校验）",
+          "properties": {
+            "relation": { "type": "string", "enum": ["NONE", "CANDIDATE", "OFFSET_OUT", "OFFSET_IN"], "description": "NONE=无关联（非红冲票）；CANDIDATE=候选待人工确认；OFFSET_OUT=本票冲减他票（红字/CN）；OFFSET_IN=本票被他票冲减" },
+            "ref": { "type": ["string", "null"], "description": "对方案件号（CANDIDATE/OFFSET_* 时给出）" },
+            "match_score": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "匹配度评分（候选推断输出，如 0.92）" },
+            "partial": { "type": ["boolean", "null"], "description": "全额/部分冲减（部分须给出冲减后余额计算）" },
+            "confirmed": { "type": "boolean", "description": "是否已人工确认建立 Link（未确认的 CANDIDATE 不得建档——重复付款风险）" }
+          },
+          "required": ["relation", "confirmed"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["invoice", "supplier", "po", "grn", "credit_note"],
+      "additionalProperties": false
+    },
+    "items": {
+      "type": "object",
+      "description": "行项目明细（FN-8-03 呈现位；CN 8 列 / OS 6 列口径，FN-6-06。机读行结构以 invoice-schema.json 的 items[] 为准；本字段为案件内行展示快照——页面口径字符串含币种符号，勾稽与匹配消费 facts/evidence 数值）",
+      "properties": {
+        "note": { "type": "string", "description": "行来源与勾稽说明（如「来源：XML 直读 · 行级勾稽校验通过」）" },
+        "layout": { "type": "string", "enum": ["CN8", "OS6"], "description": "行口径（CN 8 列 / OS 6 列）" },
+        "columns": { "type": "array", "items": { "type": "string" } },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 8,
+            "items": { "type": "string" },
+            "description": "行展示值数组（顺序=columns；CN 8 项 / OS 6 项）"
+          }
+        }
+      },
+      "required": ["note", "layout", "columns", "rows"],
+      "additionalProperties": false
+    },
+    "file": {
+      "type": "object",
+      "description": "原件与摘要（FN-3-09 右栏文件卡；SHA-256 受理即登记，任何替换可被检测）",
+      "properties": {
+        "display": { "type": "string", "description": "页面口径一行文案（文件名 · 页数 · SHA-256 摘要）" },
+        "name": { "type": "string" },
+        "pages": { "type": ["integer", "null"] },
+        "sha256": { "type": "string", "description": "原件摘要（演示口径截断式 3f8a…c92d；正式实现 64hex）" },
+        "has_xml_original": { "type": "boolean", "description": "是否含 XML 原件（电子会计档案主体；海外缺原件须显性标注 FN-3-08）" },
+        "note": { "type": "string", "description": "归档注记" }
+      },
+      "required": ["display", "name", "sha256", "has_xml_original", "note"],
+      "additionalProperties": false
+    },
+    "source_xml": {
+      "type": ["string", "null"],
+      "description": "结构化源文件 Tab（FN-3-08：CN=数电票 XML 原件含 Signature 节点与回执；OS=无 XML 原件时展示 OCR 归一化 Schema 输出，每个值节点带 source/confidence 属性 + EvidenceRef；缺原件说明显性标注）"
+    },
+    "paper_template": {
+      "type": ["string", "null"],
+      "enum": ["cn", "cn379", "os", null],
+      "description": "票面预览模板选择（FN-0-15：CN 数电票红色版式 / 篡改警示票面 / SG 英文票面三套；web 接线渲染口径基准，不改变数据）"
+    },
+    "ai": {
+      "type": ["object", "null"],
+      "description": "AI 建议卡（FN-8-09 生命周期：生成→挂起等待人工→采纳转受控 Action / 不采纳留痕；强制橙标+模型版本+置信度+免责，FN-0-09）",
+      "properties": {
+        "title": { "type": "string" },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "model_version": { "type": "string", "description": "模型名与版本（如 qwen-finance-v2 · 2026-10-15）" },
+        "body": { "type": "string" },
+        "conclusion": { "type": "string" },
+        "rule_note": { "type": "string", "description": "治理脚注（规则复核/红线判定/状态机驱动分场景，FN-8-09）" },
+        "disclaimer": { "type": "string", "description": "免责声明（强制，FN-0-09）" },
+        "status": { "type": "string", "enum": ["pending", "adopted", "rejected"], "description": "卡片生命周期态（rejected 置灰保留可追溯）" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" }, "description": "证据引用（字段路径列表）" }
+      },
+      "required": ["title", "confidence", "model_version", "body", "conclusion", "rule_note", "disclaimer", "status"],
+      "additionalProperties": false
+    },
+    "nextAction": {
+      "type": ["object", "null"],
+      "description": "下一步动作（FN-0-01：type/reason/assign_to；由状态机与规则引擎产出，非模型推断。type 演示口径取值：HUMAN_REVIEW（复核队列）/ DUAL_APPROVAL（BLOCKED 双人解除）/ INVESTIGATE（主动调查）/ AUTO_ARCHIVE（自动路径完成待建档）/ PUSH_ADAPTER（触发建档）等，枚举字典随 M1 状态机服务版本化入 enum-registry 兼容登记（FN-A-07 新增枚举值走 v1 兼容变更）",
+      "properties": {
+        "type": { "type": "string" },
+        "reason": { "type": "string" },
+        "assign_to": { "type": ["string", "null"] }
+      },
+      "required": ["type", "reason", "assign_to"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["caseId", "status", "detail_level", "meta", "facts"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "detail_level": { "const": "full" } }, "required": ["detail_level"] },
+      "then": { "required": ["checks", "evidence", "timeline", "links", "items", "file", "nextAction"] }
+    }
+  ],
+  "$defs": {
+    "checkResult": {
+      "type": "object",
+      "description": "单项校验结论（结果枚举=enum-registry.check_result；note=判定说明，FN-0-07）",
+      "properties": {
+        "result": { "type": "string", "enum": ["PASSED", "NOT_VERIFIED", "AMOUNT_VARIANCE", "FAILED"] },
+        "note": { "type": "string" }
+      },
+      "required": ["result", "note"],
+      "additionalProperties": false
+    },
+    "evidenceEntry": {
+      "type": "object",
+      "description": "字段级证据条目（FN-0-05 JSON 契约：field/value/source/confidence/evidence{page,bbox,raw_text,rule,model_version,provider}；人工修正后 source→manual、confidence→1.0、raw_text 记「原值 → 新值（原因）」、原 page/bbox 保留，FN-8-05）",
+      "properties": {
+        "field": { "type": "string", "description": "Schema 字段路径（invoice-schema.json 路径基准，如 total.gross_amount / links.po / evidence.sm2_signature / items 行引用）" },
+        "label": { "type": ["string", "null"], "description": "字段展示名（中文/英文票面名）" },
+        "group": { "type": ["string", "null"], "description": "UI 字段分组标题（演示口径还原位，如「金额与税额」）" },
+        "value": { "type": ["string", "number", "boolean", "null"], "description": "识别值（页面口径可为带币种字符串；机读口径见 facts 与类型转换）" },
+        "source": { "type": "string", "enum": ["xml_direct", "ocr", "qr_code", "model", "manual", "webhook"], "description": "来源六枚举（enum-registry.field_source；SPI 侧细粒度词按 ADR-0004 附#1 归一）" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "置信度 [0,1]（FN-0-05；展示分档按 confidence_band）" },
+        "star": { "type": "boolean", "description": "★关键字段标记（FN-0-15 UI-CAS-03 红色加粗口径：金额/税额/发票号等）" },
+        "anchor": { "type": ["string", "null"], "description": "原件定位锚点（FN-3-03 UI 票面元素 pv-*；无坐标字段为 null，不显示定位入口）" },
+        "evidence": {
+          "type": "object",
+          "description": "证据六要素（FN-0-05 严格结构，缺一即黑盒——FN-3-02 验收口径）",
+          "properties": {
+            "page": { "type": ["integer", "string", "null"], "description": "页码（无页面坐标可为「—」类字符串）" },
+            "bbox": { "type": ["array", "string", "null"], "items": { "type": "integer" }, "minItems": 4, "maxItems": 4, "description": "坐标 [x1,y1,x2,y2]；允许特殊值「—（XML 节点）」及跨源写法「[源坐标] → 票面 [坐标]」（字符串形态）" },
+            "raw_text": { "type": "string", "description": "原文片段" },
+            "rule": { "type": ["string", "null"], "description": "规则命中（rule 标识+结果，清单附录 C 基线，如 amount_tax_sum_check ✓；无规则为「—」）" },
+            "model_version": { "type": ["string", "null"], "description": "模型/解析器版本（授权渠道判定类可为「—（授权验签渠道，非模型判断）」）" },
+            "provider": { "type": "string", "description": "来源说明（如「XML 直读（免 Provider）」「百望云」「平台规则引擎」「人工修正 · 王莉」）" }
+          },
+          "required": ["page", "bbox", "raw_text", "rule", "model_version", "provider"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["field", "value", "source", "confidence", "evidence"],
+      "additionalProperties": false
+    }
+  }
+}

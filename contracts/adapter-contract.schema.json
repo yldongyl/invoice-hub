@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice-hub:adapter-contract:v1",
+  "title": "Adapter 建档契约骨架（FN-A-06 · 东向 · Ariba cXML InvoiceDetailRequest 为例）",
+  "description": "东向建档契约：内核只产出标准 InvoiceCase，字段映射差异全部收敛在 Adapter 层（FN-7 层定位）。本文件冻结 cXML 1.2.040 骨架、三条基础映射规则与建档执行口径。⚠️ 演示口径：字段级细则 TODO(H24)（Ariba cXML 建档接口细则待确认）；中国字段 Ariba 承载 TODO(H25)（Extrinsic cn:* 待确认，中国能力包核心验证入口；不阻塞国外实例链路）。真实接口调查结论落地后按 FN-A-07 走版本刷新，映射模板数据模型支持按真实字段面刷新（CON-10）。",
+  "contract": {
+    "name": "ariba-cxml-invoice-detail",
+    "target_system": "SAP Ariba",
+    "protocol": "cXML",
+    "protocol_version": "1.2.040",
+    "version": "v1 · FROZEN（随蓝图评审冻结，2026-10；M0 落仓 2026-10-25）",
+    "auth_modes": ["xsuaa OAuth2 Client Credentials（BTP Destination + Cloud Connector）", "OAuth2", "mTLS + HMAC-SHA256"],
+    "endpoint_class": "生产/沙箱网关分流（FN-7-04 发送步骤）；沙箱通道=影子/测试标记回执，不写回案件状态（FN-7-08）",
+    "idempotency": {
+      "note": "建档幂等两层（CON-06 对照说明，契约文档写明关系）：传输层 requestId/caseId；业务层 原件摘要 file_sha256 + 目标单据号 target_doc_ref；失败自动重试 ≤3 次（30s/2min/10min 退避）防重复建档"
+    },
+    "five_step_chain": {
+      "description": "建档任务五步链路（FN-7-04 · 沙箱 Ariba stub 真实执行五步、回执模拟——实施规划 §6 演示口径）",
+      "steps": [
+        "① Schema 校验（完整性+必填项，对照 invoice-schema.json/invoice-case.schema.json）",
+        "② 报文组装（按映射模板生成 cXML InvoiceDetailRequest；模板 v1.4 版本化）",
+        "③ 签名（OAuth2 令牌/HMAC/mTLS，凭证 KMS 加载不回显）",
+        "④ 发送（生产/沙箱网关分流）",
+        "⑤ 回执归档（回执 ID 登记 + 写案件时间线；失败回执同等归档）"
+      ]
+    }
+  },
+  "basic_mapping_rules": [
+    {
+      "id": "map-1",
+      "from": "InvoiceCase.facts.invoiceAmount",
+      "to": "InvoiceDetailHeader/Total/Money",
+      "note": "头金额（价税合计口径；红字/Credit Note 负数）",
+      "status": "冻结（细则 TODO(H24)）"
+    },
+    {
+      "id": "map-2",
+      "from": "InvoiceCase.facts.taxAmount + tax_code_mapping（映射表 v1.4：13%→J1…免税→J7；SG 9%→SG-SR、0%→SG-ZR）",
+      "to": "InvoiceDetailHeader/Tax",
+      "note": "税额节点；红字/CN 沿用原票税码（冲减方向）",
+      "status": "冻结（目标 Tax Code 以 H24/H25 调查结论刷新）"
+    },
+    {
+      "id": "map-3",
+      "from": "po_ref / links.po",
+      "to": "OrderReference/@orderID",
+      "note": "三单匹配依据；缺省走 non-PO 流程",
+      "status": "冻结"
+    }
+  ],
+  "cn_field_carriage": {
+    "pattern": "Extrinsic name=\"cn:*\"",
+    "description": "中国字段（发票代码、纳税人识别号、SM2 验签结果/回执、大写金额、数电票 XML 引用等）经 Custom Fields 通道承载（Ariba 侧 Custom Fields 14 个之一族）",
+    "status": "TODO(H25) 阻塞级待确认（演示口径呈现，不阻塞海外链路）",
+    "custom_fields_template": {
+      "version": "v1.4",
+      "source_classes": ["预设 (preset)", "人工沉淀 (manual)", "AI 生成 (ai)——待人工确认后生效，确认动作权限校验+留痕（FN-7-03/mapping_source）"]
+    }
+  },
+  "attachment_policy": {
+    "description": "原件+PDF 票面随档（FN-7-07）",
+    "ariba": "Base64 分段 ≤5MB/段 + SHA-256 摘要校验（AttachmentMessage）",
+    "oracle": "FBDI 附件目录 + 影像外链",
+    "self_built": "对象存储链接 + 摘要，原件不出中台证据库"
+  },
+  "receipt_id_formats": {
+    "ariba": "InvoiceDocument ID（如 AID-2026-90218）",
+    "oracle": "AP Invoice ID（如 3024556781）",
+    "self_built": "受理号（如 AP-2026-118207）"
+  },
+  "cxml_skeleton_example": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE cXML SYSTEM \"http://xml.cxml.org/schemas/cXML/1.2.040/InvoiceDetailRequest.dtd\">\n<cXML payloadID=\"invoice-hub-INV-CN-2026-0387@ariba\" timestamp=\"2026-10-21T09:32:10+08:00\">\n  <Header>\n    <From><Credential domain=\"NetworkID\"><Identity>invoice-hub-cn</Identity></Credential></From>\n    <To><Credential domain=\"NetworkID\"><Identity>ariba-buyer-an12345</Identity></Credential></To>\n    <Sender><Credential domain=\"NetworkID\"><Identity>invoice-hub-cn</Identity>\n      <SharedSecret>${ARIBA_SHARED_SECRET}</SharedSecret></Credential></Sender>\n  </Header>\n  <Request deploymentMode=\"sandbox\">\n    <InvoiceDetailRequest>\n      <Contact addressID=\"supplier-10042\" role=\"supplier\">\n        <Name xml:lang=\"zh-CN\">北京中科华创科技有限公司</Name>\n      </Contact>\n      <!-- 映射①：InvoiceCase.facts.invoiceAmount → 头金额 -->\n      <InvoiceDetailHeader invoiceDate=\"2026-10-18\" invoiceID=\"24112000000387\">\n        <Total><Money currency=\"CNY\">113000.00</Money></Total>\n        <!-- 映射②：facts.taxAmount + evidence(rule=tax_code_mapping) → Tax 节点 -->\n        <Tax><Money currency=\"CNY\">13000.00</Money>\n          <Description xml:lang=\"zh-CN\">增值税 13%</Description></Tax>\n        <!-- 映射③：po_ref → OrderReference（缺省走 non-PO） -->\n        <OrderReference orderID=\"PO-2026-0881\"/>\n        <!-- 中国字段承载 TODO(H25)：Extrinsic cn:* 演示口径 -->\n        <Extrinsic name=\"cn:invoice_code\"></Extrinsic>\n        <Extrinsic name=\"cn:seller_tax_id\">91110108MA01C3872X</Extrinsic>\n        <Extrinsic name=\"cn:sm2_receipt\">gm-rcpt-0931</Extrinsic>\n      </InvoiceDetailHeader>\n    </InvoiceDetailRequest>\n  </Request>\n</cXML>",
+  "adapter_development_flow": {
+    "four_steps": ["模板 fork（继承统一 Schema 出口+鉴权/重试/审计基座）", "字段映射（税额口径/币种/供应商主数据对照，声明必填与容差）", "沙箱联调（新仓沙箱资产回放真实案件样例；历史 ariba-mock 仅参考）", "契约测试（结构/语义/版本兼容三层，FN-A-08，通过后方可注册上线）"],
+    "note": "第三方凭契约文档可独立完成（L2 判定口径底线）"
+  },
+  "$ref_note": "本文件为契约描述文档（结构+骨架+规则），非报文实例校验 Schema；报文实例校验由 M4 Adapter 框架按 cxml_skeleton_example 结构 + DTD 校验实现（TS-08）。"
+}

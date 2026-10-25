@@ -1,0 +1,55 @@
+{
+  "version": "1.0.0",
+  "status": "v1 · FROZEN（M0）",
+  "source": "ui-design/matching-mapping.html（预设规则库 5 行 / LLM 推荐队列 3 条 / 人工确认历史 2 条 / Tab3 Link 候选 2 组）+ 清单 FN-6-07/08/09/10、FN-4-06",
+  "ai_governance_note": "LLM 推荐条目强制标注 AI 生成（模型 qwen-finance-v2 · 2026-10-15）+ 置信度 + 免责；确认一次即沉淀为预设规则，拒绝必填备注并回落人工队列；沉淀/拒绝均入不可篡改审计（FN-6-08/FN-0-09）。",
+  "stats": { "preset_month_hits": 12847, "preset_coverage_pct": 96.2, "period": "本月（演示口径，基准日 2026-10-21）" },
+  "presets": [
+    { "src": "价税合计（小写）", "to": "total.gross_amount", "month_hits": 4213, "source": "预设 (preset)" },
+    { "src": "合计金额（不含税）", "to": "total.net_amount", "month_hits": 3980, "source": "预设 (preset)" },
+    { "src": "销售方名称 / Supplier Name", "to": "seller.name", "month_hits": 2554, "source": "预设 (preset)" },
+    { "src": "发票号码 / Invoice No.", "to": "header.invoice_no", "month_hits": 1206, "source": "预设 (preset)" },
+    { "src": "Total Due（海外票面）", "to": "total.gross_amount", "month_hits": 894, "source": "预设 (preset)" }
+  ],
+  "llm_recommended_queue": [
+    { "src": "报关单号（CN 新增字段）", "to": "custom_fields.customs_ref", "confidence": 86,
+      "reason": "海关电子回执新增「报关单号」节点，语义上与目标平台报关参考字段对应；近 3 家供应商票据已出现同名字段，建议沉淀为长期规则。",
+      "state": "pending", "reject_note": "", "ai_tag": "AI 生成", "model_version": "qwen-finance-v2 · 2026-10-15",
+      "disclaimer": "⚠ 大模型生成的建议不自动执行业务操作，请人工确认后操作" },
+    { "src": "折扣行（行级负数折扣）", "to": "discount_lines", "confidence": 78,
+      "reason": "票面行项目含负数折扣行，候选映射 discount_lines；存在「行内折扣 vs 独立折扣行」两种口径歧义，需人工判定目标平台入账方式。",
+      "state": "pending", "reject_note": "", "ai_tag": "AI 生成", "model_version": "qwen-finance-v2 · 2026-10-15",
+      "disclaimer": "⚠ 大模型生成的建议不自动执行业务操作，请人工确认后操作", "low_confidence_force_human": true },
+    { "src": "“发票” vs “采购发票”（CN / OS 语义差异）", "to": "invoice_type 统一枚举 SUPPLIER_INVOICE", "confidence": 91,
+      "reason": "海外票面标题「Invoice」与中国口径「采购发票」语义一致，建议归一为统一枚举，避免跨实例统计口径分裂。",
+      "state": "pending", "reject_note": "", "ai_tag": "AI 生成", "model_version": "qwen-finance-v2 · 2026-10-15",
+      "disclaimer": "⚠ 大模型生成的建议不自动执行业务操作，请人工确认后操作" }
+  ],
+  "confirmation_history": [
+    { "confirmed_at": "2026-10-12 15:22", "src": "GST Reg. No（海外票面 Tax ID）", "settled_to": "seller.tax_id", "confirmed_by": "王莉 · 复核员", "hits_after_settle": 317, "source": "人工沉淀 (manual)" },
+    { "confirmed_at": "2026-10-08 10:47", "src": "收货单号 / GRN Reference", "settled_to": "links.grn[].grn_no", "confirmed_by": "王莉 · 复核员", "hits_after_settle": 562, "source": "人工沉淀 (manual)" }
+  ],
+  "link_candidates": {
+    "note": "FN-4-06 候选推断（link-infer v1.1）+ FN-6-10 人工确认（link-check v1.1/v1.4 页面文案按原文保留）；候选仅为建议，建档前强制校验冲减 Link",
+    "items": [
+      { "inv": "INV-CN-2026-0384", "kind": "红字票", "amount": "¥-8,420.00", "date": "2026-10-16", "supplier": "广州粤海物流服务有限公司",
+        "origin": { "caseId": "INV-CN-2026-0310", "amount": "¥8,420.00", "date": "2026-09-28", "supplier": "广州粤海物流服务有限公司" },
+        "match_score": 92, "mode": "全额冲减", "confirmed": false,
+        "evidence": [
+          { "k": "供应商一致", "v": "✓ 通过", "note": "销售方名称 + 税号完全一致，与供应商主数据匹配" },
+          { "k": "金额冲减对应", "v": "✓ 通过", "note": "|¥-8,420.00| = 原票 ¥8,420.00 → 全额冲减，冲减后余额 0" },
+          { "k": "开票日期先后", "v": "✓ 通过", "note": "原票 2026-09-28 在前 · 红字票 2026-10-16 在后，符合红冲时序" },
+          { "k": "重复 Link 检查", "v": "✓ 通过", "note": "原票无既有冲减关系 · 全局无其他红字票命中同一原票" }
+        ] },
+      { "inv": "INV-SG-2026-0123", "kind": "Credit Note", "amount": "US$-2,450.00", "date": "2026-10-17", "supplier": "AWS Asia Pacific (Singapore)",
+        "origin": { "caseId": "INV-SG-2026-0101", "amount": "US$49,000.00", "date": "2026-09-30", "supplier": "AWS Asia Pacific (Singapore)" },
+        "match_score": 92, "mode": "部分冲减", "confirmed": false,
+        "evidence": [
+          { "k": "供应商一致", "v": "✓ 通过", "note": "UEN 一致 · 与 SUP 主数据匹配（Lanwu Procurement Technology (Singapore) Pte. Ltd. 为购买方）" },
+          { "k": "金额冲减对应", "v": "✓ 通过", "note": "US$2,450.00 ≤ 原票 US$49,000.00 → 部分冲减，冲减后余额 US$46,550.00" },
+          { "k": "开票日期先后", "v": "✓ 通过", "note": "原票 2026-09-30 在前 · Credit Note 2026-10-17 在后" },
+          { "k": "重复 Link 检查", "v": "✓ 通过", "note": "原票无既有冲减关系" }
+        ] }
+    ]
+  }
+}

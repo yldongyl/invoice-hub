@@ -1,0 +1,18 @@
+{
+  "version": "v1.4",
+  "status": "映射表 v1.4（FN-0-12 行级版本；目标 Tax Code 以 H24/H25 接口调查结论刷新 TODO(H24) TODO(H25)）",
+  "source": "Excel Sheet09 A.3（10 行）+ ui-design/matching-mapping.html Tab2 税码映射表（更新时间列取页面值）",
+  "note": "红字票 / Credit Note 沿用原票税码（冲减方向，FN-6-04）；映射为规则引擎确定性执行；来源三分类见 enum-registry.mapping_source。",
+  "rows": [
+    { "instance": "CN", "instance_display": "🇨🇳 CN", "from_rate": "增值税 13%", "to_tax_code": "J1", "usage": "一般纳税人 · 货物/加工修理修配", "version": "v1.4", "updated_at": "2026-09-30", "source": "预设" },
+    { "instance": "CN", "instance_display": "🇨🇳 CN", "from_rate": "增值税 9%", "to_tax_code": "J2", "usage": "交通运输/建筑/农产品等", "version": "v1.4", "updated_at": "2026-09-30", "source": "预设" },
+    { "instance": "CN", "instance_display": "🇨🇳 CN", "from_rate": "增值税 6%", "to_tax_code": "J3", "usage": "现代服务/增值电信等", "version": "v1.4", "updated_at": "2026-09-30", "source": "预设" },
+    { "instance": "CN", "instance_display": "🇨🇳 CN", "from_rate": "增值税 3%", "to_tax_code": "J4", "usage": "小规模纳税人征收率", "version": "v1.4", "updated_at": "2026-09-30", "source": "预设" },
+    { "instance": "CN", "instance_display": "🇨🇳 CN", "from_rate": "增值税 1%", "to_tax_code": "J5", "usage": "小规模纳税人优惠征收率", "version": "v1.4", "updated_at": "2026-09-30", "source": "预设" },
+    { "instance": "CN", "instance_display": "🇨🇳 CN", "from_rate": "增值税 0%", "to_tax_code": "J6", "usage": "出口零税率", "version": "v1.4", "updated_at": "2026-09-30", "source": "预设" },
+    { "instance": "CN", "instance_display": "🇨🇳 CN", "from_rate": "免税", "to_tax_code": "J7", "usage": "免税项目 · 票面标注「免税」", "version": "v1.4", "updated_at": "2026-09-30", "source": "预设" },
+    { "instance": "SG", "instance_display": "🌏 SG", "from_rate": "GST 9%", "to_tax_code": "SG-SR", "usage": "Standard-Rated", "version": "v1.4", "updated_at": "2026-10-08", "source": "预设" },
+    { "instance": "SG", "instance_display": "🌏 SG", "from_rate": "GST 0%（zero-rated）", "to_tax_code": "SG-ZR", "usage": "zero-rated · 出口备件行项目", "version": "v1.4", "updated_at": "2026-10-08", "source": "预设" },
+    { "instance": "通用", "instance_display": "通用", "from_rate": "红字票 / Credit Note", "to_tax_code": "沿用原票税码", "usage": "冲减方向", "version": "v1.4", "updated_at": "2026-10-08", "source": "预设" }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "status": "v1 · FROZEN（M0）",
+  "source": "ui-design/dashboard-overview.html DATA.{cn,os}.alerts（CN/OS 各 3 条，含可展开证据摘要逐字）",
+  "note": "告警级别 level ∈ enum-registry.alert_level 语义（danger/warning 展示级；平台告警引擎 P0/P1/P2 见 config.alert_rules）；每条告警携带证据摘要（规则 ID+版本 / 来源 Provider / AI 建议+置信度+人工确认约束，FN-5-09）；告警中的 AI 建议仅为参考，不自动写回；文案含「发票代码」要素补注为 M2/M3 UI 落地项（CON-05 决议）。",
+  "cn": [
+    { "level": "danger", "title": "重复票阻断", "meta": "INV-CN-2026-0385 · 深圳广合精密组件 · 3 分钟前",
+      "evidence": "<b>规则查重命中</b>：发票号 24442000000385 + 价税合计 ¥232,860.00 与历史案件 INV-CN-2026-0291 完全一致（相似度 100%）。<br>来源：platform-dedup-rule v2.3（规则引擎判定，非模型推断）<br><b>处置</b>：案件已置为 BLOCKED，未推送 Ariba 建档；解除拦截需复核员权限并留痕。" },
+    { "level": "danger", "title": "SM2 验签失败", "meta": "数电票 · 成都天府新材料股份公司 · 26 分钟前",
+      "evidence": "<b>验签结果</b>：XML 原件 SM2 签名校验不通过（证书链无法验证）。<br>来源：查验 Provider「百望云」· 授权查验渠道 · 结果已留存可验证回执<br><b>AI 建议（仅供参考）</b>：疑似篡改票，建议阻断并要求供应商重开 —— 置信度 94%，<u>须人工确认后执行，系统不自动写回</u>。" },
+    { "level": "warning", "title": "价税合计口径冲突", "meta": "INV-CN-2026-0381 · 2 小时前",
+      "evidence": "<b>冲突详情</b>：票面 OCR「价税合计 ¥5,650.00」 vs XML 直读「¥5,680.00」，差额 ¥30.00。<br>命中规则：amount_tax_sum_check · 冲突解释：不含税金额 + 税额 ≠ 价税合计（尾差超容差 ±0.06）<br>置信度已降至 82%，路由至人工复核。" }
+  ],
+  "os": [
+    { "level": "danger", "title": "重复票阻断（Duplicate Blocked）", "meta": "INV-SG-2026-0122 · Schaeffler Singapore · 8 分钟前",
+      "evidence": "<b>规则查重命中</b>：Invoice No. SCH-SG-77410 + Amount US$128,900.00 与 INV-SG-2026-0098 完全一致。<br>来源：platform-dedup-rule v2.3（规则引擎判定，非模型推断）<br><b>处置</b>：BLOCKED，未生成 cXML InvoiceDetailRequest；解除需复核员权限并留痕。" },
+    { "level": "warning", "title": "含税总额 vs PO 净额差异 · 主动调查中", "meta": "INV-SG-2026-0125 · Siemens Energy · 41 分钟前",
+      "evidence": "<b>案件调查（INVESTIGATING）</b>：Invoice Gross S$84,200.00 vs PO Net S$78,600.00，差异 S$5,600.00。<br>系统已自动收集证据：PO 行项目 + 收货单（GRN）3 条 + GST 9% 税率映射；初步线索：差异 = GST 税额 + 运费行。<br><b>AI 建议（仅供参考）</b>：疑似口径差异而非错误 —— 置信度 88%，结论须人工确认后受控处置。" },
+    { "level": "warning", "title": "Credit Note 未关联原票", "meta": "INV-SG-2026-0123 · AWS Singapore · 1 小时前",
+      "evidence": "<b>Link 缺失</b>：Credit Note 未找到「冲减 → 原票」关系；候选原票 INV-SG-2026-0101（供应商 + 金额匹配度 92%）。<br>来源：对象模型 Link 校验规则 v1.4<br>待复核员确认关联后，方可进入 Ariba 建档。" }
+  ]
+}

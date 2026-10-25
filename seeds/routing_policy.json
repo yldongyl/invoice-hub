@@ -1,0 +1,62 @@
+{
+  "x_provider_id_mapping": "页面 chain 展示名 → 机器 provider_id 映射：XML 直读（内置解析）→xml_direct 内置能力位；百望云→bwyun-cn；诺诺→nuonuo-cn；客户自有 OCR→customer-ocr；自托管 OCR-VLM→selfhosted-ocr-vlm；海外 e-invoicing（新加坡）→overseas-einv-sg；人工兜底→human-fallback（链尾恒定，FN-2-08）。版本口径 v2026-10-20.3（P01 指定；审计页另含 .3→.4 发布记录，属页面间时点差异，登记于 gate-reports/M0-self-check.md）。",
+  "version": "v2026-10-20.3",
+  "state": "published",
+  "rules": [
+    { "route_id": "cn_e_invoice_recognize", "enabled": true, "priority": 1,
+      "condition": { "region": "CN", "invoice_type": "数电票", "carrier": "XML 原件 + PDF" },
+      "strategies": [
+        { "provider": "xml_direct", "priority": 10, "condition": "mime_type == \"application/xml\"", "threshold": null, "fallback": "next" },
+        { "provider": "bwyun-cn", "priority": 20, "condition": null, "threshold": 0.85, "fallback": "next" },
+        { "provider": "human-fallback", "priority": 90, "condition": null, "threshold": null, "fallback": "human_review" }
+      ],
+      "cross_check": { "enabled": false, "require_different_source": true, "fields": ["total.gross_amount", "total.tax_amount"] },
+      "note": "优先 XML 结构化直读（能直读的不送 OCR）；解析失败或票面不一致时路由百望云 OCR 交叉核对；置信度 < 0.85 进人工复核",
+      "ui_chain": ["XML 直读（内置解析）", "百望云", "人工兜底"] },
+    { "route_id": "cn_vat_paper_recognize", "enabled": true, "priority": 2,
+      "condition": { "region": "CN", "invoice_type": "增值税专票/普票（纸质扫描）", "carrier": "纸质扫描 / 图片" },
+      "strategies": [
+        { "provider": "bwyun-cn", "priority": 10, "condition": null, "threshold": 0.88, "fallback": "next" },
+        { "provider": "nuonuo-cn", "priority": 20, "condition": null, "threshold": 0.88, "fallback": "next" },
+        { "provider": "customer-ocr", "priority": 30, "condition": null, "threshold": 0.88, "fallback": "next" },
+        { "provider": "human-fallback", "priority": 90, "condition": null, "threshold": null, "fallback": "human_review" }
+      ],
+      "cross_check": { "enabled": true, "require_different_source": true, "fields": ["total.gross_amount", "total.tax_amount"] },
+      "note": "商业 OCR 优先，双 Provider 顺次降级；开启多源交叉验证（授权查验结果 × OCR 票面 × 金额勾稽）",
+      "ui_chain": ["百望云", "诺诺", "客户自有 OCR", "人工兜底"] },
+    { "route_id": "ap_supplier_invoice_recognize", "enabled": true, "priority": 3,
+      "condition": { "region": "APAC", "invoice_type": "Supplier Invoice", "carrier": "PDF（原生文本层）" },
+      "strategies": [
+        { "provider": "overseas-einv-sg", "priority": 10, "condition": null, "threshold": 0.85, "fallback": "next" },
+        { "provider": "selfhosted-ocr-vlm", "priority": 20, "condition": null, "threshold": 0.85, "fallback": "next" },
+        { "provider": "human-fallback", "priority": 90, "condition": null, "threshold": null, "fallback": "human_review" }
+      ],
+      "cross_check": { "enabled": true, "require_different_source": true, "fields": ["total.gross_amount", "total.tax_amount"] },
+      "note": "海外实例：优先文本层直读 + e-invoicing Provider；降级至自托管 VLM（数据不出域）；GST/VAT 字段交叉验证",
+      "ui_chain": ["海外 e-invoicing（新加坡）", "自托管 OCR-VLM", "人工兜底"],
+      "ui_condition": "APAC 亚太 / EU 欧盟" },
+    { "route_id": "ap_credit_note_recognize", "enabled": true, "priority": 4,
+      "condition": { "region": "APAC", "invoice_type": "Credit Note", "carrier": "PDF（原生文本层）" },
+      "strategies": [
+        { "provider": "overseas-einv-sg", "priority": 10, "condition": null, "threshold": 0.90, "fallback": "next" },
+        { "provider": "selfhosted-ocr-vlm", "priority": 20, "condition": null, "threshold": 0.90, "fallback": "next" },
+        { "provider": "human-fallback", "priority": 90, "condition": null, "threshold": null, "fallback": "human_review" }
+      ],
+      "cross_check": { "enabled": true, "require_different_source": true, "fields": ["total.gross_amount", "total.tax_amount"] },
+      "note": "Credit Note 冲减关系影响付款，阈值上调至 0.90；未关联原票一律人工确认 Link 后放行",
+      "ui_chain": ["海外 e-invoicing（新加坡）", "自托管 OCR-VLM", "人工兜底"],
+      "ui_condition": "APAC 亚太 / EU 欧盟" }
+  ],
+  "global_fallback": {
+    "mode": "chain_sequential_human_final",
+    "on_all_providers_down": "hold_and_alert_resume",
+    "trigger_conditions": [
+      { "condition": "最终置信度低于阈值", "enabled": true },
+      { "condition": "关键字段冲突（金额/税额/发票号）", "enabled": true },
+      { "condition": "验真/验签失败", "enabled": true },
+      { "condition": "Provider全链路降级失败", "enabled": true },
+      { "condition": "新客户首月全量复核", "enabled": false }
+    ]
+  },
+  "x_version_note": "策略发布历史（审计口径）：v2026-10-20.3 为当前生效基线；audit_events.json 含 .3→.4 发布事件（页面时点差异，M2 接线时以本种子版本为准对齐 Header 徽章）。模拟推演（FN-2-11）：纸质专票剧本 = 百望云 0.82 < 0.88 → 降级诺诺 0.91 达标（M4 验收①口径，SIM_CONF 页面基准：增值税专票/普票（纸质扫描）{百望云:0.82, 诺诺:0.91, 客户自有OCR:0.88}；数电票{XML直读:0.99, 百望云:0.97}）"
+}

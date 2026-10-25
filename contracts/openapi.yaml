@@ -1,0 +1,423 @@
+openapi: 3.1.0
+# ═══════════════════════════════════════════════════════════════════
+# invoice-hub 集成 API（北向）· FN-A-01/02/03 · v1 · FROZEN（M0，2026-10-25）
+# 口径来源：清单 §3.10（FN-A-01~03）字段级规则 + ui-design/api-portal.html §① 页面示例
+# 版本治理：破坏性变更一律走 /v2，不静默变更（FN-A-07；contracts/CHANGELOG.md 登记）
+# 编号口径：案件号一律 INV-{CN|SG}-2026-NNNN（CON-04 决议；api-portal 页面旧示例
+#           INV-2026-00125 不带域，属页面历史口径，随契约升版同步义务记录于 CHANGELOG.md，页面只读不改）
+# 安全边界：仅供应商采购发票识别/查验/案件治理接口；写操作全部经受控命令框架（FN-0-08）
+# ═══════════════════════════════════════════════════════════════════
+info:
+  title: Invoice Intelligence & Compliance Hub · 集成 API
+  version: 1.0.0
+  description: |
+    票据识别受理、案件查询、字段级证据追溯与事件回调（异步识别结果 Webhook 推送）。
+    - 同步模式仅限直读快速路径（数电票 XML / OFD / PDF 文本层，P95 < 3s），其余自动转异步：先返 caseId，完成后 Webhook 回调（FN-1-02 / FN-A-01）。
+    - 鉴权：AppKey 凭证 KMS 托管不回显；请求校验 trace-id / 幂等键 / 签名；重复提交去重；限流 QPS 可配；幂等键有效期可配（FN-1-02 / FN-9-10 演示桩）。
+    - 两键分离（CON-05，field-alias.md §7）：传输层幂等 = X-Request-Id；业务层幂等 = file.sha256 + target_doc_ref；查重业务键独立于幂等键。
+    - 契约范围红线：仅供应商采购发票；员工报销/销项开票/税务申报/银行对账/资金支付不得出现（P00 §1）。
+
+servers:
+  - url: https://api.invoice-hub.example.com
+    description: 演示/集成环境（双实例同域名不同路由，或独立海外域名——部署形态待定）
+
+tags:
+  - name: recognition
+    description: 识别受理（FN-A-01）
+  - name: cases
+    description: 案件与证据查询（FN-A-02，只读、可被 MCP 封装复用）
+
+security:
+  - appKeyAuth: []
+
+paths:
+  /v1/invoices:recognize:
+    post:
+      tags: [recognition]
+      operationId: recognizeInvoice
+      summary: 提交供应商采购发票进行识别与案件化（同步快速路径 / 自动转异步）
+      description: |
+        支持两种请求体：`application/json`（file 引用，推荐）与 `multipart/form-data`（文件直传，单文件 ≤20MB，类型白名单 XML/OFD/PDF/JPG/PNG——FN-1-03/08 同校验口径）。
+        同步模式仅走直读快速路径（P95 < 3s）返回完整 InvoiceCase；options.sync_fast_path_only=true 时超时未直读即转异步；
+        其余情况一律 202 受理（先返 caseId + trace），处理完成后向 callback_url 推送 Webhook 事件（FN-A-03）。
+        受理提交为业务写操作 → 经受控命令框架（五要素，FN-0-08）；本接口的 MCP 等价工具 invoices.recognize 必须携带 confirm_token（FN-A-04）。
+      parameters:
+        - $ref: "#/components/parameters/TraceId"
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/RequestSignature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecognizeRequest"
+            examples:
+              cn_xml:
+                summary: 数电票 XML 引用（页面示例随 CON-04 升域）
+                value:
+                  file:
+                    ref: oss://intake/2026/10/21/INV-CN-2026-0387.xml
+                    mime_type: application/xml
+                    sha256: 9f2c…e41a
+                  instance: CN
+                  doc_type_hint: e_invoice
+                  po_ref: PO-2026-00871
+                  callback_url: https://erp.customer.com/hooks/invoice-case
+                  options:
+                    sync_fast_path_only: true
+                    verify_authenticity: true
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, instance]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                instance:
+                  type: string
+                  enum: [CN, OS]
+                po_ref:
+                  type: string
+                callback_url:
+                  type: string
+                  format: uri
+      responses:
+        "200":
+          description: 同步快速路径完成——返回完整 InvoiceCase
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "invoice-case.schema.json"
+              examples:
+                case:
+                  summary: 案件响应（api-portal 页面示例的 CON-04 升域版；完整聚合见 seeds/cases.json）
+                  value:
+                    caseId: INV-CN-2026-0387
+                    status: NEEDS_REVIEW
+                    facts:
+                      invoiceAmount: 113000.00
+                      poAmount: 100000.00
+                      taxAmount: 13000.00
+                      currency: CNY
+                      variance: 13000.00
+                    checks:
+                      supplierMatch: { result: PASSED, note: 供应商名称 + 税号与 SUP-10042 主数据一致 }
+                      authenticity: { result: NOT_VERIFIED, note: 授权查验渠道超时 · 已排定自动重试（断点续跑） }
+                      duplicate: { result: PASSED, note: 发票号 + 价税合计全局查重，相似度 < 阈值 }
+                      poMatch: { result: AMOUNT_VARIANCE, note: 含税 ¥113,000.00 vs PO 净额 ¥100,000.00 · 差异 ¥13,000.00 }
+                    evidence:
+                      - field: total.gross_amount
+                        value: 113000.0
+                        source: xml_direct
+                        confidence: 0.98
+                        evidence:
+                          page: 1
+                          bbox: "—（XML 节点）"
+                          raw_text: 价税合计（小写）¥113,000.00
+                          rule: amount_tax_sum_check ✓
+                          model_version: cn-xml-parser v3.2
+                          provider: XML 直读（免 Provider）
+                    nextAction:
+                      type: HUMAN_REVIEW
+                      reason: poMatch=AMOUNT_VARIANCE（差异 13,000.00，疑似税额口径）
+                      assign_to: 复核组 · 亚太共享中心
+        "202":
+          description: 已受理转异步——立即返回 caseId，完成后 Webhook 回调（重试指数退避 ≤8 次）
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: 幂等命中——重复提交（业务层 file_sha256+target_doc_ref 或传输层 X-Request-Id 已存在），返回既有 caseId（FN-1-02 重复提交去重）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DedupAcceptedResponse"
+        "429":
+          description: 限流（QPS 可配）
+    x-controlled-write: FN-0-08（门户/API 受理提交 = 业务写：SHA-256 登记入审计、逐文件确认清单、权限校验）
+
+  /v1/cases/{caseId}:
+    get:
+      tags: [cases]
+      operationId: getCase
+      summary: 案件状态查询（完整 InvoiceCase 快照）
+      description: |
+        返回 status / facts / checks / nextAction / 时间线摘要（view=summary）或全量聚合（view=full），
+        供上游轮询异步识别结果与案件生命周期跟踪（FN-A-02）。?case= 深链直达能力（FN-0-14/CON-B5）。
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+        - name: view
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [summary, full]
+            default: summary
+      responses:
+        "200":
+          description: 案件快照
+          content:
+            application/json:
+              schema:
+                $ref: "invoice-case.schema.json"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/cases/{caseId}/evidence:
+    get:
+      tags: [cases]
+      operationId: getCaseEvidence
+      summary: 字段级证据链查询
+      description: |
+        逐字段返回 FN-0-05 全要素（value / source / confidence / page / bbox / raw_text / rule / model_version / provider），
+        支撑「可解释识别、拒绝黑盒 AI」审计要求（FN-A-02 / FN-3-01）。支持 ?field=total.gross_amount 精确过滤。
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+        - name: field
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Schema 字段路径（invoice-schema.json 基准）
+      responses:
+        "200":
+          description: 证据数组
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [caseId, evidence]
+                properties:
+                  caseId:
+                    type: string
+                    pattern: "^INV-(CN|SG)-\\d{4}-\\d{4}$"
+                  evidence:
+                    type: array
+                    items:
+                      $ref: "invoice-case.schema.json#/$defs/evidenceEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+webhooks:
+  x-webhook-conventions:
+    description: |
+      异步案件在状态跃迁时向订阅 callback_url 推送事件（FN-A-03）：
+      - 签名：X-Signature: sha256=<hex>（HMAC-SHA256；密钥=订阅时下发 webhook secret；消息体=原始 JSON 字节），消费方必须验签后处理；
+      - 幂等：X-Event-Id 事件去重（消费方职责，平台保证至少一次投递）；
+      - 重试：消费方非 2xx → 指数退避重试 ≤8 次（队列面板可观测，FN-9-07 回调重试通道）；
+      - 事件四类型 = enum-registry.webhook_event。
+  case.recognized:
+    $ref: "#/components/webhooks/CaseEvent"
+  case.blocked:
+    $ref: "#/components/webhooks/CaseEvent"
+  case.resolved:
+    $ref: "#/components/webhooks/CaseEvent"
+  check.failed:
+    $ref: "#/components/webhooks/CaseEvent"
+
+components:
+  securitySchemes:
+    appKeyAuth:
+      type: apiKey
+      in: header
+      name: X-App-Key
+      description: AppKey 凭证（KMS 托管不回显，FN-9-10 演示桩；HMAC 签名见 X-Signature）
+  parameters:
+    TraceId:
+      name: X-Trace-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        pattern: "^tr-[0-9a-f]{8}$|^$"
+      description: 全链路 trace（缺省平台生成并回写响应头；FN-0-13/9-12）
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: true
+      schema:
+        type: string
+      description: 传输层幂等键（有效期可配；与业务层幂等键分离，CON-05/06）
+    RequestSignature:
+      name: X-Signature
+      in: header
+      required: true
+      schema:
+        type: string
+      description: 请求签名 sha256=<hex>（HMAC-SHA256）
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^INV-(CN|SG)-\\d{4}-\\d{4}$"
+  headers:
+    TraceId:
+      description: 处理链路 trace
+      schema:
+        type: string
+        pattern: "^tr-[0-9a-f]{8}$"
+  schemas:
+    RecognizeRequest:
+      type: object
+      description: JSON 引用式请求体（FN-A-01 字段级）
+      required: [file, instance]
+      properties:
+        file:
+          type: object
+          required: [ref, mime_type, sha256]
+          properties:
+            ref:
+              type: string
+              description: 对象存储引用（oss://…）
+            mime_type:
+              type: string
+              description: 白名单：application/xml、application/pdf、image/jpeg、image/png、OFD（application/ofd 演示口径）
+            sha256:
+              type: string
+              description: 原件摘要（业务层幂等键成分之一；受理即登记 FN-1-05④）
+        instance:
+          type: string
+          enum: [CN, OS]
+          description: 双实例路由
+        doc_type_hint:
+          type: string
+          description: 可选票种提示（e_invoice / VAT Invoice / Credit Note——页面示例口径；仅作路由提示，最终票种以分类规则 FN-4-01 为准）
+        po_ref:
+          type: string
+          description: 可选关联 PO（触发匹配就绪化直通，FN-1-08）
+        callback_url:
+          type: string
+          format: uri
+        target_doc_ref:
+          type: string
+          description: 可选目标单据号（业务层幂等键另一成分，CON-05；缺省由平台以 caseId 生成）
+        options:
+          type: object
+          properties:
+            sync_fast_path_only:
+              type: boolean
+              default: false
+              description: 仅同步直读快速路径，超时即转异步
+            verify_authenticity:
+              type: boolean
+              default: true
+              description: 是否触发授权查验（Provider SPI verify；模型不得自行宣称发票真实）
+    AcceptedResponse:
+      type: object
+      required: [caseId, status, trace_id, callback_url]
+      properties:
+        caseId:
+          type: string
+          pattern: "^INV-(CN|SG)-\\d{4}-\\d{4}$"
+        status:
+          type: string
+          enum: [RECOGNIZED, VERIFYING, NEEDS_REVIEW]
+        trace_id:
+          type: string
+          pattern: "^tr-[0-9a-f]{8}$"
+        callback_url:
+          type: string
+        message:
+          type: string
+          description: 演示口径提示（异步受理 + Webhook 完成通知）
+    DedupAcceptedResponse:
+      type: object
+      required: [caseId, duplicate_of_trace, idempotent]
+      properties:
+        caseId:
+          type: string
+          pattern: "^INV-(CN|SG)-\\d{4}-\\d{4}$"
+        idempotent:
+          type: boolean
+          description: true=命中幂等键返回既有案件（不是业务重复票拦截）
+        duplicate_of_trace:
+          type: string
+          description: 既有受理的 trace
+        note:
+          type: string
+    Error:
+      type: object
+      required: [code, message, trace_id]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        trace_id:
+          type: string
+          pattern: "^tr-[0-9a-f]{8}$"
+    WebhookPayload:
+      type: object
+      description: 四事件共同信封；payload 关键字段按事件类型（enum-registry.webhook_event.note 消费口径）
+      required: [event, event_id, caseId, status, t]
+      properties:
+        event:
+          type: string
+          enum: [case.recognized, case.blocked, case.resolved, check.failed]
+        event_id:
+          type: string
+          description: X-Event-Id 幂等去重键
+        caseId:
+          type: string
+          pattern: "^INV-(CN|SG)-\\d{4}-\\d{4}$"
+        status:
+          type: string
+          enum: [RECOGNIZED, VERIFYING, NEEDS_REVIEW, INVESTIGATING, RESOLVED, BLOCKED]
+        t:
+          type: string
+          description: 事件时刻（ISO-8601）
+        trace_id:
+          type: string
+        payload:
+          type: object
+          description: |
+            case.recognized → {facts, checks}
+            case.blocked → {blockReason, ruleId, evidenceRef}
+            case.resolved → {resolution, operator, actionTrailRef}
+            check.failed → {checkName, result, variance}
+          additionalProperties: true
+  webhooks:
+    CaseEvent:
+      type: object
+      description: Webhook 推送请求体模板（四个事件路径共用信封，语义见 x-webhook-conventions）
+      properties:
+        requestBody:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookPayload"
+        required:
+          type: boolean
+  responses:
+    BadRequest:
+      description: 校验失败（类型白名单/大小/必填项/票面 Schema 不通过——受理阶段即拒绝入池，FN-1-03）
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: 签名/凭证校验失败（权限位不足同样拒绝并审计；FN-0-08 要素①）
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: 案件不存在（或租户实例越权访问——四隔离，FN-0-11）
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "status": "组件版本清单（清单附录 B · 时间线事件 v 字段基线；Sheet09 组件表逐字）",
+  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx Sheet09（附录 B 段）+ 清单附录 B",
+  "note": "每条时间线事件带组件版本号（FN-3-07）；M5 起组件版本实体化（FN-0-12）。",
+  "components": [
+    { "component": "ingest-service", "version": "v2.1", "desc": "接入受理服务" },
+    { "component": "router-policy", "version": "v1.6", "desc": "路由策略" },
+    { "component": "cn-xml-parser", "version": "v3.2", "desc": "数电票XML解析器" },
+    { "component": "gm-verify", "version": "v1.4", "desc": "国密验签服务" },
+    { "component": "bw-cloud-verify", "version": "v2.0", "desc": "百望云查验通道" },
+    { "component": "ocr-vlm-2026-10", "version": null, "desc": "OCR/VLM模型（百望云/第三方可替换）" },
+    { "component": "dedup-rule", "version": "v2.3", "desc": "查重规则" },
+    { "component": "match-engine", "version": "v1.9", "desc": "匹配引擎" },
+    { "component": "po-infer-rule", "version": "v1.8", "desc": "PO推断规则" },
+    { "component": "link-infer / link-check", "version": "v1.1", "desc": "Link推断/校验" },
+    { "component": "case-machine", "version": "v2.2", "desc": "案件状态机" },
+    { "component": "qwen-finance-v2", "version": "2026-10-15", "desc": "LLM（演示口径，非绑定）" },
+    { "component": "review-ui", "version": "v1.2", "desc": "复核前端" },
+    { "component": "dox-bridge", "version": "v1.0", "desc": "SAP DOX桥接" },
+    { "component": "normalize-service", "version": "v1.5", "desc": "Schema归一化" },
+    { "component": "webhook-sg", "version": "v1.1", "desc": "海外Tax ID校验webhook" },
+    { "component": "btp-check", "version": "v1.3", "desc": "BTP匹配Check" },
+    { "component": "investigator", "version": "v1.0", "desc": "主动调查证据收集" },
+    { "component": "映射助手", "version": "v0.9.2", "desc": "AI字段映射推荐" }
+  ]
+}

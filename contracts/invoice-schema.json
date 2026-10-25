@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice:schema:v1",
+  "title": "全球票据统一 Schema（Core + 地区扩展 · FN-0-03）",
+  "description": "统一 Schema 字段路径唯一事实源。CON-03 决议（docs/adr/0004）：以 UI/API 路径为准冻结（header.invoice_no / total.gross_amount / links.po 等）；规格 v0.3 §4 旧命名经 contracts/field-alias.md 对照。版本 v1.4（随 Adapter 契约 v1 冻结，FN-0-12）。x-partition 标注分区归属：core / cn / eu / us / apac / customer。中国/海外真实字段面以 H24/H25 接口调查为前置输入——扩展族（EU/US/APAC 明细路径、CN 扩展的数电票 XML 细节）为演示口径，调查后按 FN-A-07 兼容登记刷新。",
+  "type": "object",
+  "properties": {
+    "invoice_type": {
+      "type": "string",
+      "x-partition": "core",
+      "description": "票种统一枚举（FN-4-01，UI 口径）：数电票（增值税专用发票）/ 数电票（普通发票）/ 增值税专票（纸质扫描）/ 增值税普票（纸质扫描）/ 红字票 / Supplier Invoice / Credit Note / Debit Note。规格 v0.3 §4.1 更细 16 类（含 9 类国标凭证留位，CON-03 对照）；统一枚举字典随票种分类规则版本化刷新，M0 不锁字面枚举（禁造词：正式枚举 = FN-4-01 清单口径）。",
+      "examples": ["数电票（增值税专用发票）", "Supplier Invoice", "Credit Note", "红字票"]
+    },
+    "header": {
+      "type": "object",
+      "x-partition": "core",
+      "properties": {
+        "invoice_no": { "type": "string", "x-partition": "core", "description": "发票号码 / Invoice No.（旧名 invoice_number，见 field-alias.md §1；数电票 20 位/老票 8 位/海外自有格式）" },
+        "issue_date": { "type": "string", "format": "date", "x-partition": "core", "description": "开票日期（YYYY-MM-DD）。口径注：FN-0-03 行文写作 header.invoice_date，ui-design 页面与规格旧版均为 header.issue_date——按 CON-03 决议「UI/API 路径为准」落 issue_date（变更记录见 CHANGELOG.md ①）。" },
+        "invoice_code": { "type": ["string", "null"], "x-partition": "cn", "description": "发票代码（CN 扩展；老票种 10/12 位，数电票为 null——查重键中 null→空串，CON-05）。" },
+        "due_date": { "type": ["string", "null"], "format": "date", "x-partition": "core", "description": "到期付款日（海外账期）。" },
+        "po_ref": { "type": ["string", "null"], "x-partition": "core", "description": "受理时附注 PO 号（FN-1-08 选填；与 links.po 的票面/推断来源区分）。" },
+        "remarks": { "type": ["string", "null"], "x-partition": "core", "description": "票面备注（旧名 remarks 平移）。" }
+      },
+      "required": ["invoice_no", "issue_date"],
+      "additionalProperties": false
+    },
+    "seller": {
+      "type": "object",
+      "x-partition": "core",
+      "properties": {
+        "name": { "type": "string", "x-partition": "core", "description": "销售方名称 / Supplier Name" },
+        "tax_id": { "type": "string", "x-partition": "core", "description": "纳税人识别号（CN=统一社会信用代码）/ Tax ID / VAT Reg. No / UEN（OS）" },
+        "address": { "type": ["string", "null"], "x-partition": "core" },
+        "bank": { "type": ["string", "null"], "x-partition": "core", "description": "开户行及账号（CN 票面常见）" }
+      },
+      "required": ["name", "tax_id"],
+      "additionalProperties": false
+    },
+    "buyer": {
+      "type": "object",
+      "x-partition": "core",
+      "properties": {
+        "name": { "type": "string", "x-partition": "core", "description": "购买方名称 / Bill-To" },
+        "tax_id": { "type": ["string", "null"], "x-partition": "core", "description": "购买方税号（海外票面常缺省）" },
+        "entity_id": { "type": ["string", "null"], "x-partition": "core", "description": "购买方法人实体（双实例主体不同，FN-6-05 buyer_entity_match 消费位）" }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "total": {
+      "type": "object",
+      "x-partition": "core",
+      "properties": {
+        "net_amount": { "type": "number", "x-partition": "core", "description": "合计不含税金额（旧名 total.amount，见 field-alias.md §4）" },
+        "tax_amount": { "type": "number", "x-partition": "core", "description": "合计税额（CN=增值税额；OS=GST/SST/Local Tax 合计）" },
+        "gross_amount": { "type": "number", "x-partition": "core", "description": "价税合计（小写）——中国口径核心字段；OS 口径 Total Due（Net+GST+Freight=Gross 勾稽，amount_sum_check）。红字票/Credit Note 为负数（FN-0-15 红色显示）。" },
+        "gross_in_words": { "type": ["string", "null"], "x-partition": "cn", "description": "价税合计（大写）" },
+        "freight": { "type": ["number", "null"], "x-partition": "apac", "description": "运费行合计（海外常见 PO 外费用来源，FN-6-03 消费位；0125 案）" },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "x-partition": "core", "description": "ISO-4217 币种（旧名 currency 自发票头迁至 total 分区，FN-0-03 total.* 口径）" }
+      },
+      "required": ["net_amount", "tax_amount", "gross_amount", "currency"],
+      "additionalProperties": false
+    },
+    "tax": {
+      "type": "object",
+      "x-partition": "core",
+      "properties": {
+        "rate": { "type": ["number", "string", "null"], "x-partition": "core", "description": "主税率（CN 多档：0.13/0.09/0.06/0.03/0.01/0/免税；SG GST 0.09/zero-rated）。number=比例值，string=票面原文。" },
+        "tax_code": { "type": ["string", "null"], "x-partition": "cn", "description": "目标平台 Tax Code 映射结果（税码映射引擎输出 J1~J7 / SG-SR / SG-ZR，FN-6-04；映射表 v1.4）" }
+      },
+      "additionalProperties": false
+    },
+    "items": {
+      "type": "array",
+      "x-partition": "core",
+      "description": "行项目数组（三单匹配消费入口，FN-0-03/FN-6-06）。CN 8 列口径：#/货物或应税项目名称/规格型号/单位/数量/单价/税率/金额；OS 6 列口径：#/Description/Qty/Unit Price/Tax/Amount。",
+      "items": {
+        "type": "object",
+        "properties": {
+          "line_no": { "type": "string", "x-partition": "core", "description": "# 行号" },
+          "name": { "type": "string", "x-partition": "core", "description": "货物或应税项目名称 / Description（OS 旧名 description → name）" },
+          "spec": { "type": ["string", "null"], "x-partition": "cn", "description": "规格型号（CN 8 列；OS 缺省）" },
+          "unit": { "type": ["string", "null"], "x-partition": "cn", "description": "单位（CN 8 列；OS 缺省）" },
+          "qty": { "type": ["number", "string", "null"], "x-partition": "core", "description": "数量（旧名 quantity → qty）" },
+          "unit_price": { "type": ["number", "string", "null"], "x-partition": "core", "description": "单价" },
+          "tax_rate": { "type": ["number", "string", "null"], "x-partition": "cn", "description": "税率（CN 8 列；含「免税/0%」档）" },
+          "tax": { "type": ["string", "null"], "x-partition": "apac", "description": "Tax 列（OS 6 列口径：GST 9% / 0% zero-rated 文本）" },
+          "amount": { "type": ["number", "string"], "x-partition": "core", "description": "行金额（CN=不含税行金额；OS 行含税额）；行级勾稽 Σ行金额=合计" },
+          "po_outside_fee": { "type": "boolean", "x-partition": "core", "description": "PO 外费用标记（po_line_coverage → 无对应收货行，FN-6-03；UI 黄底高亮）" }
+        },
+        "required": ["line_no", "name", "amount"],
+        "additionalProperties": false
+      }
+    },
+    "discount_lines": {
+      "type": "array",
+      "x-partition": "core",
+      "description": "折扣行（口径歧义须人工判定，FN-6-06）。",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "amount": { "type": ["number", "string"] }
+        },
+        "required": ["name", "amount"],
+        "additionalProperties": false
+      }
+    },
+    "links": {
+      "type": "object",
+      "x-partition": "core",
+      "description": "结构化关系（FN-0-04 Link：可查询、可校验，Action 前自动校验；CON-03 决议 links.* 入 Schema 本体）。",
+      "properties": {
+        "po": { "type": ["string", "null"], "x-partition": "core", "description": "关联采购订单 PO-{…}" },
+        "grn": {
+          "type": "array",
+          "x-partition": "core",
+          "description": "收货单（1 发票 : N 收货单，FN-6-03）",
+          "items": {
+            "type": "object",
+            "properties": { "grn_no": { "type": "string" } },
+            "required": ["grn_no"],
+            "additionalProperties": true
+          }
+        },
+        "credit_note": { "type": ["string", "null"], "x-partition": "core", "description": "红字票/Credit Note 冲减关联的原票案件号（或反向）；无关联为 null（FN-4-06 候选仅建议，Link 建立必须人工确认 FN-6-10）" }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "x-partition": "core",
+      "description": "Schema 内证据位（FN-0-03：evidence.cross_check / evidence.sm2_signature）。字段级完整证据链见 invoice-case.schema.json 的 evidence[]（FN-0-05 契约）。",
+      "properties": {
+        "cross_check": { "type": ["string", "null"], "x-partition": "core", "description": "异源交叉验证结论（FN-4-04，如「XML 直读 + 百望云 OCR 互证一致」）" },
+        "sm2_signature": { "type": ["string", "null"], "x-partition": "cn", "description": "SM2 验签结果与回执号（gm-rcpt-*，FN-5-01；OS 票为 null）" }
+      },
+      "additionalProperties": false
+    },
+    "ext": {
+      "type": "object",
+      "x-partition": "customer",
+      "description": "扩展字段位（Ariba 承载经 Extrinsic cn:*，TODO(H25) 中国字段承载未决）。",
+      "properties": {
+        "reviewer_note": { "type": ["string", "null"], "x-partition": "customer", "description": "复核员备注" },
+        "project_desc": { "type": ["string", "null"], "x-partition": "customer", "description": "项目描述" }
+      },
+      "additionalProperties": true
+    },
+    "custom_fields": {
+      "type": "object",
+      "x-partition": "customer",
+      "description": "客户自定义字段（FN-0-03 示例 customs_ref：报关单号→custom_fields.customs_ref，LLM 推荐待确认案例）。",
+      "properties": {
+        "customs_ref": { "type": ["string", "null"], "x-partition": "customer", "description": "报关单号" }
+      },
+      "additionalProperties": true
+    },
+    "recognition_path": {
+      "type": ["string", "null"],
+      "x-partition": "core",
+      "description": "识别路径标注（FN-2-14 / 规格 §5.3）：L1_xml_direct / L1_ofd_direct / L1_pdf_text / L2_ocr_vlm / L3_vlm_fallback / L4_manual_review（canned_fixture 仅 Mock 允许）。",
+      "enum": ["L1_xml_direct", "L1_ofd_direct", "L1_pdf_text", "L2_ocr_vlm", "L3_vlm_fallback", "L4_manual_review", null]
+    }
+  },
+  "required": ["invoice_type", "header", "seller", "buyer", "total", "items"],
+  "additionalProperties": false,
+  "x-extension-families": {
+    "comment": "以下地区扩展族按 FN-0-03 结构登记成员；明细字段路径待 H24/H25 目标系统接口调查结论刷新（TODO(H24) TODO(H25)），M0 不冻结虚构路径，实现仅按演示口径呈现。",
+    "CN": ["发票代码(header.invoice_code)", "税号(seller.tax_id)", "数电票 XML 原件", "SM2(evidence.sm2_signature)", "红字票(links.credit_note)", "价税合计(total.gross_amount/gross_in_words)"],
+    "EU": ["VAT ID", "Peppol 参与方 ID", "UBL 信封", "IBAN", "Credit Note"],
+    "US": ["Sales Tax", "W-9 / 1099"],
+    "APAC": ["GST/SST/Local Tax（tax_amount）", "zero-rated 行（items[].tax）", "UEN（seller.tax_id）", "多币种（total.currency）"],
+    "Customer": ["ext.*", "custom_fields.*"]
+  }
+}

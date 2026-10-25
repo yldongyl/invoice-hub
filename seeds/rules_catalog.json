@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "status": "规则标识目录（清单附录 C · FN-3-05 规则命中解释与 FN-0-12 规则注册制基线；M1 起规则引擎按此注册制落地，未注册规则标识=缺陷）",
+  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx Sheet09（附录 C 段 20 条）+ 清单附录 C",
+  "note": "rule 字段值与版本留痕入证据（如 amount_tax_sum_check ✓）；中文名条目（行级勾稽/查重规则/容差判定/红线策略）为清单口径的族级标识，机器 rule_id 由 M1 注册时定义并兼容登记（enum-registry 不含规则字典，Sheet08 无此类，不造词冻结）。",
+  "rules": [
+    { "rule_id": "invoice_no_format_check", "usage": "发票号格式校验", "ref_version": null },
+    { "rule_id": "date_valid_range", "usage": "开票日期有效区间", "ref_version": null },
+    { "rule_id": "supplier_master_match", "usage": "供应商主数据匹配（名称+税号）", "ref_version": null },
+    { "rule_id": "tax_id_checksum", "usage": "税号校验位", "ref_version": null },
+    { "rule_id": "buyer_entity_match", "usage": "购买方法人实体核对", "ref_version": null },
+    { "rule_id": "tax_rate_13_check", "usage": "13%税率档校验", "ref_version": null },
+    { "rule_id": "amount_tax_sum_check", "usage": "净额+税额=价税合计勾稽（容差±0.06）", "ref_version": null },
+    { "rule_id": "amount_sum_check", "usage": "Net+GST+Freight=Gross（海外）", "ref_version": null },
+    { "rule_id": "行级勾稽", "usage": "Σ行金额=合计", "ref_version": null, "machine_id_pending": true },
+    { "rule_id": "tax_code_mapping", "usage": "税码映射（→Ariba Tax Code）", "ref_version": "v1.4" },
+    { "rule_id": "po_number_exact_match", "usage": "PO号精确匹配", "ref_version": null },
+    { "rule_id": "po_line_coverage", "usage": "PO行覆盖/无对应收货行判定", "ref_version": null },
+    { "rule_id": "credit_link_check", "usage": "红字/CN关联校验（含NOT_APPLICABLE）", "ref_version": null },
+    { "rule_id": "sg_uen_format_check", "usage": "新加坡UEN格式校验", "ref_version": null },
+    { "rule_id": "currency_iso_check", "usage": "币种ISO校验", "ref_version": null },
+    { "rule_id": "gst_rate_sg_check", "usage": "SG GST税率校验（含zero-rated行）", "ref_version": null },
+    { "rule_id": "manual_edit_audit", "usage": "人工修正审计（原值保留可追溯）", "ref_version": null },
+    { "rule_id": "查重规则", "usage": "业务键（CN：代码+号码+价税合计；OS：InvoiceNo+Amount+供应商）+相似度阈值", "ref_version": "dedup-rule v2.3", "machine_id_pending": true },
+    { "rule_id": "容差判定", "usage": "金额勾稽±0.06 / PO匹配±S$50（两套，适用范围须区分，CON-12）", "ref_version": null, "machine_id_pending": true },
+    { "rule_id": "红线策略", "usage": "验签失败→authenticity FAILED→BLOCKED→建档挂起", "ref_version": null, "machine_id_pending": true }
+  ],
+  "related_versions": "规则载体组件版本见 versions.json（dedup-rule v2.3 / po-infer-rule v1.8 / link-infer / link-check v1.1 / case-machine v2.2）"
+}

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice-hub:routing-config:v1",
+  "title": "路由 / 降级策略配置（FN-2-08/10/12 · FN-A-05 路由片段口径）",
+  "description": "识别路由是可配置的策略资产：规则=三条件（地区｜票种｜载体）+ 路由链（Provider 顺序）+ 置信度阈值 + 交叉验证开关 + 说明；按优先级顺序匹配（启用规则中先命中先决）；执行沿链顺次降级：置信度≥阈值→采用并终止，<阈值→保留结果与证据（可解释）并降级下一个；链尾恒定「人工兜底」（不可停用，FN-2-03）。草稿/已发布双态，发布=版本递增+diff 留痕+可回滚（FN-2-12）。与 api-portal 页面 routing/cn-e-invoice.yaml 片段同一口径；当前发布版本口径 v2026-10-20.3（清单 FN-0-12 示例），种子见 seeds/routing_policy.json。",
+  "type": "object",
+  "required": ["version", "state", "rules", "global_fallback"],
+  "properties": {
+    "x_provider_id_mapping": { "type": "string", "description": "附加说明位：页面路由链展示名 → 机器 provider_id 映射（seeds 演示口径注记）" },
+    "x_version_note": { "type": "string", "description": "附加说明位：版本口径/发布历史注记" },
+    "version": { "type": "string", "pattern": "^v\\d{4}-\\d{2}-\\d{2}\\.\\d+$", "description": "版本号 v年-月-日.序号（FN-0-12/2-12）" },
+    "state": { "type": "string", "enum": ["draft", "published"], "description": "草稿态编辑 / 已发布生效；发布事件 POLICY_PUBLISHED 入审计" },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["route_id", "condition", "strategies", "enabled"],
+        "properties": {
+          "route_id": { "type": "string", "description": "规则标识（如 cn_e_invoice_recognize，api-portal YAML 口径）" },
+          "enabled": { "type": "boolean", "description": "规则级启停（停用后排序跳过）" },
+          "priority": { "type": "integer", "minimum": 1, "description": "排序（▲▼ 调整，先命中先决）" },
+          "condition": {
+            "type": "object",
+            "description": "三条件匹配（缺省=不限）",
+            "properties": {
+              "region": { "type": ["string", "null"], "enum": ["CN", "APAC", "EU", "US", null] },
+              "invoice_type": { "type": ["string", "null"], "description": "票种（FN-4-01 分类结果驱动匹配）" },
+              "carrier": { "type": ["string", "null"], "description": "载体（xml/ofd/pdf_text/pdf_scan/image）" }
+            },
+            "additionalProperties": false
+          },
+          "strategies": {
+            "type": "array",
+            "minItems": 1,
+            "description": "路由链（Provider 顺序）；链尾恒为 human_fallback 人工兜底",
+            "items": {
+              "type": "object",
+              "required": ["provider", "priority", "fallback"],
+              "properties": {
+                "provider": { "type": "string", "description": "Provider 引用（provider_id 或 xml_direct 免 Provider 直读位）" },
+                "priority": { "type": "integer", "minimum": 1 },
+                "condition": { "type": ["string", "null"], "description": "步骤级条件表达式（如 mime_type == \"application/xml\"）" },
+                "threshold": { "type": ["number", "null"], "minimum": 0.5, "maximum": 0.99, "description": "规则级置信度阈值（数电票 0.85 / 纸质专票 0.88 / Supplier Invoice 0.85 / Credit Note 0.90——UI 出现值；字段平均置信度低于阈值→降级）" },
+                "fallback": { "type": "string", "enum": ["next", "human_review"], "description": "next=链内顺次降级（链尽→人工兜底）；human_review=不达标直接强制人工" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "cross_check": {
+            "type": ["object", "null"],
+            "description": "异源交叉验证开关（FN-2-09 蓝图 §4.2 核心纪律）",
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "require_different_source": { "type": "boolean", "description": "true=仅异构证据源互证（结构化原件×页面文本×金额勾稽×外部授权查验）；同类模型对比投票自动排除" },
+              "fields": { "type": "array", "items": { "type": "string" }, "description": "须不同来源复核的金额类关键字段（默认 [total.gross_amount, total.tax_amount]）" }
+            },
+            "required": ["enabled", "require_different_source", "fields"],
+            "additionalProperties": false
+          },
+          "note": { "type": ["string", "null"], "description": "规则说明" },
+          "ui_chain": { "type": "array", "items": { "type": "string" }, "description": "附加说明位：页面路由链展示名（含链尾人工兜底），与 strategies[].provider 一一对应" },
+          "ui_condition": { "type": ["string", "null"], "description": "附加说明位：页面三条件徽章原文（如「APAC 亚太 / EU 欧盟」）" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "global_fallback": {
+      "type": "object",
+      "description": "全局降级与兜底策略（FN-2-10）",
+      "required": ["mode", "on_all_providers_down", "trigger_conditions"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["chain_sequential_human_final", "direct_human", "parallel_max_confidence"], "description": "fallback 三模式：沿链顺次降级→人工兜底（默认）/ 直接人工兜底 / 并行取最高置信度" },
+        "on_all_providers_down": { "type": "string", "enum": ["hold_and_alert_resume", "human_only"], "description": "Provider 全不可用：案件挂起+告警运维（保留断点续跑）或仅人工兜底" },
+        "trigger_conditions": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "description": "五项兜底触发条件（enum-registry.fallback_trigger 同源；默认开关以注册表 enabled_default 为准）",
+          "items": {
+            "type": "object",
+            "required": ["condition", "enabled"],
+            "properties": {
+              "condition": { "type": "string", "enum": ["最终置信度低于阈值", "关键字段冲突（金额/税额/发票号）", "验真/验签失败", "Provider全链路降级失败", "新客户首月全量复核"] },
+              "enabled": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "simulation": {
+      "type": ["object", "null"],
+      "description": "策略模拟测试只读沙箱口径（FN-2-11）：按当前草稿策略推演完整链路（命中规则→逐 Provider 执行/降级→交叉验证→终点），不产生真实 Provider 调用与费用；与真实路由共用规则解释器保证预演=执行",
+      "properties": {
+        "input": { "type": "object", "properties": { "region": { "type": "string" }, "invoice_type": { "type": "string" }, "carrier": { "type": "string" } }, "required": ["region", "invoice_type", "carrier"], "additionalProperties": false },
+        "no_real_calls": { "type": "boolean", "const": true },
+        "uses_same_rule_interpreter": { "type": "boolean", "const": true }
+      },
+      "required": ["input", "no_real_calls", "uses_same_rule_interpreter"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

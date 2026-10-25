@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice-hub:events:v1",
+  "title": "案件时间线事件模型（FN-0-10 / FN-8-10）",
+  "description": "时间线事件唯一结构 {t,a,act,d,x,v}。act 取值字典 = contracts/enum-registry.json 的 timeline_event（29 项，下方 inline enum 一致性由 tools/validate_contracts.py 断言）；a = timeline_actor 四枚举。事件 append-only：由受控命令/规则引擎/Provider 回调追加，LLM 只产生 LLM_ADVICE / LLM_ADVICE_REJECTED 类事件，不改写既有事件。v 组件版本号支撑合规追溯（清单附录 B 版本基线，seeds/versions.json）。",
+  "type": "object",
+  "properties": {
+    "t": { "type": "string", "description": "时间戳（页面口径 MM-DD HH:MM:SS 或完整 ISO 时刻；正式实现 ISO-8601 带时区）", "examples": ["10-18 09:12:04", "2026-10-18T09:12:04+08:00"] },
+    "a": { "type": "string", "enum": ["system", "provider", "human", "ai"], "description": "执行者四枚举（蓝点/紫点/绿点/橙点同源徽章）" },
+    "act": {
+      "type": "string",
+      "enum": [
+        "CHANNEL_RECEIVED", "CARRIER_ROUTED", "XML_PARSED", "OCR_RECOGNIZED",
+        "OCR_CROSS_CHECK", "OCR_CROSS_CHECK_CONFLICT", "INBOUND_ACCEPTED",
+        "SM2_VERIFY", "SM2_VERIFY_FAILED", "AUTH_QUERY_TIMEOUT", "TAXID_CHECK",
+        "DEDUP_CHECK", "DEDUP_PO_CHECK", "DEDUP_BLOCKED",
+        "PO_MATCH", "PO_MATCH_VARIANCE", "BTP_MATCH", "EVIDENCE_COLLECTED",
+        "LLM_ADVICE", "LLM_ADVICE_REJECTED", "REVIEW_OPENED", "FIELD_EDITED",
+        "ACTION_RELEASE", "ACTION_HOLD", "ACTION_RETURN", "STATUS_CHANGE",
+        "POLICY_PUBLISHED", "PROVIDER_DISABLED", "AUDIT_EXPORT"
+      ],
+      "description": "事件类型码（后台事件字典基线，FN-0-10；①接入→⑥匹配与红线标注见 enum-registry.timeline_event.note）"
+    },
+    "d": { "type": "string", "description": "摘要（一行，UI 时间线主文案）" },
+    "x": { "type": ["string", "null"], "description": "详情（弹窗/展开文案；含操作人、触发条件、回执号等留痕要素）" },
+    "v": { "type": ["string", "null"], "description": "组件版本号（附录 B 基线，如 case-machine v2.2 / ingest-service v2.1）" }
+  },
+  "required": ["t", "a", "act", "d"],
+  "additionalProperties": false
+}

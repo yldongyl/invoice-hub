@@ -1,0 +1,58 @@
+{
+  "version": "1.0.0",
+  "status": "v1 · FROZEN（M0）",
+  "source": "ui-design/invoice-intake.html BATCHES（9 批次，文件级明细为页面「样例节选」逐字保真）",
+  "note": "批次号 BT-YYYYMMDD-NNN（enum-registry.id_format）；进度百分比=(成功+异常)/文件数（FN-1-06）；批次 st 取 enum-registry.batch_status（受理中/识别中合并展示位、已完成、部分异常）；文件级 st/conf 为受理时点快照，案件当前状态以 cases.json 为准（快照差异登记于 gate-reports/M0-self-check.md：如 BT-20261020-004 的 0379 快照 RECOGNIZED，当前态 BLOCKED）；非发票文件 case=null 且带退回注记（FN-1-05②）；异常件转人工不阻断批次（FN-1-07）。",
+  "batches": [
+    { "id": "BT-20261020-001", "channel": "供应商邮箱", "instance": "中国", "files": 24, "status": "已完成", "ok": 24, "err": 0, "filtered": 2, "time": "08:02",
+      "detail": [
+        { "file": "数电票_中科华创_24442000000387.xml", "carrier": "XML 原件 → 直读", "case": "INV-CN-2026-0387", "status_snapshot": "NEEDS_REVIEW", "conf": 92 },
+        { "file": "数电票_临港智造_24442000000386.ofd", "carrier": "OFD 原件 → 直读", "case": "INV-CN-2026-0386", "status_snapshot": "RECOGNIZED", "conf": 98 },
+        { "file": "对账单_中科华创_202609.xlsx", "carrier": "—", "case": null, "status_snapshot": null, "conf": null, "note": "非发票 · 已自动退回并通知供应商（规则引擎）" }
+      ] },
+    { "id": "BT-20261020-002", "channel": "API 集成", "instance": "中国", "files": 12, "status": "已完成", "ok": 12, "err": 0, "filtered": 0, "time": "08:26",
+      "detail": [
+        { "file": "深圳广合_专票扫描_0385.pdf", "carrier": "纸质扫描 → OCR（诺诺）", "case": "INV-CN-2026-0385", "status_snapshot": "BLOCKED", "conf": 99 },
+        { "file": "广州粤海_红字票_0384.pdf", "carrier": "扫描 → OCR（自托管）", "case": "INV-CN-2026-0384", "status_snapshot": "NEEDS_REVIEW", "conf": 88 }
+      ] },
+    { "id": "BT-20261020-003", "channel": "SAP DOX", "instance": "海外", "files": 9, "status": "识别中", "ok": 7, "err": 0, "filtered": 1, "time": "09:05",
+      "detail": [
+        { "file": "Siemens_Energy_INV-88218.pdf", "carrier": "文本层直读 + e-invoicing", "case": "INV-SG-2026-0125", "status_snapshot": "INVESTIGATING", "conf": 91 },
+        { "file": "Dell_APAC_INV-56300.pdf", "carrier": "PDF 文本层 → 直读", "case": "INV-SG-2026-0124", "status_snapshot": "RECOGNIZED", "conf": 98 }
+      ] },
+    { "id": "BT-20261020-004", "channel": "门户上传", "instance": "中国", "files": 6, "status": "已完成", "ok": 6, "err": 0, "filtered": 0, "time": "09:31",
+      "detail": [
+        { "file": "恒信电子_数电票_0383.xml", "carrier": "XML 原件 → 直读", "case": "INV-CN-2026-0383", "status_snapshot": "VERIFYING", "conf": 97 },
+        { "file": "天府新材料_数电票_0379.xml", "carrier": "XML 原件 → 直读", "case": "INV-CN-2026-0379", "status_snapshot": "RECOGNIZED", "conf": 99 }
+      ] },
+    { "id": "BT-20261020-005", "channel": "供应商邮箱", "instance": "中国", "files": 18, "status": "部分异常", "ok": 16, "err": 2, "filtered": 1, "time": "10:12",
+      "detail": [
+        { "file": "扫描件_加密_24442000000381-A.pdf", "carrier": "加密 PDF · 无法机读", "case": null, "status_snapshot": null, "conf": null, "note": "异常 · 转人工分拣，已向供应商回执索取未加密件", "bad": true },
+        { "file": "扫描件_加密_24442000000381-B.pdf", "carrier": "加密 PDF · 无法机读", "case": null, "status_snapshot": null, "conf": null, "note": "异常 · 转人工分拣（断点续跑：其余 16 件不受影响）", "bad": true },
+        { "file": "数电票_云栖信息_0381.xml", "carrier": "XML 原件 → 直读", "case": "INV-CN-2026-0381", "status_snapshot": "NEEDS_REVIEW", "conf": 82 }
+      ] },
+    { "id": "BT-20261020-006", "channel": "API 集成", "instance": "海外", "files": 15, "status": "已完成", "ok": 15, "err": 0, "filtered": 0, "time": "10:44",
+      "detail": [
+        { "file": "AWS_SG_CreditNote-2450.pdf", "carrier": "文本层直读 + e-invoicing", "case": "INV-SG-2026-0123", "status_snapshot": "NEEDS_REVIEW", "conf": 89 },
+        { "file": "Schaeffler_INV-77410.pdf", "carrier": "PDF 文本层 → 直读", "case": "INV-SG-2026-0122", "status_snapshot": "BLOCKED", "conf": 97 }
+      ] },
+    { "id": "BT-20261020-007", "channel": "门户上传", "instance": "中国", "files": 4, "status": "受理中", "ok": 0, "err": 0, "filtered": 0, "time": "11:15",
+      "detail": [
+        { "file": "（4 个文件排队中）", "carrier": "信封解析进行中", "case": null, "status_snapshot": null, "conf": null, "note": "受理完成后生成案件号，可在本行展开查看" }
+      ] },
+    { "id": "BT-20261020-008", "channel": "SAP DOX", "instance": "海外", "files": 11, "status": "已完成", "ok": 11, "err": 0, "filtered": 2, "time": "11:52",
+      "detail": [
+        { "file": "Johnson_Controls_INV-33750.pdf", "carrier": "PDF 文本层 → 直读", "case": "INV-SG-2026-0121", "status_snapshot": "VERIFYING", "conf": 96 },
+        { "file": "Quotation_Siemens_Q3-2026.pdf", "carrier": "—", "case": null, "status_snapshot": null, "conf": null, "note": "非发票（报价单）· 已经 DOX 通道自动退回" }
+      ] },
+    { "id": "BT-20261020-009", "channel": "供应商邮箱", "instance": "中国", "files": 21, "status": "识别中", "ok": 14, "err": 0, "filtered": 3, "time": "12:30",
+      "detail": [
+        { "file": "数电票_上海临港_PO4500123.xml", "carrier": "XML 原件 → 直读", "case": null, "status_snapshot": null, "conf": null, "note": "识别中 · 案件号待生成（直读路径，预计 P95 < 3s）" },
+        { "file": "合同扫描件_苏州恒信_FW2026.pdf", "carrier": "—", "case": null, "status_snapshot": null, "conf": null, "note": "非发票（合同）· 已自动退回并通知供应商" }
+      ] }
+  ],
+  "known_page_discrepancies": [
+    "BT-20261020-004/005 文件命名字段的供应商与 A.1 案件供应商存在 0381/0383 交叉（页面文件名口径 vs Sheet09 主数据集口径）；seed 逐字保留两侧原值，收敛需求登记于 gate-reports/M0-self-check.md（CON-B4 核对项）",
+    "BT-20261020-008 含扩展案件 INV-SG-2026-0121（dashboard os.cases 同源），不在 Sheet09 A.1 主数据集 11 案内；M1 装载时作为列表级案件补录（gate report 登记）"
+  ]
+}

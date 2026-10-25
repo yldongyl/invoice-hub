@@ -1,0 +1,1754 @@
+{
+  "version": "1.0.0",
+  "status": "v1 · FROZEN（M0）",
+  "source": "Excel Sheet09 A.1（11 案）+ 清单附录 A.1 + ui-design/case-detail.html CASES（三案全要素）+ agent-workbench WB / dashboard DATA（列表级）+ audit-reports LOGS（关键时间线）",
+  "notes": [
+    "detail_level=full：0387/0379/0125 三演示案件全要素（页面 CASES 逐字段转换：groups→evidence[]、t/a/act/d/x/v 保真、conf 百分制→[0,1]）；detail_level=list：其余 8 案列表级+已文档化关键时间线（未文档化的 checks/items/file 不虚构）",
+    "批次页（invoice-intake BT-20261020-004）中 0379 快照状态为 RECOGNIZED（受理时点值）；本文件 status 一律取 Sheet09 A.1 终态口径 BLOCKED（差异登记见 gate-reports/M0-self-check.md）",
+    "0124 状态 A.1 记「RECOGNIZED→VERIFYING」流转态，取终态 VERIFYING（与 workbench 同源）",
+    "审计页含 0387 于 2026-10-21 09:42 放行→RESOLVED 的链上记录；本案件保持 A.1/case-detail 的 NEEDS_REVIEW 基线（时点差异登记于 gate report，M3 起时间线随真实流转演进）"
+  ],
+  "cases": [
+    {
+      "caseId": "INV-CN-2026-0387",
+      "detail_level": "full",
+      "status": "NEEDS_REVIEW",
+      "summary": "含税 ¥113,000.00 vs PO-2026-0881 净额 ¥100,000.00，差异恰为 13% 税额；SM2 验签通过，授权查验重试中。",
+      "meta": {
+        "region": "CN · 中国",
+        "instance": "CN",
+        "ext": "CN Extension · 数电票",
+        "type": "数电票（增值税专用发票）",
+        "invoice_type_machine": "E_INVOICE_VAT_SPECIAL",
+        "po": "PO-2026-0881",
+        "supplier": "北京中科华创科技有限公司",
+        "supplier_id": "SUP-10042",
+        "amount_display": "¥113,000.00",
+        "received_at": "2026-10-18 09:12",
+        "channel": "供应商邮箱（XML + PDF 附件）",
+        "adapter": "SAP Ariba · cXML InvoiceDetailRequest",
+        "sm2": {
+          "ok": true,
+          "text": "SM2 国密验签通过 · 证书链有效 · 回执已归档",
+          "receipt_no": "gm-rcpt-0931"
+        },
+        "vat": null,
+        "risk_label": "PO 金额差异",
+        "confidence": 92,
+        "provider": "百望云",
+        "claimed_by": "王莉（亚太采购共享中心）",
+        "claimed_at": "2026-10-20 14:36:50",
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": "tr-8f3a21c9"
+      },
+      "facts": {
+        "invoiceAmount": 113000.0,
+        "poAmount": 100000.0,
+        "taxAmount": 13000.0,
+        "currency": "CNY",
+        "variance": 13000.0
+      },
+      "checks": {
+        "supplierMatch": {
+          "result": "PASSED",
+          "note": "供应商名称 + 税号与 SUP-10042 主数据一致"
+        },
+        "authenticity": {
+          "result": "NOT_VERIFIED",
+          "note": "授权查验渠道超时 · 已排定自动重试（断点续跑）"
+        },
+        "duplicate": {
+          "result": "PASSED",
+          "note": "发票号 + 价税合计全局查重，相似度 < 阈值"
+        },
+        "poMatch": {
+          "result": "AMOUNT_VARIANCE",
+          "note": "含税 ¥113,000.00 vs PO 净额 ¥100,000.00 · 差异 ¥13,000.00"
+        }
+      },
+      "evidence": [
+        {
+          "field": "header.invoice_no",
+          "label": "发票号码",
+          "group": "发票基础信息",
+          "value": "24112000000387",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[842, 96, 1020, 122]",
+            "raw_text": "发票号码：24112000000387",
+            "rule": "invoice_no_format_check ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-invno"
+        },
+        {
+          "field": "header.issue_date",
+          "label": "开票日期",
+          "group": "发票基础信息",
+          "value": "2026-10-17",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[842, 128, 1020, 152]",
+            "raw_text": "开票日期：2026年10月17日",
+            "rule": "date_valid_range ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-date"
+        },
+        {
+          "field": "seller.name",
+          "label": "销售方名称",
+          "group": "销售方 / 购买方",
+          "value": "北京中科华创科技有限公司",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[56, 210, 380, 236]",
+            "raw_text": "名称：北京中科华创科技有限公司",
+            "rule": "supplier_master_match ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-seller"
+        },
+        {
+          "field": "seller.tax_id",
+          "label": "销售方税号",
+          "group": "销售方 / 购买方",
+          "value": "91110108MA01C3872X",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[56, 240, 380, 264]",
+            "raw_text": "统一社会信用代码/纳税人识别号：91110108MA01C3872X",
+            "rule": "tax_id_checksum ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-seller"
+        },
+        {
+          "field": "buyer.name",
+          "label": "购买方名称",
+          "group": "销售方 / 购买方",
+          "value": "澜坞（上海）采购科技有限公司",
+          "source": "xml_direct",
+          "confidence": 0.98,
+          "evidence": {
+            "page": 1,
+            "bbox": "[430, 210, 760, 236]",
+            "raw_text": "名称：澜坞（上海）采购科技有限公司",
+            "rule": "buyer_entity_match ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-buyer"
+        },
+        {
+          "field": "total.net_amount",
+          "label": "不含税金额",
+          "group": "金额与税额",
+          "value": "¥100,000.00",
+          "source": "xml_direct",
+          "confidence": 0.98,
+          "evidence": {
+            "page": 1,
+            "bbox": "[640, 560, 800, 586]",
+            "raw_text": "合 计 金 额 ¥100,000.00",
+            "rule": "—",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-net"
+        },
+        {
+          "field": "total.tax_amount",
+          "label": "税额（13%）",
+          "group": "金额与税额",
+          "value": "¥13,000.00",
+          "source": "xml_direct",
+          "confidence": 0.98,
+          "evidence": {
+            "page": 1,
+            "bbox": "[820, 560, 980, 586]",
+            "raw_text": "合 计 税 额 ¥13,000.00",
+            "rule": "tax_rate_13_check ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-tax"
+        },
+        {
+          "field": "total.gross_amount",
+          "label": "价税合计 ★关键",
+          "group": "金额与税额",
+          "value": "¥113,000.00",
+          "source": "xml_direct",
+          "confidence": 0.98,
+          "evidence": {
+            "page": 1,
+            "bbox": "[120, 300, 260, 330] → 票面 [56, 600, 520, 630]",
+            "raw_text": "价税合计（大写）壹拾壹万叁仟元整 （小写）¥113,000.00",
+            "rule": "amount_tax_sum_check ✓（净额+税额=价税合计）",
+            "model_version": "cn-xml-parser v3.2 · 交叉验证：百望云 ocr-vlm-2026-10",
+            "provider": "XML 直读 + 百望云 OCR 互证一致"
+          },
+          "star": true,
+          "anchor": "pv-gross"
+        },
+        {
+          "field": "evidence.cross_check",
+          "label": "交叉验证（OCR）",
+          "group": "金额与税额",
+          "value": "票面 OCR 价税合计 ¥113,000.00 · 与 XML 一致",
+          "source": "ocr",
+          "confidence": 0.96,
+          "evidence": {
+            "page": 1,
+            "bbox": "[56, 600, 520, 630]",
+            "raw_text": "（小写）¥113,000.00",
+            "rule": "多源证据交叉验证（结构化原件 × 页面文本 × 金额勾稽）",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "百望云"
+          },
+          "anchor": "pv-gross"
+        },
+        {
+          "field": "tax.rate",
+          "label": "增值税税率",
+          "group": "税码与关联（Link）",
+          "value": "13%（一般纳税人 · 货物）",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "—（XML 节点）",
+            "raw_text": "<TaxRate>0.13</TaxRate>",
+            "rule": "tax_code_mapping → Ariba Tax Code J1",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          }
+        },
+        {
+          "field": "links.po",
+          "label": "关联 PO（Link）",
+          "group": "税码与关联（Link）",
+          "value": "PO-2026-0881 · 匹配 AMOUNT_VARIANCE",
+          "source": "xml_direct",
+          "confidence": 0.95,
+          "evidence": {
+            "page": "—",
+            "bbox": "—",
+            "raw_text": "附件正文注明 PO：PO-2026-0881",
+            "rule": "po_number_exact_match ✓ · 金额比对存在口径差异",
+            "model_version": "po-infer-rule v1.8",
+            "provider": "平台规则引擎"
+          }
+        },
+        {
+          "field": "links.credit_note",
+          "label": "红字票关联（Link）",
+          "group": "税码与关联（Link）",
+          "value": "无 · 本票非红冲票，未被红冲",
+          "source": "xml_direct",
+          "confidence": 1.0,
+          "evidence": {
+            "page": "—",
+            "bbox": "—",
+            "raw_text": "<CreditNoteRef>（空）</CreditNoteRef>",
+            "rule": "credit_link_check ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "t": "10-18 09:12:04",
+          "a": "system",
+          "act": "CHANNEL_RECEIVED",
+          "d": "邮箱渠道受理 · 信封解析",
+          "x": "发件人 finance@zhongke-huachuang.cn · 附件 invoice_0387.xml / invoice_0387.pdf · 原件摘要登记（SHA-256）",
+          "v": "ingest-service v2.1"
+        },
+        {
+          "t": "10-18 09:12:06",
+          "a": "system",
+          "act": "CARRIER_ROUTED",
+          "d": "载体检测与分流 → 结构化直读路径",
+          "x": "识别到数电票 XML 原件，按「能直读的不送 OCR」原则优先直读；PDF 留作票面证据",
+          "v": "router-policy v1.6"
+        },
+        {
+          "t": "10-18 09:12:09",
+          "a": "system",
+          "act": "XML_PARSED",
+          "d": "XML 结构化直读解析完成 · 23 字段",
+          "x": "Schema 校验通过（Core + CN Extension）· 关键字段置信度均 ≥ 98%",
+          "v": "cn-xml-parser v3.2"
+        },
+        {
+          "t": "10-18 09:12:11",
+          "a": "provider",
+          "act": "SM2_VERIFY",
+          "d": "SM2 国密验签 → PASS",
+          "x": "证书链有效 · 验签回执归档至案件附件 · 验真走授权渠道，模型不自行宣称发票真实",
+          "v": "国密验签服务 gm-verify v1.4"
+        },
+        {
+          "t": "10-18 09:12:40",
+          "a": "provider",
+          "act": "AUTH_QUERY_TIMEOUT",
+          "d": "税务总局授权查验 → 超时 NOT_VERIFIED",
+          "x": "查验请求已发出，渠道响应超时 · 案件不阻塞其余校验，查验步骤单独排定重试（断点续跑）",
+          "v": "百望云 · 查验通道 bw-cloud-verify v2.0"
+        },
+        {
+          "t": "10-18 09:13:02",
+          "a": "provider",
+          "act": "OCR_CROSS_CHECK",
+          "d": "OCR 交叉验证 → 关键金额一致",
+          "x": "对 PDF 票面执行 OCR，价税合计 / 发票号与 XML 直读互证一致（多源证据交叉验证）",
+          "v": "百望云 · ocr-vlm-2026-10"
+        },
+        {
+          "t": "10-18 09:13:05",
+          "a": "system",
+          "act": "DEDUP_CHECK",
+          "d": "查重 → PASSED",
+          "x": "发票号 + 价税合计 + 销售方税号 全局查重，无重复命中",
+          "v": "dedup-rule v2.3"
+        },
+        {
+          "t": "10-18 09:13:08",
+          "a": "system",
+          "act": "PO_MATCH",
+          "d": "PO 关联匹配 → AMOUNT_VARIANCE",
+          "x": "命中 PO-2026-0881（供应商 + 附件 PO 号）· 含税 ¥113,000.00 vs PO 净额 ¥100,000.00 · 差异 ¥13,000.00 超容差",
+          "v": "match-engine v1.9 · po-infer-rule v1.8"
+        },
+        {
+          "t": "10-18 09:13:08",
+          "a": "system",
+          "act": "STATUS_CHANGE",
+          "d": "案件状态 RECOGNIZED → NEEDS_REVIEW",
+          "x": "触发条件：poMatch = AMOUNT_VARIANCE 且 authenticity = NOT_VERIFIED · 路由至亚太共享中心复核队列",
+          "v": "case-machine v2.2"
+        },
+        {
+          "t": "10-18 10:02:17",
+          "a": "ai",
+          "act": "LLM_ADVICE",
+          "d": "差异解释建议生成（仅建议，不执行）",
+          "x": "结论候选：含税/不含税口径差异（置信度 88%）· 已按受控边界挂起，等待人工确认",
+          "v": "qwen-finance-v2 · 2026-10-15"
+        },
+        {
+          "t": "10-20 14:36:50",
+          "a": "human",
+          "act": "REVIEW_OPENED",
+          "d": "人工认领并开始复核",
+          "x": "复核员：王莉（亚太采购共享中心）· 尚未修改任何字段",
+          "v": "review-ui v1.2"
+        }
+      ],
+      "links": {
+        "invoice": "INV-CN-2026-0387",
+        "supplier": "北京中科华创科技有限公司",
+        "supplier_id": "SUP-10042",
+        "po": "PO-2026-0881",
+        "po_state": "AMOUNT_VARIANCE",
+        "grn": [
+          {
+            "grn_no": "GRN-2026-1102",
+            "note": "部分收货"
+          }
+        ],
+        "credit_note": {
+          "relation": "NONE",
+          "ref": null,
+          "match_score": null,
+          "partial": null,
+          "confirmed": false
+        }
+      },
+      "items": {
+        "note": "来源：XML 直读 · 行级勾稽校验通过（Σ行金额 = 合计）",
+        "layout": "CN8",
+        "columns": [
+          "#",
+          "货物或应税项目名称",
+          "规格型号",
+          "单位",
+          "数量",
+          "单价",
+          "税率",
+          "金额"
+        ],
+        "rows": [
+          [
+            "1",
+            "*服务器*机架式服务器 R4900 G6",
+            "24核/128G/4T",
+            "台",
+            "2",
+            "¥38,000.00",
+            "13%",
+            "¥76,000.00"
+          ],
+          [
+            "2",
+            "*技术服务*部署实施与维保服务",
+            "3年原厂维保",
+            "项",
+            "1",
+            "¥24,000.00",
+            "13%",
+            "¥24,000.00"
+          ]
+        ]
+      },
+      "file": {
+        "display": "invoice_0387.pdf · 1 页 · SHA-256 3f8a…c92d",
+        "name": "invoice_0387.pdf",
+        "pages": 1,
+        "sha256": "3f8a…c92d",
+        "has_xml_original": true,
+        "note": "数电票 XML 原件已按电子会计档案要求归档；PDF 为票面呈现件。原件摘要（SHA-256）于受理时登记，任何替换可被检测。"
+      },
+      "source_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<EInvoice xmlns=\"urn:cn:tax:einvoice:1.0\">\n  <Header>\n    <InvoiceNo>24112000000387</InvoiceNo>\n    <IssueDate>2026-10-17</IssueDate>\n    <InvoiceType>数电票（增值税专用发票）</InvoiceType>\n  </Header>\n  <Seller>\n    <Name>北京中科华创科技有限公司</Name>\n    <TaxID>91110108MA01C3872X</TaxID>\n  </Seller>\n  <Buyer>\n    <Name>澜坞（上海）采购科技有限公司</Name>\n    <TaxID>91310115MA1K35QT7B</TaxID>\n  </Buyer>\n  <Items>\n    <Item lineNo=\"1\">\n      <Name>*服务器*机架式服务器 R4900 G6</Name>\n      <Spec>24核/128G/4T</Spec><Unit>台</Unit>\n      <Qty>2</Qty><Price>38000.00</Price>\n      <TaxRate>0.13</TaxRate><Amount>76000.00</Amount>\n    </Item>\n    <Item lineNo=\"2\">\n      <Name>*技术服务*部署实施与维保服务</Name>\n      <Spec>3年原厂维保</Spec><Unit>项</Unit>\n      <Qty>1</Qty><Price>24000.00</Price>\n      <TaxRate>0.13</TaxRate><Amount>24000.00</Amount>\n    </Item>\n  </Items>\n  <Total>\n    <NetAmount>100000.00</NetAmount>\n    <TaxAmount>13000.00</TaxAmount>\n    <GrossAmount>113000.00</GrossAmount>\n    <GrossInWords>壹拾壹万叁仟元整</GrossInWords>\n  </Total>\n  <Signature alg=\"SM2\">MEUCIQDx…（验签通过 · 回执 gm-rcpt-0931）</Signature>\n</EInvoice>",
+      "paper_template": "cn",
+      "ai": {
+        "title": "价税合计 vs PO 净额差异 ¥13,000.00 —— 口径差异解释",
+        "confidence": 88,
+        "model_version": "qwen-finance-v2 · 2026-10-15",
+        "body": "差异金额 ¥13,000.00 <b>恰等于本票税额</b>。PO-2026-0881 以<b>不含税净额</b>口径登记（¥100,000.00），发票以<b>含税价税合计</b>口径开具（¥113,000.00）。规则引擎复核：amount_tax_sum_check ✓、行级勾稽 ✓、税率 13% ✓。",
+        "conclusion": "初步结论：疑似<b>含税/不含税口径差异</b>，而非金额错误。建议按「口径差异」标记后放行，并回填 PO 含税金额字段。",
+        "rule_note": "规则引擎复核项均为确定性判定；LLM 仅承担差异语义解释，不修改任何字段。",
+        "disclaimer": "⚠ 大模型生成的建议不自动执行业务操作，请人工确认后操作",
+        "status": "pending",
+        "evidence_refs": [
+          "total.gross_amount",
+          "links.po"
+        ]
+      },
+      "nextAction": {
+        "type": "HUMAN_REVIEW",
+        "reason": "poMatch=AMOUNT_VARIANCE（差异 ¥13,000.00，疑似税额口径）且 authenticity=NOT_VERIFIED（授权查验重试中）",
+        "assign_to": "亚太采购共享中心 · 复核组"
+      }
+    },
+    {
+      "caseId": "INV-CN-2026-0379",
+      "detail_level": "full",
+      "status": "BLOCKED",
+      "summary": "XML 原件验签不通过（证书链无法验证），疑似篡改；AI 建议阻断并要求供应商重开（置信度 94%，须人工确认）。",
+      "meta": {
+        "region": "CN · 中国",
+        "instance": "CN",
+        "ext": "CN Extension · 数电票",
+        "type": "数电票（增值税专用发票）",
+        "invoice_type_machine": "E_INVOICE_VAT_SPECIAL",
+        "po": "PO-2026-0873",
+        "supplier": "成都天府新材料股份公司",
+        "supplier_id": "SUP-10377",
+        "amount_display": "¥47,200.00",
+        "received_at": "2026-10-19 16:22",
+        "channel": "供应商邮箱（XML + PDF 附件）",
+        "adapter": "SAP Ariba · cXML InvoiceDetailRequest（建档已挂起）",
+        "sm2": {
+          "ok": false,
+          "text": "SM2 国密验签失败 · 证书链无法验证 · 疑似原件被篡改",
+          "receipt_no": "gm-rcpt-1042"
+        },
+        "vat": null,
+        "risk_label": "SM2 验签失败",
+        "confidence": 94,
+        "provider": "百望云",
+        "claimed_by": "王莉（亚太采购共享中心）· 管理员会签人：陈铮",
+        "claimed_at": "2026-10-20 15:02:40",
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": true,
+        "document_created_receipt": null,
+        "trace_id": "tr-b7e4c920"
+      },
+      "facts": {
+        "invoiceAmount": 47200.0,
+        "poAmount": 47200.0,
+        "taxAmount": 5430.09,
+        "currency": "CNY",
+        "variance": 0.0
+      },
+      "checks": {
+        "supplierMatch": {
+          "result": "PASSED",
+          "note": "供应商名称 + 税号与 SUP-10377 主数据一致"
+        },
+        "authenticity": {
+          "result": "FAILED",
+          "note": "SM2 验签失败：证书链无法验证 · 验真必须走授权渠道，模型不得自行宣称发票真实 → 红线拦截"
+        },
+        "duplicate": {
+          "result": "PASSED",
+          "note": "发票号 + 价税合计全局查重无命中"
+        },
+        "poMatch": {
+          "result": "PASSED",
+          "note": "PO-2026-0873 含税口径一致（¥47,200.00）"
+        }
+      },
+      "evidence": [
+        {
+          "field": "header.invoice_no",
+          "label": "发票号码",
+          "group": "发票基础信息",
+          "value": "24512000000379",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[842, 96, 1020, 122]",
+            "raw_text": "发票号码：24512000000379",
+            "rule": "invoice_no_format_check ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-invno"
+        },
+        {
+          "field": "header.issue_date",
+          "label": "开票日期",
+          "group": "发票基础信息",
+          "value": "2026-10-15",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[842, 128, 1020, 152]",
+            "raw_text": "开票日期：2026年10月15日",
+            "rule": "date_valid_range ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-date"
+        },
+        {
+          "field": "seller.name",
+          "label": "销售方名称",
+          "group": "销售方 / 购买方",
+          "value": "成都天府新材料股份公司",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[56, 210, 380, 236]",
+            "raw_text": "名称：成都天府新材料股份公司",
+            "rule": "supplier_master_match ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-seller"
+        },
+        {
+          "field": "seller.tax_id",
+          "label": "销售方税号",
+          "group": "销售方 / 购买方",
+          "value": "91510100MA62T3791X",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[56, 240, 380, 264]",
+            "raw_text": "统一社会信用代码/纳税人识别号：91510100MA62T3791X",
+            "rule": "tax_id_checksum ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-seller"
+        },
+        {
+          "field": "buyer.name",
+          "label": "购买方名称",
+          "group": "销售方 / 购买方",
+          "value": "澜坞（上海）采购科技有限公司",
+          "source": "xml_direct",
+          "confidence": 0.98,
+          "evidence": {
+            "page": 1,
+            "bbox": "[430, 210, 760, 236]",
+            "raw_text": "名称：澜坞（上海）采购科技有限公司",
+            "rule": "buyer_entity_match ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-buyer"
+        },
+        {
+          "field": "total.net_amount",
+          "label": "不含税金额",
+          "group": "金额与税额（原件可信性失败 → 全字段降级标注）",
+          "value": "¥41,769.91",
+          "source": "xml_direct",
+          "confidence": 0.94,
+          "evidence": {
+            "page": 1,
+            "bbox": "[640, 560, 800, 586]",
+            "raw_text": "合 计 金 额 ¥41,769.91",
+            "rule": "⚠ 数值勾稽通过，但原件验签失败，置信度按策略降级（可信性不成立）",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-net"
+        },
+        {
+          "field": "total.tax_amount",
+          "label": "税额（13%）",
+          "group": "金额与税额（原件可信性失败 → 全字段降级标注）",
+          "value": "¥5,430.09",
+          "source": "xml_direct",
+          "confidence": 0.94,
+          "evidence": {
+            "page": 1,
+            "bbox": "[820, 560, 980, 586]",
+            "raw_text": "合 计 税 额 ¥5,430.09",
+            "rule": "tax_rate_13_check ✓ · ⚠ 原件可信性失败降级",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          },
+          "anchor": "pv-tax"
+        },
+        {
+          "field": "total.gross_amount",
+          "label": "价税合计 ★关键",
+          "group": "金额与税额（原件可信性失败 → 全字段降级标注）",
+          "value": "¥47,200.00",
+          "source": "xml_direct",
+          "confidence": 0.94,
+          "evidence": {
+            "page": 1,
+            "bbox": "[56, 600, 520, 630]",
+            "raw_text": "价税合计（大写）肆万柒仟贰佰元整 （小写）¥47,200.00",
+            "rule": "amount_tax_sum_check ✓（数值一致 ≠ 原件可信；authenticity FAILED 时禁止自动放行）",
+            "model_version": "cn-xml-parser v3.2 · 交叉验证：百望云 ocr-vlm-2026-10",
+            "provider": "XML 直读 + 百望云 OCR 数值互证一致"
+          },
+          "star": true,
+          "anchor": "pv-gross"
+        },
+        {
+          "field": "evidence.sm2_signature",
+          "label": "原件完整性 ★验签",
+          "group": "金额与税额（原件可信性失败 → 全字段降级标注）",
+          "value": "SM2 验签 FAILED · 疑似篡改",
+          "source": "webhook",
+          "confidence": 1.0,
+          "evidence": {
+            "page": "—",
+            "bbox": "—（XML Signature 节点）",
+            "raw_text": "<Signature alg=\"SM2\" result=\"FAILED\">证书链无法验证</Signature>",
+            "rule": "红线策略：验签失败 → authenticity FAILED → BLOCKED",
+            "model_version": "—（授权验签渠道，非模型判断）",
+            "provider": "国密验签服务 gm-verify v1.4 · 失败回执 gm-rcpt-1042 已归档"
+          },
+          "star": true,
+          "anchor": "pv-stamp"
+        },
+        {
+          "field": "tax.rate",
+          "label": "增值税税率",
+          "group": "税码与关联（Link）",
+          "value": "13%（一般纳税人 · 货物）",
+          "source": "xml_direct",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "—（XML 节点）",
+            "raw_text": "<TaxRate>0.13</TaxRate>",
+            "rule": "tax_code_mapping → Ariba Tax Code J1",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          }
+        },
+        {
+          "field": "links.po",
+          "label": "关联 PO（Link）",
+          "group": "税码与关联（Link）",
+          "value": "PO-2026-0873 · 匹配 PASSED",
+          "source": "xml_direct",
+          "confidence": 0.96,
+          "evidence": {
+            "page": "—",
+            "bbox": "—",
+            "raw_text": "附件正文注明 PO：PO-2026-0873",
+            "rule": "po_number_exact_match ✓ · 含税口径金额一致",
+            "model_version": "po-infer-rule v1.8",
+            "provider": "平台规则引擎"
+          }
+        },
+        {
+          "field": "links.credit_note",
+          "label": "红字票关联（Link）",
+          "group": "税码与关联（Link）",
+          "value": "无 · 本票非红冲票",
+          "source": "xml_direct",
+          "confidence": 1.0,
+          "evidence": {
+            "page": "—",
+            "bbox": "—",
+            "raw_text": "<CreditNoteRef>（空）</CreditNoteRef>",
+            "rule": "credit_link_check ✓",
+            "model_version": "cn-xml-parser v3.2",
+            "provider": "XML 直读（免 Provider）"
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "t": "10-19 16:22:04",
+          "a": "system",
+          "act": "CHANNEL_RECEIVED",
+          "d": "邮箱渠道受理 · 信封解析",
+          "x": "发件人 billing@tianfu-materials.cn · 附件 invoice_0379.xml / invoice_0379.pdf · 原件摘要登记（SHA-256 c417…9e2b）",
+          "v": "ingest-service v2.1"
+        },
+        {
+          "t": "10-19 16:22:07",
+          "a": "system",
+          "act": "XML_PARSED",
+          "d": "XML 结构化直读解析完成 · 23 字段",
+          "x": "Schema 校验通过 · 数值勾稽（净额+税额=价税合计）通过",
+          "v": "cn-xml-parser v3.2"
+        },
+        {
+          "t": "10-19 16:22:09",
+          "a": "provider",
+          "act": "SM2_VERIFY_FAILED",
+          "d": "SM2 国密验签 → FAILED",
+          "x": "证书链无法验证 · 疑似 XML 原件被篡改 · 失败回执 gm-rcpt-1042 归档至案件附件（可司法取证）",
+          "v": "国密验签服务 gm-verify v1.4"
+        },
+        {
+          "t": "10-19 16:22:09",
+          "a": "system",
+          "act": "STATUS_CHANGE",
+          "d": "案件状态 RECOGNIZED → BLOCKED",
+          "x": "触发条件：authenticity = FAILED（产品红线：验真失败票不得进入建档与付款）· cXML 建档挂起 · 通知复核队列（高风险）",
+          "v": "case-machine v2.2"
+        },
+        {
+          "t": "10-19 16:22:31",
+          "a": "provider",
+          "act": "OCR_CROSS_CHECK",
+          "d": "OCR 交叉验证 → 票面与 XML 数值一致",
+          "x": "价税合计 / 发票号一致 · 结论标注：数值一致不构成原件可信性证明，不改变 BLOCKED",
+          "v": "百望云 · ocr-vlm-2026-10"
+        },
+        {
+          "t": "10-19 16:22:35",
+          "a": "system",
+          "act": "DEDUP_PO_CHECK",
+          "d": "查重 PASSED · PO 匹配 PASSED",
+          "x": "查重无命中 · PO-2026-0873 含税口径一致（其余 Checks 不因 BLOCKED 停止，结论供解除拦截时参考）",
+          "v": "dedup-rule v2.3 · match-engine v1.9"
+        },
+        {
+          "t": "10-19 17:05:12",
+          "a": "ai",
+          "act": "LLM_ADVICE",
+          "d": "处置建议生成（仅建议，不执行）",
+          "x": "建议阻断 + 要求供应商重开 · 解除拦截须双人审批 · 置信度 94%",
+          "v": "qwen-finance-v2 · 2026-10-15"
+        },
+        {
+          "t": "10-20 15:02:40",
+          "a": "human",
+          "act": "REVIEW_OPENED",
+          "d": "人工认领（BLOCKED 案件双人审批流程）",
+          "x": "复核员：王莉（亚太采购共享中心）· 管理员会签人：陈铮 · 尚未执行任何处置",
+          "v": "review-ui v1.2"
+        }
+      ],
+      "links": {
+        "invoice": "INV-CN-2026-0379",
+        "supplier": "成都天府新材料股份公司",
+        "supplier_id": "SUP-10377",
+        "po": "PO-2026-0873",
+        "po_state": "PASSED",
+        "grn": [
+          {
+            "grn_no": "GRN-2026-1156",
+            "note": null
+          }
+        ],
+        "credit_note": {
+          "relation": "NONE",
+          "ref": null,
+          "match_score": null,
+          "partial": null,
+          "confirmed": false
+        }
+      },
+      "items": {
+        "note": "来源：XML 直读 · 数值勾稽校验通过；原件可信性失败不阻止展示，但阻止自动放行",
+        "layout": "CN8",
+        "columns": [
+          "#",
+          "货物或应税项目名称",
+          "规格型号",
+          "单位",
+          "数量",
+          "单价",
+          "税率",
+          "金额"
+        ],
+        "rows": [
+          [
+            "1",
+            "*化工产品*高纯石英砂 Q-200",
+            "200kg/桶",
+            "吨",
+            "10",
+            "¥3,800.00",
+            "13%",
+            "¥38,000.00"
+          ],
+          [
+            "2",
+            "*技术服务*现场指导与检测服务",
+            "—",
+            "项",
+            "1",
+            "¥3,769.91",
+            "13%",
+            "¥3,769.91"
+          ]
+        ]
+      },
+      "file": {
+        "display": "invoice_0379.pdf · 1 页 · SHA-256 c417…9e2b",
+        "name": "invoice_0379.pdf",
+        "pages": 1,
+        "sha256": "c417…9e2b",
+        "has_xml_original": true,
+        "note": "原件摘要于受理时登记；XML 验签失败回执随案归档（不可篡改），可用于对供应商追责与司法取证。"
+      },
+      "source_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<EInvoice xmlns=\"urn:cn:tax:einvoice:1.0\">\n  <Header>\n    <InvoiceNo>24512000000379</InvoiceNo>\n    <IssueDate>2026-10-15</IssueDate>\n    <InvoiceType>数电票（增值税专用发票）</InvoiceType>\n  </Header>\n  <Seller>\n    <Name>成都天府新材料股份公司</Name>\n    <TaxID>91510100MA62T3791X</TaxID>\n  </Seller>\n  <Buyer>\n    <Name>澜坞（上海）采购科技有限公司</Name>\n    <TaxID>91310115MA1K35QT7B</TaxID>\n  </Buyer>\n  <Items>\n    <Item lineNo=\"1\">\n      <Name>*化工产品*高纯石英砂 Q-200</Name>\n      <Spec>200kg/桶</Spec><Unit>吨</Unit>\n      <Qty>10</Qty><Price>3800.00</Price>\n      <TaxRate>0.13</TaxRate><Amount>38000.00</Amount>\n    </Item>\n    <Item lineNo=\"2\">\n      <Name>*技术服务*现场指导与检测服务</Name>\n      <Unit>项</Unit><Qty>1</Qty><Price>3769.91</Price>\n      <TaxRate>0.13</TaxRate><Amount>3769.91</Amount>\n    </Item>\n  </Items>\n  <Total>\n    <NetAmount>41769.91</NetAmount>\n    <TaxAmount>5430.09</TaxAmount>\n    <GrossAmount>47200.00</GrossAmount>\n    <GrossInWords>肆万柒仟贰佰元整</GrossInWords>\n  </Total>\n  <Signature alg=\"SM2\" result=\"FAILED\">\n    证书链无法验证 · 回执 gm-rcpt-1042 · 疑似原件篡改\n    （数值勾稽一致 ≠ 原件可信：BLOCKED 由规则引擎红线策略判定）\n  </Signature>\n</EInvoice>",
+      "paper_template": "cn379",
+      "ai": {
+        "title": "SM2 验签失败 —— 疑似篡改票处置建议",
+        "confidence": 94,
+        "model_version": "qwen-finance-v2 · 2026-10-15",
+        "body": "XML 原件验签失败（证书链无法验证），票面 OCR 与 XML 数值一致（价税合计 ¥47,200.00），但<b>原件可信性不成立</b>——数值一致不能证明 XML 未被篡改（篡改者可同步修改票面与数值）。规则引擎已按红线策略将 authenticity 置为 <b>FAILED</b> 并自动 BLOCKED，cXML 建档挂起。",
+        "conclusion": "建议：阻断并要求供应商通过电子税务局渠道重开合规数电票；如供应商坚称原票有效，须由开票渠道出具可验证的验签回执。解除 BLOCKED 需<b>复核员 + 管理员双人审批</b>并全程留痕。",
+        "rule_note": "BLOCKED 由规则引擎红线策略判定（错误自动放行率趋近 0），非模型决策；AI 仅提供处置路径建议。",
+        "disclaimer": "⚠ 大模型生成的建议不自动执行业务操作，请人工确认后操作",
+        "status": "pending",
+        "evidence_refs": [
+          "evidence.sm2_signature",
+          "total.gross_amount"
+        ]
+      },
+      "nextAction": {
+        "type": "DUAL_APPROVAL",
+        "reason": "authenticity=FAILED（SM2 验签红线）→ BLOCKED，须复核员 + 管理员双人会签解除，建档保持挂起",
+        "assign_to": "王莉（复核员）+ 陈铮（管理员会签）· 高风险队列 30 分钟内认领"
+      }
+    },
+    {
+      "caseId": "INV-SG-2026-0125",
+      "detail_level": "full",
+      "status": "INVESTIGATING",
+      "summary": "差异 S$5,600 = GST S$4,100 + 运费 S$1,500（PO 无对应收货行）；系统已自动收集 PO/GRN/合同条款证据。",
+      "meta": {
+        "region": "APAC · 新加坡",
+        "instance": "OS",
+        "ext": "Core + APAC Extension",
+        "type": "Supplier Invoice（海外供应商发票）",
+        "invoice_type_machine": "SUPPLIER_INVOICE",
+        "po": "PO-4500123456",
+        "supplier": "Siemens Energy Pte. Ltd.",
+        "supplier_id": "SUP-20871",
+        "amount_display": "S$84,200.00",
+        "received_at": "2026-10-19 08:47（SGT）",
+        "channel": "供应商邮箱 PDF → 定时 Job → SAP DOX（某海外真实场景链路）",
+        "adapter": "SAP Ariba · cXML InvoiceDetailRequest",
+        "sm2": null,
+        "vat": "Tax ID / VAT Reg. No：M90345678A · GST 注册校验通过",
+        "risk_label": "含税 vs PO 净额差异",
+        "confidence": 91,
+        "provider": "海外 e-invoicing",
+        "claimed_by": "王莉（亚太采购共享中心）",
+        "claimed_at": "2026-10-20 14:41:20",
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": true,
+        "document_created_receipt": null,
+        "trace_id": "tr-1d5f83ac"
+      },
+      "facts": {
+        "invoiceAmount": 84200.0,
+        "poAmount": 78600.0,
+        "taxAmount": 4100.0,
+        "currency": "SGD",
+        "variance": 5600.0
+      },
+      "checks": {
+        "supplierMatch": {
+          "result": "PASSED",
+          "note": "Tax ID M90345678A 与 SUP-20871 主数据一致"
+        },
+        "authenticity": {
+          "result": "PASSED",
+          "note": "GST 注册号格式与名录校验通过（海外无统一验签，走 Tax ID 校验）"
+        },
+        "duplicate": {
+          "result": "PASSED",
+          "note": "Invoice No + Amount 查重无命中"
+        },
+        "poMatch": {
+          "result": "AMOUNT_VARIANCE",
+          "note": "Gross S$84,200.00 vs PO Net S$78,600.00 · 差异 S$5,600.00"
+        }
+      },
+      "evidence": [
+        {
+          "field": "header.invoice_no",
+          "label": "Invoice No.",
+          "group": "Invoice 基础信息",
+          "value": "SI-SG-77125",
+          "source": "ocr",
+          "confidence": 0.97,
+          "evidence": {
+            "page": 1,
+            "bbox": "[700, 88, 880, 114]",
+            "raw_text": "Invoice No: SI-SG-77125",
+            "rule": "invoice_no_format_check ✓",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR（DOX 管道既有 Provider，可替换）"
+          },
+          "anchor": "pv-invno"
+        },
+        {
+          "field": "header.issue_date",
+          "label": "Invoice Date",
+          "group": "Invoice 基础信息",
+          "value": "2026-10-16",
+          "source": "ocr",
+          "confidence": 0.96,
+          "evidence": {
+            "page": 1,
+            "bbox": "[700, 120, 880, 146]",
+            "raw_text": "Invoice Date: 16 Oct 2026",
+            "rule": "date_valid_range ✓",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR"
+          },
+          "anchor": "pv-date"
+        },
+        {
+          "field": "seller.name",
+          "label": "Supplier Name",
+          "group": "Supplier / Bill-To（海外 Tax ID）",
+          "value": "Siemens Energy Pte. Ltd.",
+          "source": "ocr",
+          "confidence": 0.98,
+          "evidence": {
+            "page": 1,
+            "bbox": "[56, 180, 360, 206]",
+            "raw_text": "Siemens Energy Pte. Ltd.",
+            "rule": "supplier_master_match ✓",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR"
+          },
+          "anchor": "pv-seller"
+        },
+        {
+          "field": "seller.tax_id",
+          "label": "Tax ID / VAT Reg. No ★海外关键字段",
+          "group": "Supplier / Bill-To（海外 Tax ID）",
+          "value": "M90345678A",
+          "source": "ocr",
+          "confidence": 0.96,
+          "evidence": {
+            "page": 1,
+            "bbox": "[56, 210, 360, 234]",
+            "raw_text": "UEN / GST Reg. No: M90345678A",
+            "rule": "sg_uen_format_check ✓",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR · Tax ID 名录校验 webhook-sg v1.1"
+          },
+          "star": true,
+          "anchor": "pv-seller"
+        },
+        {
+          "field": "buyer.name",
+          "label": "Bill-To（购买方）",
+          "group": "Supplier / Bill-To（海外 Tax ID）",
+          "value": "Lanwu Procurement Technology (Singapore) Pte. Ltd.",
+          "source": "ocr",
+          "confidence": 0.95,
+          "evidence": {
+            "page": 1,
+            "bbox": "[430, 180, 760, 234]",
+            "raw_text": "Bill To: Lanwu Procurement Technology (Singapore) Pte. Ltd.",
+            "rule": "buyer_entity_match ✓",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR"
+          },
+          "anchor": "pv-buyer"
+        },
+        {
+          "field": "total.currency",
+          "label": "Currency 币种",
+          "group": "金额 · 币种 · 税（多币种 / GST）",
+          "value": "SGD（S$）",
+          "source": "ocr",
+          "confidence": 0.99,
+          "evidence": {
+            "page": 1,
+            "bbox": "[560, 520, 640, 546]",
+            "raw_text": "All amounts in SGD (S$)",
+            "rule": "currency_iso_check ✓",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR"
+          },
+          "anchor": "pv-net"
+        },
+        {
+          "field": "total.net_amount",
+          "label": "Net Amount 净额",
+          "group": "金额 · 币种 · 税（多币种 / GST）",
+          "value": "S$78,600.00",
+          "source": "ocr",
+          "confidence": 0.97,
+          "evidence": {
+            "page": 1,
+            "bbox": "[640, 548, 880, 574]",
+            "raw_text": "Net Amount: S$78,600.00",
+            "rule": "—",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR"
+          },
+          "anchor": "pv-net"
+        },
+        {
+          "field": "total.tax_amount",
+          "label": "GST 9%",
+          "group": "金额 · 币种 · 税（多币种 / GST）",
+          "value": "S$4,100.00",
+          "source": "ocr",
+          "confidence": 0.94,
+          "evidence": {
+            "page": 1,
+            "bbox": "[640, 576, 880, 602]",
+            "raw_text": "GST @9% (on taxable S$45,555.56): S$4,100.00",
+            "rule": "gst_rate_sg_check ✓ · 部分行项目 zero-rated",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR"
+          },
+          "anchor": "pv-tax"
+        },
+        {
+          "field": "items.freight",
+          "label": "Freight 运费行",
+          "group": "金额 · 币种 · 税（多币种 / GST）",
+          "value": "S$1,500.00（PO 未含）",
+          "source": "ocr",
+          "confidence": 0.92,
+          "evidence": {
+            "page": 1,
+            "bbox": "[640, 604, 880, 630]",
+            "raw_text": "Freight & Handling: S$1,500.00",
+            "rule": "po_line_coverage → 无对应收货行",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR"
+          },
+          "anchor": "pv-freight"
+        },
+        {
+          "field": "total.gross_amount",
+          "label": "Gross Total ★关键",
+          "group": "金额 · 币种 · 税（多币种 / GST）",
+          "value": "S$84,200.00",
+          "source": "ocr",
+          "confidence": 0.97,
+          "evidence": {
+            "page": 1,
+            "bbox": "[620, 640, 900, 672]",
+            "raw_text": "Total Due: S$84,200.00",
+            "rule": "amount_sum_check ✓（Net+GST+Freight=Gross）",
+            "model_version": "ocr-vlm-2026-10",
+            "provider": "第三方 OCR"
+          },
+          "star": true,
+          "anchor": "pv-gross"
+        },
+        {
+          "field": "links.po",
+          "label": "关联 PO（Link）",
+          "group": "关联（Link）",
+          "value": "PO-4500123456 · AMOUNT_VARIANCE",
+          "source": "webhook",
+          "confidence": 0.95,
+          "evidence": {
+            "page": "—",
+            "bbox": "—",
+            "raw_text": "Your Ref: PO-4500123456（票面引用）",
+            "rule": "po_number_exact_match ✓",
+            "model_version": "po-infer-rule v1.8",
+            "provider": "平台规则引擎 · BTP 匹配回执"
+          }
+        },
+        {
+          "field": "links.credit_note",
+          "label": "Credit Note 关联（Link）",
+          "group": "关联（Link）",
+          "value": "INV-SG-2026-0123（AWS）待人工确认关联 · 非本票",
+          "source": "model",
+          "confidence": 0.92,
+          "evidence": {
+            "page": "—",
+            "bbox": "—",
+            "raw_text": "Link 校验：本票无「冲减 → 原票」关系；候选 Credit Note 属另一供应商案件",
+            "rule": "credit_link_check → NOT_APPLICABLE",
+            "model_version": "link-infer v1.1",
+            "provider": "平台对象模型"
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "t": "10-19 08:47:12",
+          "a": "system",
+          "act": "CHANNEL_RECEIVED",
+          "d": "邮箱管道受理（定时 Job）",
+          "x": "供应商 PDF 附件 → 邮箱 → 定时 Job → SAP DOX（某海外真实场景链路）· 原件摘要登记（SHA-256）",
+          "v": "ingest-service v2.1 · dox-bridge v1.0"
+        },
+        {
+          "t": "10-19 08:47:40",
+          "a": "provider",
+          "act": "OCR_RECOGNIZED",
+          "d": "第三方 OCR 识别完成 · 18 字段",
+          "x": "PDF 原生文本层不可用，路由至 OCR · 关键字段置信度 92–98%",
+          "v": "第三方 OCR · ocr-vlm-2026-10（可替换为客户自有 Provider）"
+        },
+        {
+          "t": "10-19 08:47:44",
+          "a": "system",
+          "act": "INBOUND_ACCEPTED",
+          "d": "inbound 接收识别结果 · Schema 归一化",
+          "x": "Core + APAC Extension 字段映射 · GST / 币种 / Tax ID 落位",
+          "v": "normalize-service v1.5"
+        },
+        {
+          "t": "10-19 08:48:02",
+          "a": "system",
+          "act": "TAXID_CHECK",
+          "d": "Tax ID 名录校验 → PASS",
+          "x": "M90345678A 格式与新加坡 UEN/GST 名录校验通过（海外验真走 Tax ID 校验，非 SM2 验签）",
+          "v": "webhook-sg v1.1"
+        },
+        {
+          "t": "10-19 08:48:05",
+          "a": "system",
+          "act": "DEDUP_CHECK",
+          "d": "查重 → PASSED",
+          "x": "Invoice No + Amount + Supplier 全局查重无命中",
+          "v": "dedup-rule v2.3"
+        },
+        {
+          "t": "10-19 08:48:10",
+          "a": "system",
+          "act": "BTP_MATCH",
+          "d": "BTP 匹配 / Check → AMOUNT_VARIANCE",
+          "x": "Gross S$84,200.00 vs PO Net S$78,600.00 · 差异 S$5,600.00 超容差 ±S$50",
+          "v": "btp-check v1.3 · match-engine v1.9"
+        },
+        {
+          "t": "10-19 08:48:10",
+          "a": "system",
+          "act": "STATUS_CHANGE",
+          "d": "状态 RECOGNIZED → NEEDS_REVIEW → INVESTIGATING",
+          "x": "差异调查策略命中：金额差异 > 阈值时自动进入主动调查，而非直接抛给人工",
+          "v": "case-machine v2.2"
+        },
+        {
+          "t": "10-19 08:48:31",
+          "a": "system",
+          "act": "EVIDENCE_COLLECTED",
+          "d": "调查证据自动收集（只读）",
+          "x": "PO-4500123456 行项目 ×2 · GRN-2026-1180/1181/1187 ×3 · GST 税率映射表 · 合同运费条款摘录",
+          "v": "investigator v1.0"
+        },
+        {
+          "t": "10-19 08:49:02",
+          "a": "ai",
+          "act": "LLM_ADVICE",
+          "d": "差异解释建议生成（仅建议，不执行）",
+          "x": "差异构成：GST S$4,100.00 + 运费 S$1,500.00 · 置信度 88% · 等待人工确认",
+          "v": "qwen-finance-v2 · 2026-10-15"
+        },
+        {
+          "t": "10-20 14:41:20",
+          "a": "human",
+          "act": "REVIEW_OPENED",
+          "d": "人工认领并开始复核",
+          "x": "复核员：王莉（亚太采购共享中心）· cXML 建档保持挂起，待处置结论",
+          "v": "review-ui v1.2"
+        }
+      ],
+      "links": {
+        "invoice": "INV-SG-2026-0125",
+        "supplier": "Siemens Energy Pte. Ltd.",
+        "supplier_id": "SUP-20871",
+        "po": "PO-4500123456",
+        "po_state": "AMOUNT_VARIANCE",
+        "grn": [
+          {
+            "grn_no": "GRN-2026-1180",
+            "note": null
+          },
+          {
+            "grn_no": "GRN-2026-1181",
+            "note": null
+          },
+          {
+            "grn_no": "GRN-2026-1187",
+            "note": null
+          }
+        ],
+        "credit_note": {
+          "relation": "NONE",
+          "ref": null,
+          "match_score": null,
+          "partial": null,
+          "confirmed": false
+        }
+      },
+      "items": {
+        "note": "来源：OCR（第三方 Provider）· 行级勾稽校验通过 · 币种 SGD",
+        "layout": "OS6",
+        "columns": [
+          "#",
+          "Description",
+          "Qty",
+          "Unit Price",
+          "Tax",
+          "Amount"
+        ],
+        "rows": [
+          [
+            "1",
+            "Gas turbine maintenance service — Q3 2026",
+            "1",
+            "S$62,600.00",
+            "GST 9%",
+            "S$62,600.00"
+          ],
+          [
+            "2",
+            "Spare parts kit (zero-rated, export)",
+            "1",
+            "S$16,000.00",
+            "0%",
+            "S$16,000.00"
+          ],
+          [
+            "3",
+            "Freight & handling（PO 未含 · 差异来源）",
+            "1",
+            "S$1,500.00",
+            "GST 9%",
+            "S$1,500.00"
+          ]
+        ]
+      },
+      "file": {
+        "display": "siemens_si-sg-77125.pdf · 1 页 · SHA-256 9be1…4a07",
+        "name": "siemens_si-sg-77125.pdf",
+        "pages": 1,
+        "sha256": "9be1…4a07",
+        "has_xml_original": false,
+        "note": "海外实例无 XML 原件时以 PDF 为准，OCR 结果均带坐标与原文片段证据；本链路 DOX 预处理边界待产品细节确认（H30 余项）。"
+      },
+      "source_xml": "<!-- 无 XML 原件 · 展示 OCR 归一化后的结构化输出（统一 Schema） -->\n<Invoice xmlns=\"urn:global:invoice:schema:v1\" region=\"APAC-SG\">\n  <Header>\n    <InvoiceNo source=\"ocr\" confidence=\"0.97\">SI-SG-77125</InvoiceNo>\n    <IssueDate source=\"ocr\" confidence=\"0.96\">2026-10-16</IssueDate>\n    <InvoiceType>Supplier Invoice</InvoiceType>\n  </Header>\n  <Seller>\n    <Name source=\"ocr\" confidence=\"0.98\">Siemens Energy Pte. Ltd.</Name>\n    <TaxID source=\"ocr\" confidence=\"0.96\">M90345678A</TaxID>\n  </Seller>\n  <Buyer>\n    <Name source=\"ocr\" confidence=\"0.95\">Lanwu Procurement Technology (Singapore) Pte. Ltd.</Name>\n  </Buyer>\n  <Total currency=\"SGD\">\n    <NetAmount source=\"ocr\" confidence=\"0.97\">78600.00</NetAmount>\n    <TaxAmount tax=\"GST\" rate=\"0.09\" source=\"ocr\" confidence=\"0.94\">4100.00</TaxAmount>\n    <Freight source=\"ocr\" confidence=\"0.92\">1500.00</Freight>\n    <GrossAmount source=\"ocr\" confidence=\"0.97\">84200.00</GrossAmount>\n  </Total>\n  <EvidenceRef provider=\"third_party_ocr\" model=\"ocr-vlm-2026-10\"\n    page=\"1\" bbox=\"[620,640,900,672]\" rule=\"amount_sum_check:PASSED\"/>\n</Invoice>",
+      "paper_template": "os",
+      "ai": {
+        "title": "Gross S$84,200.00 vs PO Net S$78,600.00 —— 差异构成解释",
+        "confidence": 88,
+        "model_version": "qwen-finance-v2 · 2026-10-15",
+        "body": "系统已自动收集证据：PO 行项目 2 条 + 收货单 GRN 3 条 + GST 税率映射。差异 S$5,600.00 = <b>GST S$4,100.00</b>（PO 以净额登记，其中 spare parts 为 zero-rated）+ <b>运费行 S$1,500.00</b>（PO 无对应行，无收货记录）。",
+        "conclusion": "初步结论：GST 部分为口径差异；运费行属 <b>PO 外费用</b>，建议按合同条款判定——若合同含运费条款可补 PO 行后放行，否则部分退回供应商。",
+        "rule_note": "调查步骤由案件状态机驱动（INVESTIGATING），证据收集为只读操作；处置动作须人工确认。",
+        "disclaimer": "⚠ 大模型生成的建议不自动执行业务操作，请人工确认后操作",
+        "status": "pending",
+        "evidence_refs": [
+          "total.gross_amount",
+          "total.tax_amount",
+          "items.freight",
+          "links.po"
+        ]
+      },
+      "nextAction": {
+        "type": "HUMAN_REVIEW",
+        "reason": "差异调查证据已收集（只读）：GST S$4,100.00 口径差异 + 运费 S$1,500.00 PO 外费用；等待人工三选一处置（确认口径放行 / 要求补 PO 行 / 退回供应商）",
+        "assign_to": "亚太采购共享中心 · 复核组（调查处置）"
+      }
+    },
+    {
+      "caseId": "INV-CN-2026-0386",
+      "detail_level": "list",
+      "status": "RECOGNIZED",
+      "summary": "XML 直读 + SM2 验签通过，全部 Checks PASSED，等待匹配就绪化后自动建档。",
+      "meta": {
+        "region": "CN · 中国",
+        "instance": "CN",
+        "ext": "CN Extension · 数电票",
+        "type": "数电票（增值税专用发票）",
+        "po": null,
+        "supplier": "上海临港智造装备股份有限公司",
+        "supplier_id": null,
+        "amount_display": "¥56,500.00",
+        "received_at": null,
+        "channel": null,
+        "adapter": null,
+        "sm2": null,
+        "vat": null,
+        "risk_label": null,
+        "confidence": 98,
+        "provider": "XML 直读（免 Provider）",
+        "claimed_by": null,
+        "claimed_at": null,
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": null
+      },
+      "facts": {
+        "invoiceAmount": 56500.0,
+        "poAmount": null,
+        "taxAmount": null,
+        "currency": "CNY",
+        "variance": null
+      },
+      "timeline": [],
+      "checks": {
+        "supplierMatch": {
+          "result": "PASSED",
+          "note": "列表级口径（Sheet09 A.1）：全 Checks PASSED，待自动建档"
+        },
+        "authenticity": {
+          "result": "PASSED",
+          "note": "列表级口径（Sheet09 A.1）：全 Checks PASSED，待自动建档"
+        },
+        "duplicate": {
+          "result": "PASSED",
+          "note": "列表级口径（Sheet09 A.1）：全 Checks PASSED，待自动建档"
+        },
+        "poMatch": {
+          "result": "PASSED",
+          "note": "列表级口径（Sheet09 A.1）：全 Checks PASSED，待自动建档"
+        }
+      },
+      "nextAction": {
+        "type": "AUTO_ARCHIVE",
+        "reason": "A.1：无风险（全 Checks PASSED，待自动建档）",
+        "assign_to": null
+      }
+    },
+    {
+      "caseId": "INV-CN-2026-0385",
+      "detail_level": "list",
+      "status": "BLOCKED",
+      "summary": "发票号 + 价税合计与 INV-CN-2026-0291 完全一致，付款前拦截；解除需复核员权限并留痕。",
+      "meta": {
+        "region": "CN · 中国",
+        "instance": "CN",
+        "ext": "CN Extension · 增值税专票",
+        "type": "增值税专票（纸质扫描）",
+        "po": null,
+        "supplier": "深圳广合精密组件有限公司",
+        "supplier_id": null,
+        "amount_display": "¥232,860.00",
+        "received_at": null,
+        "channel": null,
+        "adapter": null,
+        "sm2": null,
+        "vat": null,
+        "risk_label": "重复票",
+        "confidence": 99,
+        "provider": "诺诺",
+        "claimed_by": null,
+        "claimed_at": null,
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": null
+      },
+      "facts": {
+        "invoiceAmount": 232860.0,
+        "poAmount": null,
+        "taxAmount": null,
+        "currency": "CNY",
+        "variance": null
+      },
+      "timeline": [
+        {
+          "t": "10-21 08:12:47",
+          "a": "system",
+          "act": "DEDUP_BLOCKED",
+          "d": "重复票拦截（付款/建档前）",
+          "x": "发票号 24442000000385 + 价税合计 ¥232,860.00 与历史案件 INV-CN-2026-0291 相似度 100% · 未推送 Ariba 建档 · 解除拦截需复核员权限并留痕（tr-90cd1e63 · blk#10336，见 audit_events.json）",
+          "v": "dedup-rule v2.3 · case-machine v2.2"
+        }
+      ],
+      "links": {
+        "invoice": "INV-CN-2026-0385",
+        "supplier": "深圳广合精密组件有限公司",
+        "supplier_id": null,
+        "po": null,
+        "po_state": null,
+        "grn": [],
+        "credit_note": {
+          "relation": "NONE",
+          "ref": null,
+          "match_score": null,
+          "partial": null,
+          "confirmed": false
+        }
+      }
+    },
+    {
+      "caseId": "INV-CN-2026-0384",
+      "detail_level": "list",
+      "status": "NEEDS_REVIEW",
+      "summary": "候选原票 INV-CN-2026-0310（供应商 + 金额匹配 92%），确认冲减 Link 后可进入建档。",
+      "meta": {
+        "region": "CN · 中国",
+        "instance": "CN",
+        "ext": "CN Extension · 红字票",
+        "type": "红字票",
+        "po": null,
+        "supplier": "广州粤海物流服务有限公司",
+        "supplier_id": null,
+        "amount_display": "¥-8,420.00",
+        "received_at": null,
+        "channel": null,
+        "adapter": null,
+        "sm2": null,
+        "vat": null,
+        "risk_label": "红字票待关联原票",
+        "confidence": 88,
+        "provider": "自托管 OCR",
+        "claimed_by": null,
+        "claimed_at": null,
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": null
+      },
+      "facts": {
+        "invoiceAmount": -8420.0,
+        "poAmount": null,
+        "taxAmount": null,
+        "currency": "CNY",
+        "variance": null
+      },
+      "timeline": [],
+      "links": {
+        "invoice": "INV-CN-2026-0384",
+        "supplier": "广州粤海物流服务有限公司",
+        "supplier_id": null,
+        "po": null,
+        "po_state": null,
+        "grn": [],
+        "credit_note": {
+          "relation": "CANDIDATE",
+          "ref": "INV-CN-2026-0310",
+          "match_score": 0.92,
+          "partial": false,
+          "confirmed": false
+        }
+      }
+    },
+    {
+      "caseId": "INV-CN-2026-0383",
+      "detail_level": "list",
+      "status": "VERIFYING",
+      "summary": "A.1 列表级：无风险（查验进行中）。",
+      "meta": {
+        "region": "CN · 中国",
+        "instance": "CN",
+        "ext": "CN Extension · 数电票",
+        "type": "数电票（增值税专用发票）",
+        "po": null,
+        "supplier": "杭州云栖信息技术有限公司",
+        "supplier_id": null,
+        "amount_display": "¥9,990.00",
+        "received_at": null,
+        "channel": null,
+        "adapter": null,
+        "sm2": null,
+        "vat": null,
+        "risk_label": null,
+        "confidence": 97,
+        "provider": "百望云",
+        "claimed_by": null,
+        "claimed_at": null,
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": null
+      },
+      "facts": {
+        "invoiceAmount": 9990.0,
+        "poAmount": null,
+        "taxAmount": null,
+        "currency": "CNY",
+        "variance": null
+      },
+      "timeline": []
+    },
+    {
+      "caseId": "INV-CN-2026-0381",
+      "detail_level": "list",
+      "status": "NEEDS_REVIEW",
+      "summary": "票面 OCR ¥5,650.00 vs XML ¥5,680.00，差额 ¥30 超尾差容差 ±0.06；规则 amount_tax_sum_check 命中。",
+      "meta": {
+        "region": "CN · 中国",
+        "instance": "CN",
+        "ext": "CN Extension · 数电票",
+        "type": "数电票（增值税专用发票）",
+        "po": null,
+        "supplier": "苏州恒信电子材料有限公司",
+        "supplier_id": null,
+        "amount_display": "¥5,680.00（XML 口径）",
+        "received_at": null,
+        "channel": null,
+        "adapter": null,
+        "sm2": null,
+        "vat": null,
+        "risk_label": "价税合计口径冲突",
+        "confidence": 82,
+        "provider": "百望云",
+        "claimed_by": null,
+        "claimed_at": null,
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": null
+      },
+      "facts": {
+        "invoiceAmount": 5680.0,
+        "poAmount": null,
+        "taxAmount": null,
+        "currency": "CNY",
+        "variance": 30.0
+      },
+      "timeline": [
+        {
+          "t": "10-20 11:18:36",
+          "a": "provider",
+          "act": "OCR_CROSS_CHECK_CONFLICT",
+          "d": "多源冲突：票面 OCR 价税合计 ¥5,650.00 vs XML 直读 ¥5,680.00（冲突）",
+          "x": "差额 ¥30.00 超容差 ±0.06 · 双方原文片段、坐标与模型版本均已留存（tr-6aa2f3d1 · blk#10312，见 audit_events.json）",
+          "v": "百望云 ocr-vlm-2026-10 × cn-xml-parser v3.2"
+        },
+        {
+          "t": "10-20 11:18:40",
+          "a": "system",
+          "act": "STATUS_CHANGE",
+          "d": "案件状态 RECOGNIZED → NEEDS_REVIEW",
+          "x": "触发条件：amount_tax_sum_check 未通过 · 字段置信度 96% → 82% · 路由至亚太共享中心复核队列（tr-6aa2f3d1 · blk#10313）",
+          "v": "case-machine v2.2"
+        },
+        {
+          "t": "10-20 11:22:14",
+          "a": "human",
+          "act": "FIELD_EDITED",
+          "d": "人工修正字段 total.gross_amount：¥5,650.00（OCR 票面）→ ¥5,680.00（XML 直读）",
+          "x": "修改原因：票面模糊，以结构化原件为准 · 来源标记「人工」· 原识别值、坐标与 Provider 版本保留可追溯（tr-6aa2f3d1 · blk#10314）",
+          "v": "review-ui v1.2"
+        }
+      ],
+      "links": {
+        "invoice": "INV-CN-2026-0381",
+        "supplier": "苏州恒信电子材料有限公司",
+        "supplier_id": null,
+        "po": null,
+        "po_state": null,
+        "grn": [],
+        "credit_note": {
+          "relation": "NONE",
+          "ref": null,
+          "match_score": null,
+          "partial": null,
+          "confirmed": false
+        }
+      }
+    },
+    {
+      "caseId": "INV-SG-2026-0124",
+      "detail_level": "list",
+      "status": "VERIFYING",
+      "summary": "Tax ID 名录校验进行中，其余 Checks 已 PASSED。（A.1 记 RECOGNIZED→VERIFYING 流转态，本种子取时点终态 VERIFYING）",
+      "meta": {
+        "region": "APAC · 新加坡",
+        "instance": "OS",
+        "ext": "Core + APAC Extension",
+        "type": "Supplier Invoice（海外供应商发票）",
+        "po": null,
+        "supplier": "Dell Asia Pacific Pte. Ltd.",
+        "supplier_id": null,
+        "amount_display": "US$56,300.00",
+        "received_at": null,
+        "channel": null,
+        "adapter": null,
+        "sm2": null,
+        "vat": null,
+        "risk_label": null,
+        "confidence": 98,
+        "provider": "自托管 VLM",
+        "claimed_by": null,
+        "claimed_at": null,
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": null
+      },
+      "facts": {
+        "invoiceAmount": 56300.0,
+        "poAmount": null,
+        "taxAmount": null,
+        "currency": "USD",
+        "variance": null
+      },
+      "timeline": []
+    },
+    {
+      "caseId": "INV-SG-2026-0123",
+      "detail_level": "list",
+      "status": "NEEDS_REVIEW",
+      "summary": "候选原票 INV-SG-2026-0101（匹配度 92%），Link 确认后方可建档。",
+      "meta": {
+        "region": "APAC · 新加坡",
+        "instance": "OS",
+        "ext": "Core + APAC Extension",
+        "type": "Credit Note",
+        "po": null,
+        "supplier": "AWS Asia Pacific (Singapore)",
+        "supplier_id": null,
+        "amount_display": "US$-2,450.00",
+        "received_at": null,
+        "channel": null,
+        "adapter": null,
+        "sm2": null,
+        "vat": null,
+        "risk_label": "Credit Note 未关联原票",
+        "confidence": 89,
+        "provider": "海外 e-invoicing",
+        "claimed_by": null,
+        "claimed_at": null,
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": null
+      },
+      "facts": {
+        "invoiceAmount": -2450.0,
+        "poAmount": null,
+        "taxAmount": null,
+        "currency": "USD",
+        "variance": null
+      },
+      "timeline": [],
+      "links": {
+        "invoice": "INV-SG-2026-0123",
+        "supplier": "AWS Asia Pacific (Singapore)",
+        "supplier_id": null,
+        "po": null,
+        "po_state": null,
+        "grn": [],
+        "credit_note": {
+          "relation": "CANDIDATE",
+          "ref": "INV-SG-2026-0101",
+          "match_score": 0.92,
+          "partial": true,
+          "confirmed": false
+        }
+      }
+    },
+    {
+      "caseId": "INV-SG-2026-0122",
+      "detail_level": "list",
+      "status": "BLOCKED",
+      "summary": "Invoice No. SCH-SG-77410 与 INV-SG-2026-0098 重复，cXML 建档前拦截。",
+      "meta": {
+        "region": "APAC · 新加坡",
+        "instance": "OS",
+        "ext": "Core + APAC Extension",
+        "type": "Supplier Invoice（海外供应商发票）",
+        "po": null,
+        "supplier": "Schaeffler Singapore Pte. Ltd.",
+        "supplier_id": null,
+        "amount_display": "US$128,900.00",
+        "received_at": null,
+        "channel": null,
+        "adapter": null,
+        "sm2": null,
+        "vat": null,
+        "risk_label": "重复票",
+        "confidence": 97,
+        "provider": "自托管 OCR",
+        "claimed_by": null,
+        "claimed_at": null,
+        "claim_lock_expire_at": null,
+        "doc_hold_pending": false,
+        "document_created_receipt": null,
+        "trace_id": null
+      },
+      "facts": {
+        "invoiceAmount": 128900.0,
+        "poAmount": null,
+        "taxAmount": null,
+        "currency": "USD",
+        "variance": null
+      },
+      "timeline": [
+        {
+          "t": "10-18 15:07:52",
+          "a": "system",
+          "act": "DEDUP_BLOCKED",
+          "d": "重复票拦截（付款/建档前）",
+          "x": "Invoice No. SCH-SG-77410 + US$128,900.00 与 INV-SG-2026-0098 完全一致 · 未生成 cXML InvoiceDetailRequest · 供应商 Schaeffler Singapore 侧待沟通（tr-e82a60d4 · blk#10241，见 audit_events.json）",
+          "v": "dedup-rule v2.3"
+        }
+      ],
+      "links": {
+        "invoice": "INV-SG-2026-0122",
+        "supplier": "Schaeffler Singapore Pte. Ltd.",
+        "supplier_id": null,
+        "po": null,
+        "po_state": null,
+        "grn": [],
+        "credit_note": {
+          "relation": "NONE",
+          "ref": null,
+          "match_score": null,
+          "partial": null,
+          "confirmed": false
+        }
+      }
+    }
+  ]
+}
