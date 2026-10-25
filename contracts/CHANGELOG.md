@@ -36,6 +36,18 @@
 
 ---
 
+### ⑤ 2026-10-25 · COMPAT（结构修正） · openapi.yaml Webhooks 改标准 PathItem + 全量 validator 基址
+- **影响文件**：`openapi.yaml`（webhooks 四事件、删除 `components.webhooks` 节）、`tools/validate_contracts.py`（B 段传 `base_uri`）。
+- **内容**：M0 环境缺 openapi-spec-validator，B 段走结构化 lint 兜底（G-M0-003 登记的已知缺口）；M1 R3 按门禁建议在全量环境复跑，暴露原 `components.webhooks` 自定义节不符合 OpenAPI 3.1（components 无 webhooks 成员，webhooks 成员须为 PathItem）。修正：`webhooks.case.recognized / case.blocked / case.resolved / check.failed` 改为标准 `post` 操作（requestBody 引用既有 `#/components/schemas/WebhookPayload`，响应 default 注记重试约定），删除非法 `components.webhooks.CaseEvent` 模板；事件四类型、信封 Schema、签名/幂等/退避约定（x-webhook-conventions）与 FN-A-03 语义零变更。validator 补 `base_uri` 以解析 `invoice-case.schema.json` 外部 $ref（契约单一事实源设计不变）。openapi-spec-validator 0.9 全量 lint 通过，validate_contracts 31 项恢复全绿。
+- **依据**：M0 门禁报告 G-M0-003（「全量环境跑一次完整 validator，结果登记 CHANGELOG」）；清单 FN-A-03/FN-A-07；实施规划 §4-M0 验收①。
+
+### ⑥ 2026-10-25 · SYNC · seeds/batches.json known_page_discrepancies 追加两项页面既有差异登记
+- **影响文件**：`seeds/batches.json`（known_page_discrepancies 数组，2→4 条；batches/cases 数据本体零改动）。
+- **内容**：G-M0-001 交付脚本 tools/check_seeds_vs_ui.py 逐案交叉断言发现两项未登记页面差异：① dashboard os.cases INV-SG-2026-0124 显示受理时点态 RECOGNIZED（vs cases.json 取 A.1 终态 VERIFYING，M0 自检 D11 已有取终态口径，补机器可读登记）；② matching-mapping QUEUE INV-CN-2026-0381 金额显示票面 OCR 值 ¥5,650.00（vs A.1/cases ¥5,680.00 XML 口径，多源冲突案页面显示票面值）。两项均 ui-design 只读不改、seed 逐字保留两侧原值，收敛归 M2/M4；页面既有差异一律经登记后以「已登记豁免」输出，不静默跳过（门禁裁决 A 口径）。
+- **依据**：docs/gate-reports/M0-gate-report.md §10 条目 3（建议 A）；M0 自检 D8/D11；清单 FN-0-15 / CON-B4。
+
+---
+
 ## TODO 未决项登记（冻结不阻塞，实现标注纪律）
 
 | 标记 | 位置 | 内容 |

@@ -20,6 +20,7 @@ M0 契约与种子自检（P01 WP0.8；后续收工检查单复用）。
 
 import json
 import os
+import pathlib
 import re
 import sys
 
@@ -106,8 +107,9 @@ except Exception as e:
 if OAS is not None:
     try:
         from openapi_spec_validator import validate  # 若环境可用则做完整 lint
-        validate(OAS)
-        ok("openapi-spec-validator 全量 lint 通过")
+        # base_uri 使外部 $ref（invoice-case.schema.json 等，契约单一事实源）可被解析
+        validate(OAS, base_uri=pathlib.Path(CONTRACTS).resolve().as_uri() + "/")
+        ok("openapi-spec-validator 全量 lint 通过（含外部 $ref 解析）")
     except ImportError:
         # 结构化 lint（离线兜底）
         errs = []

@@ -6,7 +6,7 @@ __pycache__/
 venv/
 
 # 数据与构建产物（PoC SQLite / 本地对象存储目录，见 ADR-0002）
-backend/data/
+runtime/
 *.db
 *.db-journal
 *.sqlite3

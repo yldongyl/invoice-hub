@@ -62,7 +62,7 @@
    - [ ] seed 一致性断言通过（对照 `seeds/`）；
    - [ ] 依赖纪律自查（backend 无 LLM import；agent/mcp 无 DB 直连；写路径全过受控框架）；
    - [ ] 回填 Excel Sheet03/04「实现状态 / 验收要点」列（受阻须注明阻塞编号）；
-   - [ ] 文档回写：契约变更 → `contracts/CHANGELOG.md` 变更记录；新决策 → `docs/adr/`；CON 收敛 → Excel Sheet06 状态。
+   - [ ] 文档回写：契约变更 → `contracts/` 变更记录；新决策 → `docs/adr/`；CON 收敛 → Excel Sheet06 状态。
 
 ## 8. 输出与提交规范
 

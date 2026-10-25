@@ -219,13 +219,53 @@ webhooks:
       - 重试：消费方非 2xx → 指数退避重试 ≤8 次（队列面板可观测，FN-9-07 回调重试通道）；
       - 事件四类型 = enum-registry.webhook_event。
   case.recognized:
-    $ref: "#/components/webhooks/CaseEvent"
+    post:
+      description: 识别完成（进入 RECOGNIZED/NEEDS_REVIEW）；消费方拉详情驱动上游流转（FN-A-03）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookPayload"
+      responses:
+        default:
+          description: 消费方 2xx 视为送达；非 2xx 指数退避重试 ≤8 次（约定见 x-webhook-conventions）
   case.blocked:
-    $ref: "#/components/webhooks/CaseEvent"
+    post:
+      description: 红线拦截（payload.blockReason/ruleId/evidenceRef）；冻结下游建档与付款前置（FN-A-03）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookPayload"
+      responses:
+        default:
+          description: 消费方 2xx 视为送达；非 2xx 指数退避重试 ≤8 次（约定见 x-webhook-conventions）
   case.resolved:
-    $ref: "#/components/webhooks/CaseEvent"
+    post:
+      description: 复核完成（payload.resolution/operator/actionTrailRef）；触发目标系统建档（FN-A-03）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookPayload"
+      responses:
+        default:
+          description: 消费方 2xx 视为送达；非 2xx 指数退避重试 ≤8 次（约定见 x-webhook-conventions）
   check.failed:
-    $ref: "#/components/webhooks/CaseEvent"
+    post:
+      description: 单项校验失败（不必然整案拦截）；提示业务侧关注差异（FN-A-03）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookPayload"
+      responses:
+        default:
+          description: 消费方 2xx 视为送达；非 2xx 指数退避重试 ≤8 次（约定见 x-webhook-conventions）
 
 components:
   securitySchemes:
@@ -390,18 +430,6 @@ components:
             case.resolved → {resolution, operator, actionTrailRef}
             check.failed → {checkName, result, variance}
           additionalProperties: true
-  webhooks:
-    CaseEvent:
-      type: object
-      description: Webhook 推送请求体模板（四个事件路径共用信封，语义见 x-webhook-conventions）
-      properties:
-        requestBody:
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WebhookPayload"
-        required:
-          type: boolean
   responses:
     BadRequest:
       description: 校验失败（类型白名单/大小/必填项/票面 Schema 不通过——受理阶段即拒绝入池，FN-1-03）
