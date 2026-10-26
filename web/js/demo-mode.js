@@ -26,9 +26,12 @@ window.IHUB_DEMO = (function () {
       const el = document.createElement('div');
       el.id = 'ihub-demo-badge';
       el.textContent = '演示模式（未连接后台）· 页面显示内嵌种子数据（L2 演示口径）';
-      el.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;' +
-        'background:#FFF7E8;color:#FF7D00;border:1px solid #FF7D00;border-top:none;' +
-        'padding:4px 16px;border-radius:0 0 8px 8px;font-size:12px;white-space:nowrap;' +
+      /* 修复 P09 UI-M2-F01（2026-10-26 用户授权）：原 top:0 居中横条覆盖 header（h-14=56px）
+       * 中线，遮挡 dashboard 实例切换按钮，独立演示态真实点击被吞。角标下移至 header 之下、
+       * 恢复四边圆角，并加 pointer-events:none——纯展示件不得拦截交互。 */
+      el.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9999;' +
+        'pointer-events:none;background:#FFF7E8;color:#FF7D00;border:1px solid #FF7D00;' +
+        'padding:4px 16px;border-radius:8px;font-size:12px;white-space:nowrap;' +
         'box-shadow:0 2px 8px rgba(0,0,0,.08)';
       document.body.appendChild(el);
     }

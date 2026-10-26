@@ -45,7 +45,10 @@ tailwind.config = {
   .d1{animation-delay:.10s}.d2{animation-delay:.22s}.d3{animation-delay:.34s}.d4{animation-delay:.46s}
 
   .seg-active{background:#165DFF;color:#fff;box-shadow:0 1px 4px rgba(22,93,255,.35);}
-  .tenant-lock{opacity:.55;pointer-events:none;}
+  /* 修复 P09 UI-M2-F02（2026-10-26 用户授权·web 副本单点修正，ui-design 只读不改，口径例外登记
+   * tools/ui-consistency-checklist.md §4-4）：原 pointer-events:none 吞掉锁定态点击，致
+   * pickTenant 的「租户已由 SSO 断言推导（只读）」拒绝 toast 不可达。保留降透明度+禁用手势提示。 */
+  .tenant-lock{opacity:.55;cursor:not-allowed;}
 
   @media (prefers-reduced-motion: reduce){
     .glow-1,.glow-2{animation:none;}
@@ -217,7 +220,7 @@ tailwind.config = {
 <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-login opacity-0 pointer-events-none translate-y-2 max-w-[640px]"></div>
 
 <script>
-let tenant = 'cn', locked = false;
+let tenant = 'cn', locked = false, busy = false;
 const TENANTS = {
   cn:{ name:'澜坞（上海）· 中国实例', note:'数据区域：中国境内存储 · 数据驻留要求待 H39 确认（推断标注）' },
   os:{ name:'Lanwu Singapore · 海外实例', note:'数据区域：新加坡 · 海外实例（某海外真实场景链路已验证）· 租户四隔离（数据/配置/Provider Key/发票池）' }
@@ -235,6 +238,7 @@ function pickTenant(k){
 }
 function ssoLogin(name, derived){
   /* SSO：租户由 IdP 断言自动推导 → 锁定选择器（只读展示） */
+  if(busy){ toast('认证进行中…（演示）'); return; }
   tenant = derived; locked = true;
   setSeg(derived);
   document.getElementById('tenant-seg').classList.add('tenant-lock');
@@ -245,8 +249,10 @@ function ssoLogin(name, derived){
   enter('企业 SSO（'+name+'）');
 }
 function enter(way){
+  /* P09 UI-M2-F02 修复：原 disabled=true 使锁定态下 pwdLogin 拒绝 toast 不可达（按钮点击被浏览器
+   * 吞掉、Enter 隐式提交亦被禁用按钮抑制）。改为 busy 标志在 pwdLogin/ssoLogin 内部门控防重复提交。 */
   const btn=document.getElementById('btn-login');
-  btn.disabled=true; btn.textContent='认证中…'; btn.classList.add('opacity-70');
+  busy=true; btn.textContent='认证中…'; btn.classList.add('opacity-70');
   setTimeout(()=>{
     toast(`✓ ${way} 认证成功（演示）· 租户：${TENANTS[tenant].name} · 王莉 · 复核员 · MFA 已通过 · 登录事件已记入审计日志`);
     setTimeout(()=>location.href='dashboard-overview.html', 1100);
@@ -255,6 +261,7 @@ function enter(way){
 function pwdLogin(e){
   e.preventDefault();
   if(locked){ toast('当前为 SSO 推导会话（演示）· 账密登录请刷新页面后重试'); return false; }
+  if(busy){ return false; }   // 防重复提交（原由 disabled 实现，F02 修复后以标志门控）
   const u=document.getElementById('in-user').value.trim(), p=document.getElementById('in-pwd').value.trim();
   let ok=true;
   document.getElementById('err-user').classList.toggle('hidden', !!u); if(!u) ok=false;
