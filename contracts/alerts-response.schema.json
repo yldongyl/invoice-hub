@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice-hub:alerts-response:v1",
+  "title": "风险告警读侧响应（M2 WP2.2 · FN-5-09 读侧）",
+  "description": "GET /v1/alerts?instance= 响应：从规则命中/状态事件生成的告警视图（seed 六条为基线，alerts.json→alerts 表）。level=danger/warning 为 FN-5-09 展示级词汇（清单原文「级别 danger / warning」；与 registry.alert_level 的告警引擎分发级 P0/P1/P2 分轨——alerts.json note 已声明语义对照，validate_contracts 断言 ⊆ color_tokens 词表）。每条告警携带证据摘要（规则 ID+版本 / 来源 Provider / AI 建议+置信度+人工确认约束，FN-5-09）；ai_advice_marked=true 时 evidence 必含「人工确认」字样（系统侧真实校验，非硬编码透传）；告警中的 AI 建议仅为参考，不自动写回（P00 §5 AI 治理）。FN-A-07 登记见 CHANGELOG ⑦。",
+  "type": "object",
+  "required": ["instance", "items", "total"],
+  "properties": {
+    "instance": { "type": "string", "enum": ["CN", "OS"] },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/alertItem" } },
+    "total": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "alertItem": {
+      "type": "object",
+      "description": "告警条目（alerts.json 逐字结构 + 系统校验附加字段；dashboard 告警卡与 GET /v1/alerts 同源——两处字段集由 tools/validate_contracts.py F 段断言一致）",
+      "required": ["level", "title", "meta", "evidence", "case_ref", "ai_advice_marked"],
+      "properties": {
+        "level": { "type": "string", "enum": ["danger", "warning"] },
+        "title": { "type": "string" },
+        "meta": { "type": "string", "description": "一行元信息（案件号/供应商/相对时间，逐字）" },
+        "evidence": { "type": "string", "description": "可展开证据摘要（含规则 ID+版本 / Provider / AI 建议标注）" },
+        "case_ref": { "type": ["string", "null"], "pattern": "^(INV-(CN|SG)-\\d{4}-\\d{4})?$", "description": "从 meta 解析的案件引用（无引用为 null）" },
+        "ai_advice_marked": { "type": "boolean", "description": "evidence 是否含 AI 建议（系统检测）；true 时校验须含人工确认约束文案" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

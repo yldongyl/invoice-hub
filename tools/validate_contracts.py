@@ -74,7 +74,9 @@ def absolutize_refs(schema, seen=None):
     return schema
 
 SCHEMA_FILES = ["invoice-schema.json", "invoice-case.schema.json", "events.schema.json",
-                "provider-spi.schema.json", "routing-config.schema.json", "adapter-contract.schema.json"]
+                "provider-spi.schema.json", "routing-config.schema.json", "adapter-contract.schema.json",
+                # M2 读面契约（CHANGELOG ⑦）
+                "dashboard-response.schema.json", "alerts-response.schema.json", "case-read.schema.json"]
 registry_entries = []
 schemas = {}
 print("A. JSON Schema 编译")
@@ -252,6 +254,37 @@ unknown = [x for x in set(alert_ids + kb_ids) if x not in case_set]
 disc_text = " ".join(kb.get("known_page_discrepancies", []))
 undeclared = [x for x in unknown if x not in disc_text]
 (ok if not undeclared else fail)("alerts/batches 引用案件均在主数据集或已登记扩展白名单" + (f" · 扩展案件 {unknown}（均见 known_page_discrepancies）" if unknown and not undeclared else f" · 未登记引用 {undeclared}"))
+
+# ── F. M2 读面契约交叉一致（CHANGELOG ⑦）─────────────────────────
+print("F. M2 读面契约交叉一致（dashboard/alerts/case-read ↔ registry/invoice-case）")
+
+DSH = schemas.get("dashboard-response.schema.json", {})
+ALR = schemas.get("alerts-response.schema.json", {})
+CRD = schemas.get("case-read.schema.json", {})
+if not (DSH and ALR and CRD):
+    fail("F 段跳过：M2 读面 Schema 编译未通过（禁止空 Schema 掩盖）")
+else:
+    # adapter_status inline enum 与 registry 全等（dashboard.adapter_status.items.status_code）
+    _as_codes = DSH["properties"]["adapter_status"]["properties"]["items"]["items"]["properties"]["status_code"]["enum"]
+    same_enum(_as_codes, "adapter_status", "dashboard.adapter_status.status_code")
+    # 告警条目：两文件 $defs 字段集全等（代码侧单一 builder，契约侧禁漂移）
+    _d_keys = set(DSH["$defs"]["alertItem"]["properties"])
+    _a_keys = set(ALR["$defs"]["alertItem"]["properties"])
+    (ok if _d_keys == _a_keys else fail)(f"dashboard/alerts 两处 alertItem 字段集一致（{sorted(_d_keys)}）" + ("" if _d_keys == _a_keys else f" · 差集 {sorted(_d_keys ^ _a_keys)}"))
+    # 告警 level ⊆ color_tokens 词表（danger/warning 展示级；分发级 P0-P2 另轨见 registry.alert_level）
+    _lvl = set(ALR["$defs"]["alertItem"]["properties"]["level"]["enum"])
+    _ct = set(REG.get("color_tokens", {}))
+    (ok if _lvl <= _ct else fail)(f"alerts.level(danger/warning 展示级) ⊆ color_tokens 词表" + ("" if _lvl <= _ct else f" · 越界 {sorted(_lvl - _ct)}"))
+    # case-read 投影：六态/detail_level 与 invoice-case 全等；tab 词汇=清单 FN-0-14 原文
+    _cr_status = set(CRD["$defs"]["listProjection"]["properties"]["status"]["enum"])
+    (ok if _cr_status == STATUS_SET else fail)("case-read.listProjection.status 六态与 registry.case_status 全等" + ("" if _cr_status == STATUS_SET else f" · 差集 {sorted(_cr_status ^ STATUS_SET)}"))
+    _tabs = CRD["$defs"]["existsResponse"]["properties"]["deeplink"]["properties"]["tabs"]["items"]["enum"]
+    (ok if sorted(_tabs) == ["arch", "log", "sla"] else fail)(f"case-read deeplink tabs=FN-0-14 词汇 {{log|sla|arch}}（实际 {sorted(_tabs)}）")
+    # seeds/adapters.json：status_code ∈ registry 三值
+    _ad = jload(os.path.join(SEEDS, "adapters.json"))["adapters"]
+    _reg_as = set(codes_of("adapter_status"))
+    _ad_bad = [a["name"] for a in _ad if a["status_code"] not in _reg_as]
+    (ok if not _ad_bad else fail)(f"adapters.json {len(_ad)} 条 status_code ∈ enum-registry.adapter_status" + (f" · 违例 {_ad_bad}" if _ad_bad else ""))
 
 if FAILS:
     print(f"\n❌ validate_contracts：{len(FAILS)} 项失败 / {len(PASSES)} 项通过")

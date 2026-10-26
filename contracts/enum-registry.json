@@ -1,12 +1,13 @@
 {
-  "version": "1.0.0",
-  "status": "v1 · FROZEN（M0，2026-10-25 随 CON 决议冻结）",
-  "description": "全站枚举注册表——Excel Sheet08《枚举字典》全 115 行机器可读化，唯一实现依据（CON-B1）。禁止硬编码字面量、禁止造词；前后端徽章与本表同源（FN-0-15）。每个 values 条目的 code/label/color_raw/note 四字段与 Sheet08 的「值/代码、标签/含义、颜色/级别、备注」四列逐字一致，由 tools/check_enums.py 逐行比对；color 为语义色板 token（见 ui-design/design-system.md §2），为附加字段不参与逐字比对；个别类别附机器字段（如 actor/enabled/access/pattern/min-max），亦为附加。",
-  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx · Sheet08 枚举字典（115 行数据，第 5–119 行）· 上游口径：清单 MD §2 / 附录 A.4 / FN-0-10 / FN-0-13",
+  "version": "1.1.0",
+  "status": "v1 · FROZEN（M0，2026-10-25 随 CON 决议冻结；v1.1.0 M2 兼容增补 link_type）",
+  "description": "全站枚举注册表——Excel Sheet08《枚举字典》全 120 行机器可读化（v1.1.0 含 M2 增补 link_type 5 行），唯一实现依据（CON-B1）。禁止硬编码字面量、禁止造词；前后端徽章与本表同源（FN-0-15）。每个 values 条目的 code/label/color_raw/note 四字段与 Sheet08 的「值/代码、标签/含义、颜色/级别、备注」四列逐字一致，由 tools/check_enums.py 逐行比对；color 为语义色板 token（见 ui-design/design-system.md §2），为附加字段不参与逐字比对；个别类别附机器字段（如 actor/enabled/access/pattern/min-max），亦为附加。",
+  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx · Sheet08 枚举字典（120 行数据，第 5–124 行）· 上游口径：清单 MD §2 / 附录 A.4 / FN-0-10 / FN-0-13；link_type 类别上游=清单 §2.2 FN-0-04 原文",
   "notes": [
     "置信度中档上界按清单 FN-0-06/Sheet08 取 80–94%（design-system.md §3 所写 80–95% 为笔误，裁决见 docs/adr/0004 附#2）",
     "字段来源六枚举为全站唯一口径；SPI/Provider 侧细粒度词表按 docs/adr/0004 附#1 归一映射（pdf_text→xml_direct、vlm→model、verify_api→webhook），映射表见 contracts/field-alias.md",
-    "案件状态/来源/结果/主体四类徽章配色全站唯一（FN-0-15）；状态流转（state_transition）与四校验项（check_item）为 Sheet08 规则型类别，非取值枚举"
+    "案件状态/来源/结果/主体四类徽章配色全站唯一（FN-0-15）；状态流转（state_transition）与四校验项（check_item）为 Sheet08 规则型类别，非取值枚举",
+    "link_type（v1.1.0 增补）：五类 Link 关系词表取自清单 FN-0-04 原文（匹配/收货/来自/冲减/包含），关闭 M1 门禁缺陷 M-M1-002（原硬编码于 domain/models.py）；Excel Sheet08 同步追加 5 行，FN-A-07 兼容登记见 contracts/CHANGELOG.md ⑦"
   ],
   "color_tokens": {
     "primary": "蓝 #165DFF",
@@ -244,6 +245,17 @@
         { "code": "抽检批次", "label": "QA-YYYY-Wnn-NN", "color_raw": "—", "note": "每周1批", "pattern": "^QA-\\d{4}-W\\d{2}-\\d{2}$" },
         { "code": "标注任务", "label": "ANNO-YYYY-NNNN", "color_raw": "—", "note": "—", "pattern": "^ANNO-\\d{4}-\\d{4}$" },
         { "code": "原件摘要", "label": "SHA-256", "color_raw": "—", "note": "受理即登记，贯穿生命周期", "pattern": "^([0-9a-f]{4})…([0-9a-f]{4})$|^[0-9a-f]{64}$" }
+      ]
+    },
+    "link_type": {
+      "s08_category": "Link 类型",
+      "desc": "五类 Link 关系词表（FN-0-04 原文；可查询、可校验的结构化关系）",
+      "values": [
+        { "code": "匹配", "label": "发票—匹配→PO", "color_raw": "—", "note": "po_state 同源 check_result" },
+        { "code": "收货", "label": "发票—收货→GRN", "color_raw": "—", "note": "GRN 行级引用（grn_no/note）" },
+        { "code": "来自", "label": "发票—来自→供应商", "color_raw": "—", "note": "supplier + supplier_id（SUP-NNNNN）" },
+        { "code": "冲减", "label": "红字票/CN—冲减→原票", "color_raw": "—", "note": "relation ∈ 契约内联（NONE/CANDIDATE/OFFSET_OUT/OFFSET_IN）" },
+        { "code": "包含", "label": "案件—包含→原件与附件", "color_raw": "—", "note": "原件/附件引用（file/source_xml）" }
       ]
     }
   }

@@ -46,6 +46,11 @@
 - **内容**：G-M0-001 交付脚本 tools/check_seeds_vs_ui.py 逐案交叉断言发现两项未登记页面差异：① dashboard os.cases INV-SG-2026-0124 显示受理时点态 RECOGNIZED（vs cases.json 取 A.1 终态 VERIFYING，M0 自检 D11 已有取终态口径，补机器可读登记）；② matching-mapping QUEUE INV-CN-2026-0381 金额显示票面 OCR 值 ¥5,650.00（vs A.1/cases ¥5,680.00 XML 口径，多源冲突案页面显示票面值）。两项均 ui-design 只读不改、seed 逐字保留两侧原值，收敛归 M2/M4；页面既有差异一律经登记后以「已登记豁免」输出，不静默跳过（门禁裁决 A 口径）。
 - **依据**：docs/gate-reports/M0-gate-report.md §10 条目 3（建议 A）；M0 自检 D8/D11；清单 FN-0-15 / CON-B4。
 
+### ⑦ 2026-10-26 · COMPAT（v1.1.0） · M2 读面契约增补：link_type 入注册表 + 内部读面响应 Schema + adapters 种子
+- **影响文件**：`enum-registry.json`（v1.0.0→v1.1.0，新增 `link_type` 类别 5 值）、Excel `08-枚举字典`（同步追加 5 行，115→120 行）、`tools/check_enums.py`（类别映射+总量）、`tools/validate_contracts.py`（SCHEMA_FILES +3、新增 F 段交叉断言）、新增 `dashboard-response.schema.json` / `alerts-response.schema.json` / `case-read.schema.json`、新增 `seeds/adapters.json`（5 条）、`backend/domain/models.py`（LINK_TYPES 改 registry 引用）。
+- **内容**：① **link_type 增补**（关闭 M1 门禁缺陷 **M-M1-002**）：五类关系词表取自清单 FN-0-04 原文（匹配/收货/来自/冲减/包含），code/label/color_raw/note 四字段与 Sheet08 追加行逐字（check_enums 120/120 通过）；domain 层由硬编码常量改为 registry 引用，装载即校验。② **M2 内部读面响应契约**（FN-8-03/11 · P03 WP2.1/2.2）：dashboard 聚合（KPI 四卡含红线对照真算/环形/趋势/Top5 含逐案交叉核算与豁免标注/告警×3/适配状态条/核算元数据）、alerts 读侧（FN-5-09：level danger/warning 展示级 ⊆ color_tokens 词表，与分发级 P0-P2 分轨；AI 建议必含人工确认约束为服务侧真实校验）、case-read 投影（列表 listProjection 瘦身关闭 **M-M1-005** 内部面、view=switcher、exists 深链校验含 FN-0-14 tab 词汇 {log|sla|arch} 内联注记）。北向集成面（FN-A-02，openapi.yaml）**零改动**——详情 view=summary/full 仍过 invoice-case.schema.json 全量契约；`GET /v1/cases` 列表不在北向清单内，其 full 案件形态由全量聚合瘦身为投影属内部面首次接线前的形态收敛，无既有消费者。③ **adapters.json 种子**（§4.3 后台数据契约「Adapter 状态清单」）：dashboard 底部状态条 5 行逐字入库（status_code ∈ registry.adapter_status 三值，glyph 服务端派生）——新增 seed 文件非既冻结数据修改。④ 聚合口径（用户裁决 2026-10-26）：历史累计基线以 kpi_snapshots 表为权威源，可核算项（Top5 对照/红线布尔/donut 合计/live 计数/AI 标注）由 cases/alerts/adapters 表真算，禁文件透传与硬编码。
+- **依据**：docs/gate-reports/M1-gate-report.md §9（M-M1-002/005 处置=M2）；清单 FN-0-04/FN-8-03/FN-8-11/FN-5-09/FN-0-14/§4.3；P03 WP2.1/2.2。
+
 ---
 
 ## TODO 未决项登记（冻结不阻塞，实现标注纪律）

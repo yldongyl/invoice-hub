@@ -15,7 +15,7 @@ def test_healthz(client):
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
-    assert body["enum_registry_version"] == "1.0.0"
+    assert body["enum_registry_version"] == "1.1.0"  # M2 v1.1.0：兼容增补 link_type（CHANGELOG ⑦）
     assert body["database"] == "reachable"
 
 

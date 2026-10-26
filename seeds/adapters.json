@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "status": "v1 · M2 新增（2026-10-26，FN-A-07 兼容登记见 contracts/CHANGELOG.md ⑦）",
+  "source": "ui-design/dashboard-overview.html 底部「目标采购平台适配状态」5 行逐字（§4.3 后台数据契约「Adapter 状态清单」；FN-7-01 呈现位）",
+  "note": "status_code ∈ enum-registry.adapter_status 三值（装载即校验，M2 v1.1.0）；glyph 由聚合服务从 status_code 文本派生（不硬编码）；adapter-management 全量治理/配置与测试建档属 M4 接线，本 seed 仅承载 dashboard 状态条读侧口径。",
+  "adapters": [
+    { "name": "SAP Ariba", "mode": "cXML InvoiceDetailRequest", "status_text": "已实联", "status_code": "已对接 ✓ (live)", "display": "cXML InvoiceDetailRequest · 已实联" },
+    { "name": "Oracle Payables", "mode": "AP Invoice Import", "status_text": "已实联", "status_code": "已对接 ✓ (live)", "display": "AP Invoice Import · 已实联" },
+    { "name": "Coupa Invoicing", "mode": "Invoice API", "status_text": "适配中", "status_code": "适配中 ◐ (wip)", "display": "Invoice API · 适配中" },
+    { "name": "S/4HANA Supplier Invoice", "mode": "Supplier Invoice API", "status_text": "规划中", "status_code": "规划中 ○ (plan)", "display": "Supplier Invoice API · 规划中" },
+    { "name": "自研应付系统", "mode": "REST / JSON / MQ", "status_text": "已对接", "status_code": "已对接 ✓ (live)", "display": "REST / JSON / MQ · 已对接" }
+  ]
+}

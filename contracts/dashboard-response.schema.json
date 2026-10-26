@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice-hub:dashboard-response:v1",
+  "title": "总览仪表盘聚合响应（M2 WP2.1 · FN-8-11）",
+  "description": "GET /v1/dashboard?instance= 一次返回：KPI 四卡（含红线对照、待复核/BLOCKED 实时计数）、环形分布、近 7 日三类风险趋势、待处理案件 Top5、告警卡 ×3、平台适配状态条。聚合口径（用户裁决 2026-10-26）：历史累计基线值以库内 kpi_snapshots 表为权威源（演示基线，M0 冻结 seed）；可实时核算项（Top5 逐案对照、红线对照布尔、donut 合计校验、live 计数、AI 建议标注、适配状态）由聚合服务对 cases/alerts/adapters 表真算——禁止文件透传与硬编码字面量（P03 WP2.1）。KPI 口径与 audit Tab2 同源聚合（CON-B6 / FN-8-11）。FN-A-07 登记见 CHANGELOG ⑦。",
+  "type": "object",
+  "required": ["instance", "instance_label", "donut_scope", "kpi", "donut", "trend_7d", "top_cases", "alerts", "adapter_status", "reconciliation"],
+  "properties": {
+    "instance": { "type": "string", "enum": ["CN", "OS"] },
+    "instance_label": { "type": "string", "description": "实例标签（kpi.json label 逐字，含「0918 链路已验证实例」海外注记）" },
+    "donut_scope": { "type": "string", "description": "环形图 scope 徽章（CN Extension · 中国 / Core + Regional Ext · 海外）" },
+    "kpi": {
+      "type": "object",
+      "required": ["total", "total_sub", "touchless", "touchless_sub", "false_auto", "pending"],
+      "properties": {
+        "total": { "type": "string", "description": "总处理票据量（本月，千分位展示串——快照基线）" },
+        "total_sub": { "type": "string", "description": "环比+直读占比副文案（快照基线逐字）" },
+        "touchless": { "type": "string", "description": "Touchless 比率数值（STP Accuracy 口径，FN-8-11/8-12）" },
+        "touchless_sub": { "type": "string", "description": "环比+口径声明副文案" },
+        "false_auto": {
+          "type": "object",
+          "description": "错误自动放行率红线卡：rate/limit 为快照口径展示串；within_redline=服务端数值解析真算（FN-5-05 红线对照，禁配置绕过——上限恒 ≤0.05% 语义由本字段消费方+引擎侧共同保证）",
+          "required": ["rate", "limit", "within_redline"],
+          "properties": {
+            "rate": { "type": "string" },
+            "limit": { "type": "string" },
+            "within_redline": { "type": "boolean", "description": "rate ≤ limit 真算结果" },
+            "no_relax_note": { "type": "string", "description": "「不允许以放松校验换取自动化率」红线注记（页面同源文案）" }
+          },
+          "additionalProperties": false
+        },
+        "pending": {
+          "type": "object",
+          "description": "待人工复核卡：display/risk_display 为快照基线（历史全量口径）；live_* 为 cases 表实时 SQL 聚合（演示案件子集现值，页面一致性以基线为准、live 供接线增量参考与门禁核算）",
+          "required": ["display", "risk_display", "live_needs_review", "live_blocked"],
+          "properties": {
+            "display": { "type": "string" },
+            "risk_display": { "type": "string", "description": "「6 个高风险」类文案（快照基线）" },
+            "live_needs_review": { "type": "integer", "minimum": 0, "description": "本实例 NEEDS_REVIEW 实时计数（cases 表）" },
+            "live_blocked": { "type": "integer", "minimum": 0, "description": "本实例 BLOCKED 实时计数（cases 表）" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "donut": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "value", "color", "note"],
+        "properties": {
+          "name": { "type": "string" },
+          "value": { "type": "integer", "minimum": 0, "maximum": 100, "description": "占比（三段合计=100，服务端真算校验）" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "trend_7d": {
+      "type": "object",
+      "description": "近 7 日三类风险趋势（查重拦截/验真异常/字段冲突，FN-5-09/8-11；手写 SVG 呈现为前端口径）",
+      "required": ["labels", "series"],
+      "properties": {
+        "labels": { "type": "array", "minItems": 7, "maxItems": 7, "items": { "type": "string" } },
+        "series": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["name", "color", "data"],
+            "properties": {
+              "name": { "type": "string", "enum": ["查重拦截", "验真异常", "字段冲突"] },
+              "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+              "data": { "type": "array", "minItems": 7, "maxItems": 7, "items": { "type": "integer", "minimum": 0 } }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "top_cases": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "description": "待处理案件 Top5（行字段=FN-8-01 列口径；快照行为源，逐案与 cases 表交叉核算——in_master_dataset/live_status/exempted/note 为核算附加）",
+      "items": {
+        "type": "object",
+        "required": ["caseId", "region", "supplier", "amount", "status", "conf", "risk", "provider", "in_master_dataset", "exempted"],
+        "properties": {
+          "caseId": { "type": "string", "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$" },
+          "region": { "type": "string" },
+          "supplier": { "type": "string" },
+          "amount": { "type": "string", "description": "带币种展示串（负数红字显示为前端口径 FN-0-15）" },
+          "status": { "type": "string", "enum": ["RECOGNIZED", "VERIFYING", "NEEDS_REVIEW", "INVESTIGATING", "RESOLVED", "BLOCKED"] },
+          "conf": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "risk": { "type": ["object", "null"], "required": ["t", "c"], "properties": { "t": { "type": "string" }, "c": { "type": "string", "enum": ["danger", "warning"] } }, "additionalProperties": false },
+          "provider": { "type": "string" },
+          "in_master_dataset": { "type": "boolean", "description": "案件是否在 cases 主数据集（扩展案件如 INV-SG-2026-0121=false，须命中 known_page_discrepancies 登记）" },
+          "live_status": { "type": ["string", "null"], "enum": ["RECOGNIZED", "VERIFYING", "NEEDS_REVIEW", "INVESTIGATING", "RESOLVED", "BLOCKED", null], "description": "cases 表实时状态（不在主数据集为 null）——与快照不一致且未登记豁免=服务端报错" },
+          "exempted": { "type": "boolean", "description": "快照↔实况差异是否命中 seeds/batches.json known_page_discrepancies 已登记项（G-M0-001 豁免纪律：未登记差异不允许出现在响应中）" },
+          "note": { "type": ["string", "null"], "description": "豁免/扩展注记（逐字登记条目摘录）" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "alerts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/alertItem" }
+    },
+    "adapter_status": {
+      "type": "object",
+      "description": "目标采购平台适配状态条（FN-7-01 呈现位 / §4.3 后台数据契约「Adapter 状态清单」；seeds/adapters.json→adapters 表，status_code ∈ enum-registry.adapter_status 装载即校验，glyph 服务端从 code 文本派生）",
+      "required": ["items"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "display", "status_code", "glyph"],
+            "properties": {
+              "name": { "type": "string" },
+              "display": { "type": "string", "description": "页面小字逐字（接口模式 · 状态文案）" },
+              "status_code": { "type": "string", "enum": ["已对接 ✓ (live)", "适配中 ◐ (wip)", "规划中 ○ (plan)"], "description": "inline enum=registry.adapter_status 三值，validate_contracts F 段全等断言（禁漂移）" },
+              "glyph": { "type": "string", "enum": ["✓", "◐", "○"] }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "reconciliation": {
+      "type": "object",
+      "description": "聚合核算元数据（核算口径透明化，P03 验收④「聚合值与 seed 手工核算一致」的过程留痕）",
+      "required": ["mode", "sources", "donut_sum_100", "exemptions_applied", "mismatches_unregistered"],
+      "properties": {
+        "mode": { "const": "snapshot+live" },
+        "sources": { "type": "array", "items": { "type": "string" } },
+        "donut_sum_100": { "type": "boolean", "description": "环形三段占比合计=100 真算校验结果" },
+        "exemptions_applied": { "type": "array", "items": { "type": "string" }, "description": "本次响应命中的已登记豁免条目（known_page_discrepancies 摘录）" },
+        "mismatches_unregistered": { "type": "array", "items": { "type": "string" }, "description": "未登记差异（恒为空数组——出现即服务报错，500；空数组=核算全对齐）" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "alertItem": {
+      "type": "object",
+      "description": "与 contracts/alerts-response.schema.json $defs.alertItem 字段集一致（validate_contracts F 段断言，代码侧单一 builder 同源生成）",
+      "required": ["level", "title", "meta", "evidence", "case_ref", "ai_advice_marked"],
+      "properties": {
+        "level": { "type": "string", "enum": ["danger", "warning"] },
+        "title": { "type": "string" },
+        "meta": { "type": "string" },
+        "evidence": { "type": "string" },
+        "case_ref": { "type": ["string", "null"], "pattern": "^(INV-(CN|SG)-\\d{4}-\\d{4})?$" },
+        "ai_advice_marked": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

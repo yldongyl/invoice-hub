@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:global:invoice-hub:case-read:v1",
+  "title": "案件内部读面投影（M2 WP2.1 · FN-8-03/11、FN-0-14）",
+  "description": "内部只读 API 面的投影形态：GET /v1/cases 列表（listProjection）、GET /v1/cases?view=switcher（案件切换器，case-detail Header）、GET /v1/cases/{caseId}/exists（深链存在性校验，FN-0-14）。本文件为内部面（web 消费）契约，不改变北向集成面（FN-A-02，openapi.yaml v1 FROZEN——详情 view=summary/full 一律过 invoice-case.schema.json）。投影字段路径与 invoice-case.schema.json 同构（meta/facts 为其 required 键子集口径）；M1 门禁 MINOR M-M1-005 的列表瘦身落此文件。FN-A-07 兼容登记见 contracts/CHANGELOG.md ⑦。",
+  "type": "object",
+  "required": ["items", "total", "page", "pageSize"],
+  "properties": {
+    "items": { "type": "array", "items": { "$ref": "#/$defs/listProjection" } },
+    "total": { "type": "integer", "minimum": 0 },
+    "page": { "type": "integer", "minimum": 1 },
+    "pageSize": { "type": "integer", "minimum": 1, "maximum": 200 }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "listProjection": {
+      "type": "object",
+      "description": "列表行投影（FN-8-01 列口径的机读承载）：detail_level/status/summary/meta/facts。full 案件不再返回全量聚合（M-M1-005 瘦身）；详情走 GET /v1/cases/{id}?view=full。",
+      "required": ["caseId", "detail_level", "status", "meta", "facts"],
+      "properties": {
+        "caseId": { "type": "string", "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$" },
+        "detail_level": { "type": "string", "enum": ["full", "list"] },
+        "status": { "type": "string", "enum": ["RECOGNIZED", "VERIFYING", "NEEDS_REVIEW", "INVESTIGATING", "RESOLVED", "BLOCKED"] },
+        "summary": { "type": ["string", "null"] },
+        "meta": {
+          "type": "object",
+          "description": "meta 投影（路径与 invoice-case.schema.json #/properties/meta 同构；additionalProperties 开放以承载 claim 子态等全部 meta 键——强校验由详情视图 full 聚合保证）",
+          "required": ["region", "instance", "type", "supplier", "amount_display"],
+          "properties": {
+            "region": { "type": "string" },
+            "instance": { "type": "string", "enum": ["CN", "OS"] },
+            "ext": { "type": "string" },
+            "type": { "type": "string" },
+            "invoice_type_machine": { "type": ["string", "null"] },
+            "risk_label": { "type": ["string", "null"] },
+            "confidence": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+            "provider": { "type": "string" },
+            "claimed_by": { "type": ["string", "null"] },
+            "claimed_at": { "type": ["string", "null"] },
+            "claim_lock_expire_at": { "type": ["string", "null"] },
+            "trace_id": { "type": ["string", "null"], "pattern": "^tr-[0-9a-f]{8}$" }
+          },
+          "additionalProperties": true
+        },
+        "facts": {
+          "type": "object",
+          "description": "facts 投影（同构口径同上；数值机读基准 FN-0-01）",
+          "required": ["invoiceAmount", "currency"],
+          "properties": {
+            "invoiceAmount": { "type": "number" },
+            "poAmount": { "type": ["number", "null"] },
+            "taxAmount": { "type": ["number", "null"] },
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+            "variance": { "type": ["number", "null"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "switcherResponse": {
+      "type": "object",
+      "description": "GET /v1/cases?view=switcher（case-detail 案件切换器数据，FN-8-03/FN-0-14；三演示 full 案件：号+票种+状态）",
+      "required": ["items", "total"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": ["caseId", "instance", "type", "type_short", "status"],
+            "properties": {
+              "caseId": { "type": "string", "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$" },
+              "instance": { "type": "string", "enum": ["CN", "OS"] },
+              "type": { "type": "string", "description": "票种全称（meta.type 逐字，如「数电票（增值税专用发票）」）" },
+              "type_short": { "type": "string", "description": "票种短形（meta.type 首段，页面 option 口径「数电票 / Supplier Invoice」；服务端派生=「（」前首段）" },
+              "invoice_type_machine": { "type": ["string", "null"], "description": "票种机器码（FN-4-01 统一枚举口径，缺失为 null）" },
+              "status": { "type": "string", "enum": ["RECOGNIZED", "VERIFYING", "NEEDS_REVIEW", "INVESTIGATING", "RESOLVED", "BLOCKED"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "total": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "existsResponse": {
+      "type": "object",
+      "description": "GET /v1/cases/{caseId}/exists 200 响应（深链存在性校验，FN-0-14；不存在→404 CASE_NOT_FOUND，与详情面一致）。?tab= 合法性同步校验（audit-reports Tab 定位词汇=清单 FN-0-14 原文）。",
+      "required": ["caseId", "exists", "instance", "type", "status", "deeplink"],
+      "properties": {
+        "caseId": { "type": "string", "pattern": "^INV-(CN|SG)-\\d{4}-\\d{4}$" },
+        "exists": { "const": true },
+        "instance": { "type": "string", "enum": ["CN", "OS"] },
+        "type": { "type": "string" },
+        "status": { "type": "string", "enum": ["RECOGNIZED", "VERIFYING", "NEEDS_REVIEW", "INVESTIGATING", "RESOLVED", "BLOCKED"] },
+        "deeplink": {
+          "type": "object",
+          "required": ["tabs", "tab_requested", "tab_valid"],
+          "properties": {
+            "tabs": { "type": "array", "items": { "type": "string", "enum": ["log", "sla", "arch"] }, "description": "audit-reports.html?tab= 合法词汇（FN-0-14 原文 {log|sla|arch}；页面级定位参数，非案件域枚举——不入 enum-registry，CHANGELOG ⑦ 注记）" },
+            "tab_requested": { "type": ["string", "null"] },
+            "tab_valid": { "type": ["boolean", "null"], "description": "未请求 tab 时为 null；请求且非法→400 E_DEEPLINK_TAB_INVALID（不落 200）" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
