@@ -76,3 +76,42 @@ grep -rn "langgraph|openai|llm" backend/          # 零命中（大小写敏感�
 ---
 
 *会话 R1 自检 · 2026-10-26 · 提交链：78c448e → 6b9be5a → 52ab0d3 → 8b661eb → 3cbdcde →（收工材料随本报告提交）。*
+
+---
+
+# M2 自检报告 · 会话 R2（P00+P03 WP2.3–WP2.4 + P07 运行基线）
+
+> 执行会话：P00+P03(WP2.3–2.4)+P07 组合。范围经确认：① web 运行时与三页接线（不新增业务功能）；② 一键运行能力与 RUNBOOK（建立运行基线）。前置：M2 R1（WP2.1/2.2）已交付（提交链 78c448e…181b115）。两项用户裁决（2026-10-26 动工前确认）：**受控 Action 指向待 M3 激活**（保留五要素弹窗 UI、提交为提示不写回）；**依赖锁定=uv.lock**（RUNBOOK 双轨 pip/uv）。
+
+## 1. 交付清单（按提交）
+
+| 提交 | 内容 |
+|---|---|
+| `4b6349b` | **WP2.3**：`web/` 12 页副本（文件名保持；ui-design 零改动——mtime/内容双证）；`js/api-client.js`（同源 fetch/超时/错误映射/instanceOfCase）+ `js/demo-mode.js`（/healthz 探测→橙角标「演示模式（未连接后台）」+ body data-ihub-mode）；**dashboard 接线**（mapApiToPage 适配 /v1/dashboard→页面 DATA 形态，字段全覆盖无遗漏消费键；实例切换 async 全联动；行点击/告警展开/适配条/深色原型交互零改动）；**case-detail 接线**（apiToPageCase 契约形态→页面形态 13 组键映射；CASES 保留 fallback；深链四分支：正常/不存在 404 banner 回退/403/列表级案件提示/格式非法；replaceState+title 同步保持；切换器静态 option 与 API 三案同源不重建——防 0379「疑似篡改」页面注记漂移）；**login 零改动副本**（跳转 dashboard 逻辑页内已有）；backend StaticFiles `/web` 同源挂载 + 根路径 307→dashboard（免 CORS 单端口 8000）；`test_api_web` 6 项 |
+| `38c29e3` | **WP2.4 + P07**：`tools/ui-consistency-checklist.md`（P03 §3 逐区块表 + R1 自查勾选法 + §4 口径例外登记 + §5 正式核验操作脚本）；`pyproject.toml`（version 0.3.0 同步/requires-python 注记/[agent] 占位分组/dev 补 tools 依赖）+ `backend/uv.lock`（44 包锁定）；根 `Makefile` 委托 `scripts/hub.py`（seed/run/run-agent/run-mcp/run-workers/test/test-e2e/verify[:enums|contracts|ui]/smoke/clean/all，Windows 无 make 双入口）；`tools/smoke.py` 十步；`docs/RUNBOOK.md` 九项内容；`test_dependency_discipline` venv 排除修复（RI-M2-001） |
+
+## 2. 实操验证（非纸面）
+
+- **干净链**：`uv sync --extra dev`（Python 3.13.3 venv）→ `hub.py clean`（RI-M2-003 句柄占用，seed 表级重建兜底）→ `hub.py seed` EXIT 0 → `hub.py run` → `hub.py smoke` **10/10 PASS**（P07 1.4 全步，含受控写拒绝实证 E_CONFIRM_INVALID、审计链三域、demo-mode 标记）→ 双解释器 `pytest` **171 passed**。
+- **三形态**：A 接线态（smoke 09/10 + test_api_web）；B 仅核心（agent/mcp 占位输出明示「不阻塞 backend」）；C 独立演示（http.server 8001：页面/js 200、/healthz 404 触发回落逻辑在位——浏览器目验待正式核验会话）。
+- **一致性自查（R1 层）**：web vs ui-design——10 页 **ZERO-DIFF**（含 login 全部口径保持=§3 login 行强证）；dashboard/case-detail diff 仅接线段（40/118 行，逐项审查：DATA/CASES 常量、STATUS/SRC/CONF/ACTIONS 徽章、渲染函数、文案零触碰；改动收敛于 switchInstance/boot/refreshCase+adapter/M3 门控四个函数体）。`check_seeds_vs_ui.py` 41 组断言覆盖徽章/数值/切换器/适配条数据口径。
+- **重复 seed 幂等**：venv 环境 clean→seed→seed（test_rebuild_twice_identical 常驻回归）。
+
+## 3. P00 §7 收工检查单（R2）
+
+- [x] 全部测试通过：**171 passed**（双解释器）；smoke 10/10；无 E2E 场景集（M3，smoke 为运行基线代偿——RUNBOOK/test-e2e 占位注记）。
+- [x] 枚举一致性：本会话零 contracts/枚举变更（web 徽章常量=registry 同源既有断言）；check_enums 120/120 复跑绿。
+- [x] seed 一致性：check_seeds_vs_ui EXIT=0（41/12/6/0）；adapters/kpi/alerts 消费路径经 API+页面双端断言。
+- [x] 依赖纪律自查：backend 无 agent/LLM 引用（含 .venv 排除修复——扫描边界=自研源码口径入 RUNBOOK §8）；agent/mcp 仍零代码；**web 只消费 REST**（api-client 同源 fetch，无 DB/文件系统访问）；写路径无新增（Action 提交为 M3 提示，前端零写请求——run-issues/checklist §4-1 裁决登记）。
+- [x] 台账回填：Sheet02 FN-0-14/15 → 待验收（前端面交付括注）；Sheet03 FN-3-02/03/08/09 → 待验收（页面呈现闭环），FN-3-01/8-03/8-11 追加 R2 接线括注；P07 属工程能力项无 FN 行（run-issues.md 承载记录）。
+- [x] 文档回写：无契约变更（CHANGELOG 无需）；新决策两项用户裁决登记于本段引言+CHANGELOG 无涉（产品/工程口径，非契约）；RUNBOOK 为 P07 产出物；缺陷记录 `run-issues.md`（3 修复/4 观察移交）。
+
+## 4. 缺陷登记（详见 docs/gate-reports/run-issues.md）
+
+修复：RI-M2-001 venv 扫描自误报 / RI-M2-002 hub.py 本体 UTF-8 / RI-M2-003 clean 文件占用兜底+提示。移交：RI-M2-004（M-M1-003→M3）/ RI-M2-005（浏览器核验+截图回归→正式核验会话）/ RI-M2-006（时间线双口径→M3）。
+
+## 5. 下一会话入口（M2 正式核验）
+
+`tools/ui-consistency-checklist.md` §5 脚本：live/demo 两态 × 三页逐区块勾选（B 列），差异按 §4 例外口径判定；全绿后 M2 门禁提请 P10。
+
+*会话 R2 自检 · 2026-10-26 · 命令复现：`cd backend && uv sync --extra dev`；`python scripts/hub.py seed && python scripts/hub.py run`（另一终端）`&& python scripts/hub.py smoke`；`make all`（有 make 环境）。*
