@@ -27,13 +27,15 @@ from app.services.errors import (E_AUDIT_WRITE_FAILED, E_CONFIRM_INVALID,
                                  E_COUNTERSIGN_REQUIRED, E_EDIT_PARAM_REQUIRED, E_EXPORT_PARAM,
                                  E_FIELD_NOT_FOUND, E_OPINION_REQUIRED, E_PERM_DENIED,
                                  E_RISK_NOT_SHOWN, E_SELF_CONFIRM_REQUIRED,
-                                 E_STATE_PRECONDITION, CommandError)
+                                 E_STATE_PRECONDITION, E_TENANT_MISMATCH, CommandError)
+from app.services.tenant import TenantContext
 
 # 权限位名称词汇 = seeds/users_roles.json permissions（运行期对照数据校验，防漂移）
 PERM_VIEW = "案件查看"
 PERM_ACTION = "受控 Action 放行/退回"
 PERM_EDIT = "字段修正"
 PERM_EXPORT = "审计导出"
+PERM_PUBLISH = "策略发布"      # WP1.8 发布/回滚（FN-9-02 权限位⑤，管理员持有）
 
 UNOPINIONED = "（未填写处置意见）"
 OPINION_REQUIRED_ACTIONS = {"return"}          # FN-0-08：拒绝/退回类必填备注
@@ -46,6 +48,7 @@ ACTION_PERMS = {
     "edit_field": PERM_EDIT,
     "claim": PERM_VIEW, "batch_claim": PERM_VIEW,
     "export": PERM_EXPORT,
+    "publish": PERM_PUBLISH, "rollback": PERM_PUBLISH,
 }
 
 RISK_TEXT = {
@@ -58,6 +61,8 @@ RISK_TEXT = {
     "batch_release": "批量放行逐案校验状态；BLOCKED 案件将被跳过（红线：BLOCKED 不可批量放行）。",
     "batch_claim": "批量认领逐案校验；已被他人锁定（未超时）或状态不符的案件将被跳过。",
     "export": "导出行为本身写入审计链（操作人/时间/检索条件/行数），下载链接 24 小时后失效（演示口径）。",
+    "publish": "【warn】配置发布即时生效：前值→后值 diff 已留痕、旧版本保留可回滚、POLICY_PUBLISHED 入审计链（FN-0-12/FN-9-09）；红线项关闭将被拒绝。",
+    "rollback": "【warn】回滚=以目标历史版本载荷发布新版本（不删历史）；变更链完整可追。",
 }
 
 
@@ -65,12 +70,15 @@ def _now():
     return datetime.now(timezone.utc).astimezone()
 
 
-def scope_ref(action: str, case_id: str | None = None, case_ids: list[str] | None = None) -> str:
-    """确认凭据绑定目标：单案=caseId；批量=目标集摘要；导出=audit-export。"""
+def scope_ref(action: str, case_id: str | None = None, case_ids: list[str] | None = None,
+              config_key: str | None = None) -> str:
+    """确认凭据绑定目标：单案=caseId；批量=目标集摘要；导出=audit-export；发布/回滚=config:{key}。"""
     if action.startswith("batch_"):
         return "batch:" + hashlib.sha256("|".join(sorted(case_ids or [])).encode()).hexdigest()[:12]
     if action == "export":
         return "audit-export"
+    if action in ("publish", "rollback"):
+        return f"config:{config_key}" if config_key else "config:unknown"
     return case_id or "unknown"
 
 
@@ -323,6 +331,21 @@ def _do_export(session, user, role, *, filters, rows):
             "blk": ab.blk, "trace": trace, "expires": "24h（演示口径）"}
 
 
+def _do_publish(session, user, role, key, payload, opinion):
+    """配置发布内核：转 versioning（diff/版本递增/旧版保留/POLICY_PUBLISHED 入链）。"""
+    from app.services import versioning
+    return {"published": True, **versioning.publish(session, key, user.name,
+                                                    payload=payload, opinion=opinion)}
+
+
+def _do_rollback(session, user, role, key, to_version, opinion):
+    from app.services import versioning
+    if not to_version:
+        raise CommandError(E_STATE_PRECONDITION, "rollback 须指定 to_version", http=422)
+    return {"rolled_back": True, **versioning.rollback(session, key, to_version, user.name,
+                                                      opinion=opinion)}
+
+
 def _fmt_filters(f):
     if isinstance(f, dict):
         return " · ".join(f"{k}={v}" for k, v in f.items())
@@ -331,19 +354,33 @@ def _fmt_filters(f):
 
 # ───────────────────────── 统一入口 ─────────────────────────
 
-def execute(session, *, actor: str, action: str, case_id: str | None = None,
+def execute(session, *, actor: str, action: str, instance: str | None = None,
+            case_id: str | None = None,
             case_ids: list[str] | None = None, token: str | None = None,
             self_confirmed: bool = False, opinion: str | None = None,
             co_signer: str | None = None, co_signer_self: bool = False,
             field: str | None = None, new_value=None, reason: str | None = None,
-            filters=None, rows: int | None = None) -> dict:
-    """受控写唯一入口：五要素全序校验 → 执行 → 审计+时间线双写 → 状态流转。"""
+            filters=None, rows: int | None = None,
+            config_key: str | None = None, to_version: str | None = None,
+            config_payload: dict | None = None) -> dict:
+    """受控写唯一入口：五要素全序校验 → 执行 → 审计+时间线双写 → 状态流转。
+
+    租户上下文（WP1.7）：instance 必携带（缺失 E_TENANT_MISSING→400）；
+    与目标数据归属实例不符 → E_TENANT_MISMATCH→403（四隔离①数据越权拒绝）；
+    批量目标跨实例整批拒绝；发布/回滚为平台级资产写，ctx 在场校验 + 审计落 PLATFORM 链。
+    """
     if action not in ACTION_PERMS:
         raise CommandError("UNKNOWN_ACTION", f"未注册命令 {action!r}", http=400)
+    ctx = TenantContext.of(instance)          # 缺失即 E_TENANT_MISSING（FN-0-11/WP1.7）
     batch = action in ("batch_claim", "batch_release")
-    scope = scope_ref(action, case_id, case_ids)
-    if not batch and action != "export" and not case_id:
+    scope = scope_ref(action, case_id, case_ids, config_key)
+    if not batch and action not in ("export", "publish", "rollback") and not case_id:
         raise CommandError(E_STATE_PRECONDITION, "单案命令须指定 caseId", http=422)
+    if batch:
+        for cid in case_ids or []:
+            ctx.assert_matches_case_id(cid)   # 跨实例批量 → E_TENANT_MISMATCH
+    elif action not in ("export", "publish", "rollback"):
+        ctx.assert_matches_case_id(case_id)
 
     # ① 权限
     user, role = require_permission(session, actor, action)
@@ -355,6 +392,8 @@ def execute(session, *, actor: str, action: str, case_id: str | None = None,
     # ④ 处置意见
     if action in OPINION_REQUIRED_ACTIONS and not (opinion or "").strip():
         raise CommandError(E_OPINION_REQUIRED, f"动作 {action} 处置意见必填（FN-0-08 要素④）", http=422)
+    if action in ("publish", "rollback") and not config_key:
+        raise CommandError(E_STATE_PRECONDITION, "publish/rollback 须指定 config_key", http=422)
 
     try:
         if batch:
@@ -362,6 +401,10 @@ def execute(session, *, actor: str, action: str, case_id: str | None = None,
                                release=(action == "batch_release"), opinion=opinion)
         elif action == "export":
             result = _do_export(session, user, role, filters=filters, rows=rows)
+        elif action == "publish":
+            result = _do_publish(session, user, role, config_key, config_payload, opinion)
+        elif action == "rollback":
+            result = _do_rollback(session, user, role, config_key, to_version, opinion)
         else:
             case = state_machine.get_case(session, case_id)
             if action == "release":

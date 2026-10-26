@@ -31,3 +31,12 @@ E_REDLINE_BATCH = "E_REDLINE_BATCH"            # FN-0-08 BLOCKED 不可批量放
 E_FIELD_NOT_FOUND = "E_FIELD_NOT_FOUND"        # FN-8-05 修正字段必须存在于证据链
 E_EDIT_PARAM_REQUIRED = "E_EDIT_PARAM_REQUIRED"  # FN-8-05 新值+原因必填
 E_EXPORT_PARAM = "E_EXPORT_PARAM"              # FN-8-07 导出需检索条件与行数留痕
+# —— WP1.7 租户上下文（FN-0-11/13：所有查询与写入必须携带租户上下文，缺失即报错）——
+E_TENANT_MISSING = "E_TENANT_MISSING"          # 缺租户上下文（instance），存储层强制注入违例
+E_TENANT_MISMATCH = "E_TENANT_MISMATCH"        # 越权访问：上下文实例 ≠ 数据归属实例（四隔离）
+# —— WP1.6 规则引擎（FN-0-07 + 附录 C：未注册规则标识=缺陷）——
+E_RULE_NOT_REGISTERED = "E_RULE_NOT_REGISTERED"    # 规则不在 rules_catalog 注册表
+E_RULE_NOT_IMPLEMENTED = "E_RULE_NOT_IMPLEMENTED"  # 已注册未实装（归属后续里程碑）
+# —— WP1.8 版本化资产（FN-0-12/9-09）——
+E_CONFIG_REDLINE_BYPASS = "E_CONFIG_REDLINE_BYPASS"  # 红线项不得经配置绕过（P00 §5）
+E_VERSION_NOT_FOUND = "E_VERSION_NOT_FOUND"         # 回滚目标版本不存在

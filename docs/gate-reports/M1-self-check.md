@@ -153,3 +153,80 @@
 3. 草稿/发布/diff/回滚版本化框架属 WP1.8（unblock/发布类命令的 POLICY_PUBLISHED 接入点已留）。
 4. EVIDENCE_COLLECTED（调查只读取证）与自动收集编排属 M4/M5 agent 域；本会话 hold/INVESTIGATING 仅注记排程。
 5. 时间线 t 为运行期 ISO-8601（与演示页面 MM-DD HH:MM:SS 双口径并存）；audit-reports 页面 blk 列表与运行期新块的展示对齐属 M2 接线。
+
+
+---
+
+# M1 自检报告 · 会话 R5（P00+P02 · WP1.6–1.8 + §3 收尾）
+
+> 执行会话:P00+P02 · M1 FN-0 平台内核第三段。范围经确认:**WP1.6（规则引擎框架）+ WP1.7（编号发号器与租户上下文）+ WP1.8（版本化资产基座）**,并完成 **P02 §3 最小 API 面收尾**;WP1.1–1.5 不重做、全部纳入回归。范围外:M3 受理流水线接线、M4 匹配域、M5 RBAC/KMS/前端,均留接口位注记。
+
+## 1. 交付清单
+
+**WP1.6 规则引擎**(`app/services/rules.py` + `app/services/orchestrator.py`)
+- 注册制:可调用规则必须溯源 rules_catalog 条目(中文族级标识↔machine_id 双向归一);未注册=缺陷(E_RULE_NOT_REGISTERED→500)、已注册未实装显式报错(E_RULE_NOT_IMPLEMENTED→501,不静默缺席);四条族级机器 id 按 seed note 授权回写 `rules_catalog.json`(line_amount_sum_check/dedup_business_key/tolerance_check/redline_policy,`machine_id_pending` 清零)。
+- 13 条内核规则纯函数(不触库):amount_tax_sum_check / amount_sum_check / line_amount_sum_check / invoice_no_format_check / date_valid_range / supplier_master_match / tax_id_checksum(GB32100 mod-31 真算法;演示税号校验位不符→NOT_VERIFIED+「虚构号码」注记,不据以判真伪)/ buyer_entity_match / currency_iso_check / sg_uen_format_check / tolerance_check / redline_policy / dedup_business_key。
+- **两套容差分开配置(CON-12)**:reconcile ±0.06 / po ±S$50,值经 config_center 注入上下文,规则内零字面值;边界语义「恰好等于=容差内」(浮点 epsilon 1e-9,DEC 金额二进制表示误差,已在规则与测试双向注明)。
+- 查重业务键(CON-05):CN=发票代码(null→空串)+号码+价税合计(税号辅助)、OS=号码+价税合计+供应商;池比对服务本体 M3(编排器 pool_keys 未注入时如实 NOT_VERIFIED)。
+- 置信度分档:边界从 enum-registry.confidence_band 编码文本正则解析(≥95%/80–94%/<80%,零硬编码);验签失败全字段降级标注(auth_failure_degradation,FN-0-06「数值一致≠原件可信」)。
+- 四校验编排器:`run_all` 四项独立执行(单项异常→该项 NOT_VERIFIED+注记,不中止其余);`redline_of` 命中(authenticity/duplicate FAILED)经状态机流转 BLOCKED,**其余校验结论全保留**供解除参考;`apply_results` 为 CheckResult+checks_raw 唯一写入口(copy-and-reassign 双层同步,依赖纪律⑥结果只由规则引擎写入)。
+
+**WP1.7 发号器与租户**(`app/services/issuer.py` + `app/services/tenant.py` + 仓储/API 强制注入)
+- 发号器:案件号分实例域递增(CN 自种子现值 0387、SG 段自 0125 续起,CON-04)、批次按 实例:日(新日重置)、gm-rcpt 全域递增(种子 1042→1043)、QA 分周、ANNO 分年;全部输出对 enum-registry.id_format pattern 自校验;计数器表 IdCounter,seed 装载播种现值且重放幂等;trace 生成统一收口 issuer(audit_chain 薄代理)。
+- TenantContext:instance 必携带(CN|OS,缺失 E_TENANT_MISSING→400)、与数据归属实例不符 E_TENANT_MISMATCH→403;region 数据区域字段(H39 推断注记)、tenant_id 符合租户 ID pattern。
+- 四隔离存储层落地:①数据=仓储/命令/批量逐案 instance 强制过滤+越权拒绝;②配置=tenant scope 读取回落 default;③Provider=providers.regions 声明(M4 路由消费);④发票池=实例分池键(dedup 键含实例语义)。
+- API 全端点租户参数强制;受控写 execute 前置 ctx 校验(跨实例批量整批拒绝)。
+
+**WP1.8 版本化资产基座**(`app/services/versioning.py` + `config_center` 接入 + 命令框架 publish/rollback)
+- AssetRevision 通用双态实体(draft/published);发布=版本 v{日期}.{序号} 同日递增 + 前值→后值 diff + 旧版全保留 + 回滚接口(以目标版本载荷发布新版本,不删历史)+ POLICY_PUBLISHED 入审计链(PLATFORM 链域,trace 生成)。
+- 配置中心接入:`config_center.save_draft/publish/rollback/diff` 从 R4 的 NotImplementedError 接口位改为委托版本化基座(懒导入避循环);红线项(low_confidence_force_human)save_draft/publish 双侧拒绝(E_CONFIG_REDLINE_BYPASS→403,链零污染)。
+- 业务写仍经命令框架:action publish/rollback 需「策略发布」权限位(复核员拒绝用例在)、五要素全序、凭据绑定 `config:{key}`;seed 装载为 config 各键登记基线修订(v2026-10-21.2,diff 起点)。
+
+**§3 最小 API 面收尾**
+- 全部响应过契约校验:list 项/summary 视图=契约合法案件形态(full 案件按 allOf 携带全要素→返回完整聚合,轻量子集仅 list 级,已在代码注明 M2 可瘦身);actions 单案响应附 `case`=更新后 full 聚合(过 invoice-case.schema);evidence 项过 $defs/evidenceEntry;timeline 项过 events.schema;CommandError 统一映射(400/403/404/409/422/428/501)。
+- config 端点(`POST /v1/config/{key}/risk-challenge`、`/v1/config/actions/{publish|rollback}`)为发布动作接线(不在 §3 清单,服务 M2)。
+
+## 2. P02 §4 验收标准判定(全项,含回归)
+
+| # | 标准 | 判定 | 证据 |
+|---|---|---|---|
+| ① | 状态机六条流转逐条/缺会签拒绝/认领不扩态 | **回归通过**(R4 用例未破坏;红线流转新增引擎触发路径) | test_state_machine 全绿 + test_orchestrator 红线流转 |
+| ② | 链校验/篡改定位/导出插头 | **回归通过**;新增 POLICY_PUBLISHED 入链用例 | test_audit_chain/test_versioning::test_publish_appends_policy_published_to_chain |
+| ③ | 五要素 5 用例/批量 BLOCKED 跳过/edit_field 追溯 | **回归通过**(租户前置下);批量跨实例整批拒绝新增 | test_governed_commands 含 tenant 3 新用例 |
+| ④ | 最小 API 全部响应过契约+枚举∈registry | **完成收尾** | test_api_readonly 全响应校验 + test_api_actions case 信封校验 |
+| ⑤ | make seed 幂等+聚合=种子逐字段 | **回归通过**(144 项含深比对;计数器/基线修订重放一致) | test_seed_loader::test_rebuild_twice_identical + test_counters_seeded_idempotent |
+| ⑥ | grep 零命中 | **通过**(亲跑 EXIT=1 零命中;`fullmatch` 含 llm 子串改 `match(…\Z)` 规避,tests 同步) | 收工亲验 |
+| ⑦ | 覆盖率 domain+services ≥80% | **94%**(最低模块 89%) | pytest --cov 报告 |
+
+**本会话新增测试**:test_rules(17)、test_orchestrator(6)、test_issuer_tenant(10)、test_versioning(9)、api 契约收尾改写(test_api_readonly 9 / test_api_actions 9);旧 91 项全数适配回归。**合计 144 passed**。
+
+## 3. P00 §7 收工检查单(R5)
+
+- [x] 全部测试通过:144 passed(含契约/租户/版本化);受影响回归:状态机、哈希链、受控写、只读面、聚合深比对全绿;G-M0-001 交叉脚本复跑 EXIT=0、check_enums 115/115、validate_contracts 31 项全绿。
+- [x] 枚举一致性:规则结果值经 `_res` 强制注册表校验;分档边界从注册表解析;无新枚举引入;rules_catalog 机器 id 回写为 note 授权的兼容登记(非造词)。
+- [x] seed 一致性:装载新增 IdCounter/AssetRevision 播种,重放幂等;11 案聚合逐字段一致保持。
+- [x] 依赖纪律自查:grep⑥ 零命中(含新文件);checks 写入口唯一=orchestrator;写路径全经 governed_commands;WORM 保持;租户强制后无裸查询。
+- [x] Excel 回填:Sheet02 全 15 行已刷(06/07/11/12/13→待验收;09/14 维持未开始+归属注记;15 进行中;每行附【M1 R5】验收要点);Sheet03/04 无本会话行。
+- [x] 文档回写:契约(contracts/)零变更→无需 CHANGELOG;seeds 仅 rules_catalog.json 兼容登记(§4);无新 ADR。
+
+## 4. 变更与登记
+
+- `seeds/rules_catalog.json`:四条 machine_id 回写 + note 追加授权说明(数据本体键名/规则数不变,validate_contracts 31 项复跑通过)。
+- models 新增:IdCounter/AssetRevision/RuleCatalogEntry.machine_id;seed_loader 相应播种。
+- 无契约文件(contracts/)改动、无 ui-design 改动(只读核验通过)、无 known_page_discrepancies 变动。
+
+## 5. 工程注记(透明登记,供评审复核)
+
+1. **浮点边界**:±0.06/±S$50 的「恰好等于」判定引入 1e-9 epsilon(DEC 金额二进制表示),边界语义仍由业务容差值决定,规则与测试双向注明。
+2. **验收 grep 自误报规避**:`re.fullmatch` 含 "llm" 子串,源码与测试统一改 `re.match(pattern+"\Z")`;大写治理文案(AI/LLM 角色注记)为 FN-0-08 清单原文,非依赖引用(R4 口径)。
+3. **summary 双形态**:契约 allOf 使 full 案件无法轻量投影,列表/摘要对 full 案件返回完整聚合(以契约合规为先),M2 接线可按需引入投影列瘦身。
+4. 编排器未接入受理流水线(M3);本阶段仅 apply_results 写 CheckResult/checks_raw,不写逐案校验时间线事件(DEDUP_CHECK/PO_MATCH 等事件随 M3 引擎接线发码)。
+5. 发号器为服务级(未开 API 发号端点,§3 无此项);案件创建入口 M3 接线。
+
+## 6. 遗留与移交(M1 收口 / M2+ 入口)
+
+1. **M1 全部工作包 WP1.1–1.8 至此完成**;P02 §4 ①–⑦ 全项达成——可提请 P10 门禁评审(评审输入:本文件 R3/R4/R5 三段 + git log 工作包提交)。
+2. M2:列表瘦身注记(§5.3);时间线/审计双口径展示对齐(R4 §4.5 遗留仍有效)。
+3. M3:orchestrator 接受理管线;查重池服务本体;AUTH_QUERY_TIMEOUT→断点续跑消费(FN-9-07 队列面板)。
+4. M4:路由策略/映射表实体复用 versioning(asset_type 扩展);buyer/supplier 实体档案正式化(现白名单为演示口径派生自 seeds)。
+5. M5:RBAC 实装替换矩阵桩;KMS Provider Key 保管;租户注册(FN-9-01)替换 tenant_id 演示值。

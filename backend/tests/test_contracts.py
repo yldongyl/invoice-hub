@@ -10,12 +10,13 @@ from sqlalchemy import select
 from app.domain import models as m
 from app.domain.registry import get_contract_enums, get_registry
 from app.services import case_repository as repo
+from app.services.tenant import TenantContext
 from tests.conftest import schema_errors
 
 
 def test_aggregate_passes_invoice_case_schema(session, seeds_cases, case_validator):
     for seed in seeds_cases["cases"]:
-        agg = repo.aggregate_case(session, seed["caseId"])
+        agg = repo.aggregate_case(session, TenantContext.of_case_id(seed["caseId"]), seed["caseId"])
         errs = schema_errors(case_validator, agg)
         assert not errs, f"{seed['caseId']} 契约校验失败: {[e.message for e in errs]}"
 

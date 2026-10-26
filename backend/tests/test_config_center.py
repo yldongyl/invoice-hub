@@ -61,9 +61,31 @@ def test_redline_no_bypass(session):
         session.commit()
 
 
-def test_draft_publish_are_interface_stubs(session):
-    """草稿/发布双态接口位属 WP1.8（FN-0-12），本阶段显式拒绝实现（不得静默）。"""
-    with pytest.raises(NotImplementedError):
-        cc.save_draft(session, "confidence_threshold_default", 0.9)
-    with pytest.raises(NotImplementedError):
-        cc.publish(session, "confidence_threshold_default")
+def test_draft_publish_realized_via_versioning(fresh_session):
+    """R5：草稿/发布双态接口位已由 WP1.8 版本化基座实装（FN-0-12）。"""
+    key = "confidence_threshold_default"
+    draft = cc.save_draft(fresh_session, key,
+                          {"label": "置信度阈值（全局默认）", "value": 0.9, "range": [0.5, 0.99]}, "陈铮")
+    assert draft.state == "draft"
+    d = cc.diff(fresh_session, key, draft.payload)
+    assert d["value"] == {"from": 0.85, "to": 0.9}          # 前值→后值 diff（FN-9-09）
+    res = cc.publish(fresh_session, key, "陈铮")
+    assert res["version"].startswith("v") and res["diff"]["value"]["from"] == 0.85
+    assert cc.get_value(fresh_session, key) == 0.9          # 发布即生效
+    assert cc.get_value(fresh_session, "__none__") is None
+    # 旧版本保留 + 回滚
+    rb = cc.rollback(fresh_session, key, res["prev_version"], "陈铮")
+    assert cc.get_value(fresh_session, key) == 0.85
+    assert rb["rollback_of"] == res["prev_version"]
+
+
+def test_publish_redline_key_denied(fresh_session):
+    """红线项关闭：save_draft/publish 双侧拒绝（不可被配置绕过 · P00 §5）。"""
+    from app.services.errors import CommandError
+    with pytest.raises(CommandError) as ei:
+        cc.save_draft(fresh_session, "low_confidence_force_human", {"value": False}, "陈铮")
+    assert ei.value.code == "E_CONFIG_REDLINE_BYPASS"
+    with pytest.raises(CommandError) as ei2:
+        cc.publish(fresh_session, "low_confidence_force_human", "陈铮",
+                   payload={"value": False})
+    assert ei2.value.code == "E_CONFIG_REDLINE_BYPASS"

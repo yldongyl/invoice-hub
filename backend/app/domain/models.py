@@ -203,6 +203,8 @@ class RuleCatalogEntry(Base):
     usage: Mapped[str] = mapped_column(Text)
     ref_version: Mapped[str | None] = mapped_column(String(40))
     machine_id_pending: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 族级中文标识的机器 rule_id（M1 WP1.6 按 seed note 授权注册；登记前为 null）
+    machine_id: Mapped[str | None] = mapped_column(String(60))
 
 
 class ComponentVersion(Base):
@@ -304,6 +306,38 @@ class SeedMeta(Base):
 
     name: Mapped[str] = mapped_column(String(40), primary_key=True)
     payload: Mapped[dict] = mapped_column(JSON)
+
+
+class IdCounter(Base):
+    """编号发号器计数域（WP1.7 · FN-0-13）：分实例域/分日/分周递增，seed 播种现值。"""
+
+    __tablename__ = "id_counters"
+
+    domain: Mapped[str] = mapped_column(String(40), primary_key=True)   # case:CN / case:SG / batch:{inst}:{date} / gm_rcpt / qa:{y}-W{w} / anno:{y}
+    seq: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[str | None] = mapped_column(String(30))
+
+
+class AssetRevision(Base):
+    """版本化资产修订（WP1.8 · FN-0-12）：草稿/已发布双态、发布=版本递增+diff+旧版保留+可回滚。
+
+    asset_type：config（本阶段接入）| routing_policy / mapping_table（M4 复用此框架）。
+    """
+
+    __tablename__ = "asset_revisions"
+    __table_args__ = (UniqueConstraint("asset_type", "key", "version"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    asset_type: Mapped[str] = mapped_column(String(20), index=True)
+    key: Mapped[str] = mapped_column(String(60), index=True)
+    version: Mapped[str] = mapped_column(String(30))                    # v{YYYY-MM-DD}.{seq}
+    state: Mapped[str] = mapped_column(String(12), default="draft")     # draft | published
+    payload: Mapped[dict] = mapped_column(JSON)                         # 契约快照（{value,...}）
+    diff_json: Mapped[dict | None] = mapped_column(JSON)                # 前值→后值（FN-9-09 diff 二次确认素材）
+    prev_version: Mapped[str | None] = mapped_column(String(30))
+    updated_by: Mapped[str | None] = mapped_column(String(40))
+    updated_at: Mapped[str | None] = mapped_column(String(30))
+    opinion: Mapped[str | None] = mapped_column(Text)                   # 发布时处置意见（未填落默认）
 
 
 class ConfirmToken(Base):

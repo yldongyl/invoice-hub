@@ -27,16 +27,17 @@ def test_counts(session):
 def test_rebuild_twice_identical(session_factory, seeds_cases):
     """rebuild_and_load 连跑两次，聚合结果逐字节一致（make seed 幂等口径）。"""
     from app.services.seed_loader import rebuild_and_load
+    from app.services.tenant import TenantContext
     sf = session_factory.get_session  # 复用测试临时库的 session 工厂
     counts1 = rebuild_and_load(session_factory=sf)
     from app.services import case_repository as repo
     s1 = sf()
-    snap1 = {c["caseId"]: repo.aggregate_case(s1, c["caseId"]) for c in seeds_cases["cases"]}
+    snap1 = {c["caseId"]: repo.aggregate_case(s1, TenantContext.of_case_id(c["caseId"]), c["caseId"]) for c in seeds_cases["cases"]}
     s1.close()
     counts2 = rebuild_and_load(session_factory=sf)
     assert counts1 == counts2
     s2 = sf()
-    snap2 = {c["caseId"]: repo.aggregate_case(s2, c["caseId"]) for c in seeds_cases["cases"]}
+    snap2 = {c["caseId"]: repo.aggregate_case(s2, TenantContext.of_case_id(c["caseId"]), c["caseId"]) for c in seeds_cases["cases"]}
     s2.close()
     assert snap1 == snap2
     # 聚合与种子深度一致（两跑均成立）

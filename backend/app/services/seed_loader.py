@@ -193,6 +193,14 @@ def load_all(session, seeds_dir: Path | None = None):
                              state="published", version=data.get("version")))
     counts["config_items"] = len(data["items"]) + 2
 
+    # ---- WP1.8 基线修订：以 config.json 版本号登记 published 基线（后续发布 diff 起点）----
+    for key, item in data["items"].items():
+        session.add(m.AssetRevision(asset_type="config", key=key,
+                                    version=data.get("version", "v0-seed"), state="published",
+                                    payload=item, diff_json=None, updated_by="seed-loader",
+                                    updated_at=data.get("version"), opinion=None))
+    counts["asset_revisions"] = len(data["items"])
+
     # ---- users_roles（RBAC 桩矩阵）----
     data = jl("users_roles.json")
     session.add(m.SeedMeta(name="permissions", payload={"permissions": data["permissions"]}))
@@ -203,13 +211,24 @@ def load_all(session, seeds_dir: Path | None = None):
                                   status=u.get("status", "启用"), user_raw=u))
     counts["users"] = len(data["users"])
 
-    # ---- rules_catalog（20 条注册基线）----
+    # ---- rules_catalog（20 条注册基线；machine_id 为 WP1.6 兼容登记）----
     data = jl("rules_catalog.json")
     for r in data["rules"]:
         session.add(m.RuleCatalogEntry(rule_id=r["rule_id"], usage=r["usage"],
                                        ref_version=r.get("ref_version"),
-                                       machine_id_pending=bool(r.get("machine_id_pending"))))
+                                       machine_id_pending=bool(r.get("machine_id_pending")),
+                                       machine_id=r.get("machine_id")))
     counts["rules"] = len(data["rules"])
+
+    # ---- WP1.7 发号器播种：从已装载数据推各域现值（幂等：重建表后重播）----
+    from app.services import issuer
+    counts["id_counters"] = issuer.seed_counters_from_data(
+        session,
+        case_ids=[c["caseId"] for c in _cases_data["cases"]],
+        batch_ids=[b["id"] for b in jl("batches.json")["batches"]],
+        receipt_nos=[c["meta"]["sm2"].get("receipt_no") for c in _cases_data["cases"]
+                     if c["meta"].get("sm2") and c["meta"]["sm2"].get("receipt_no")],
+    )
 
     # ---- providers / routing_policy / taxcodes / mapping_rules / versions ----
     data = jl("providers.json")

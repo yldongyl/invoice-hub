@@ -41,10 +41,9 @@ def now_iso() -> str:
 
 
 def new_trace_id() -> str:
-    """tr-{8位hex}（enum-registry.id_format）。TODO(WP1.7): 正式发号器实装后替换。"""
-    tid = f"tr-{secrets.token_hex(4)}"
-    assert trace_ok(tid), f"trace 生成不符 pattern: {tid}"
-    return tid
+    """tr-{8位hex}——统一收口 WP1.7 发号器（issuer），本模块仅代理保持调用面兼容。"""
+    from app.services import issuer
+    return issuer.new_trace_id()
 
 
 def trace_ok(tid: str) -> bool:
