@@ -667,6 +667,52 @@ def check_matching(r, queue, seed_by_id, known, enum_codes, diff_colors):
     r.ok(f"matching QUEUE {len(queue)} 案：供应商/金额/状态与 cases 一致；差异徽章 ∈ diff_type 枚举且配色同源")
 
 
+def check_adapters(r, dash_html, adapters_seed, enum_codes):
+    """M2 WP2.1 新增：seeds/adapters.json ↔ dashboard 底部「目标采购平台适配状态」5 行逐字
+    （清单 §4.3 后台数据契约「Adapter 状态清单」；status_code ∈ enum-registry.adapter_status；
+    glyph 由服务端从 code 文本派生——页面字形序列与派生结果交叉断言）。"""
+    if "目标采购平台适配状态" not in dash_html:
+        r.fail("dashboard 底部适配状态条区块缺失（页面基准漂移）")
+        return
+    tail = dash_html.split("目标采购平台适配状态", 1)[1]
+    pairs = re.findall(
+        r'<b class="block">([^<]+)</b><span class="block text-\[11px\][^"]*">([^<]+)</span>', tail)
+    adapters = adapters_seed["adapters"]
+    if len(pairs) != len(adapters):
+        r.fail(f"适配状态条页面 {len(pairs)} 行 vs seed {len(adapters)} 条")
+        return
+    for (pn, pd), a in zip(pairs, adapters):
+        ctx = f"adapters[{a['name']}]"
+        cmp_field(r, f"{ctx}.name", pn, a["name"])
+        cmp_field(r, f"{ctx}.display", pd, a["display"])
+        if a["status_code"] not in enum_codes["adapter_status"]:
+            r.fail(f"{ctx}.status_code {a['status_code']!r} 不在 adapter_status 枚举")
+    glyphs = re.findall(r'rounded-full[^>]*>([✓◐○])</span>', tail)
+    expect_glyphs = [re.search(r"[✓◐○]", a["status_code"]).group(0) for a in adapters]
+    if glyphs != expect_glyphs:
+        r.fail(f"适配状态条字形序列 页面={glyphs!r} vs registry 派生={expect_glyphs!r}")
+    r.ok(f"adapters.json {len(adapters)} 条 ↔ dashboard 状态条逐字一致；glyph 派生对齐（{''.join(expect_glyphs)}）；status_code ∈ registry")
+
+
+def check_switcher(r, case_detail_html, seed_by_id):
+    """M2 WP2.1 新增：case-detail 切换器 option 三案（号+票种短形+状态）↔ cases.json full 案件
+    （view=switcher 数据口径基准，FN-8-03/FN-0-14；0379 状态后缀「（疑似篡改）」为页面注记，
+    按前缀包含断言）。"""
+    opts = re.findall(r'<option value="(INV-[^"]+)">([^<]+)</option>', case_detail_html)
+    full_ids = [cid for cid, c in seed_by_id.items() if c.get("detail_level") == "full"]
+    got_ids = [o[0] for o in opts]
+    if got_ids != full_ids:
+        r.fail(f"切换器案件序 {got_ids} ≠ seeds full 案件装载序 {full_ids}")
+        return
+    for cid, text in opts:
+        c = seed_by_id[cid]
+        short = re.split(r"（|\(", c["meta"]["type"], maxsplit=1)[0].strip()
+        prefix = f"{cid} · {short} · {c['status']}"
+        if prefix not in text:
+            r.fail(f"切换器 {cid}: 页面 {text!r} 不含口径 {prefix!r}")
+    r.ok(f"case-detail 切换器 {len(opts)} 案（号+票种短形+状态）与 cases.json full 案件逐案一致（装载序）")
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 5) 主流程
 # ──────────────────────────────────────────────────────────────────────────────
@@ -708,6 +754,7 @@ def main():
     alerts_seed = load_json(os.path.join(SEEDS, "alerts.json"))
     kpi_seed = load_json(os.path.join(SEEDS, "kpi.json"))
     ae_seed = load_json(os.path.join(SEEDS, "audit_events.json"))
+    adapters_seed = load_json(os.path.join(SEEDS, "adapters.json"))
 
     def page(name):
         p = os.path.join(args.ui, name)
@@ -718,12 +765,17 @@ def main():
 
     r = Result()
     try:
-        check_case_detail(r, extract_const(page("case-detail.html"), "CASES"), seed_by_id, known, enum_codes)
-        check_dashboard(r, extract_const(page("dashboard-overview.html"), "DATA"), kpi_seed, alerts_seed, seed_by_id, known)
+        case_detail_html = page("case-detail.html")
+        dashboard_html = page("dashboard-overview.html")
+        check_case_detail(r, extract_const(case_detail_html, "CASES"), seed_by_id, known, enum_codes)
+        check_dashboard(r, extract_const(dashboard_html, "DATA"), kpi_seed, alerts_seed, seed_by_id, known)
         check_workbench(r, extract_const(page("agent-workbench.html"), "WB"), seed_by_id, known, enum_codes)
         check_intake(r, extract_const(page("invoice-intake.html"), "BATCHES"), batches_seed, seed_by_id, known, enum_codes)
         check_audit(r, extract_const(page("audit-reports.html"), "LOGS"), ae_seed, seed_by_id, enum_codes)
         check_matching(r, extract_const(page("matching-mapping.html"), "QUEUE"), seed_by_id, known, enum_codes, diff_colors)
+        # M2 WP2.1 新增数据口径断言（adapters 状态条 / 切换器）
+        check_adapters(r, dashboard_html, adapters_seed, enum_codes)
+        check_switcher(r, case_detail_html, seed_by_id)
     except JSParseError as e:
         die(f"JS 常量解析失败: {e}")
 
