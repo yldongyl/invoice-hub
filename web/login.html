@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF',deep:'#0E42D2'},
+      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
+      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
+      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
+      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
+      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
+    },
+    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
+    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',login:'0 8px 40px rgba(29,33,41,.12)'},
+    borderRadius:{card:'8px'}
+  } }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  .toast{transition:opacity .3s,transform .3s;}
+
+  /* ── 左侧封面：大厂风格 —— 深蓝底、大留白、抽象光线动效 ── */
+  .brand-bg{background:linear-gradient(160deg,#0A1B40 0%,#0B1F4D 45%,#092058 100%);}
+  .brand-grid{background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 90% 80% at 30% 20%,#000 30%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse 90% 80% at 30% 20%,#000 30%,transparent 75%);}
+  .glow{position:absolute;border-radius:9999px;filter:blur(100px);pointer-events-none;}
+  .glow-1{width:460px;height:460px;background:rgba(22,93,255,.30);top:-140px;left:-100px;animation:drift1 18s ease-in-out infinite alternate;}
+  .glow-2{width:380px;height:380px;background:rgba(0,180,42,.10);bottom:-120px;right:-80px;animation:drift2 22s ease-in-out infinite alternate;}
+  @keyframes drift1{from{transform:translate(0,0)}to{transform:translate(80px,60px)}}
+  @keyframes drift2{from{transform:translate(0,0)}to{transform:translate(-70px,-50px)}}
+
+  /* 文案入场：一次性、克制 */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  .fade-up{animation:fadeUp .8s cubic-bezier(.22,.61,.36,1) both;}
+  .d1{animation-delay:.10s}.d2{animation-delay:.22s}.d3{animation-delay:.34s}.d4{animation-delay:.46s}
+
+  .seg-active{background:#165DFF;color:#fff;box-shadow:0 1px 4px rgba(22,93,255,.35);}
+  .tenant-lock{opacity:.55;pointer-events:none;}
+
+  @media (prefers-reduced-motion: reduce){
+    .glow-1,.glow-2{animation:none;}
+    .fade-up{animation:none;opacity:1;}
+    svg *{animation:none;}
+  }
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased h-screen overflow-hidden flex">
+
+<!-- ═══════════════ 左侧：品牌封面（简洁 + 抽象动效） ═══════════════ -->
+<section class="hidden lg:flex w-[55%] brand-bg text-white relative overflow-hidden flex-col justify-between px-14 py-10">
+  <div class="brand-grid absolute inset-0"></div>
+  <div class="glow glow-1"></div><div class="glow glow-2"></div>
+
+  <!-- 抽象数据光线：贯穿下半区的三条曲线 + 流动光点（隐喻票据流向，不做具象图表） -->
+  <svg class="absolute inset-x-0 bottom-0 w-full h-[62%] z-0" viewBox="0 0 800 400" preserveAspectRatio="none" fill="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="lg1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#4C8DFF" stop-opacity="0"/><stop offset=".5" stop-color="#4C8DFF" stop-opacity=".5"/><stop offset="1" stop-color="#2BD96B" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="lg2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#2BD96B" stop-opacity="0"/><stop offset=".5" stop-color="#2BD96B" stop-opacity=".32"/><stop offset="1" stop-color="#4C8DFF" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path id="w1" d="M-20,240 C180,180 320,300 520,230 S760,170 820,200" stroke="url(#lg1)" stroke-width="1.4"/>
+    <path id="w2" d="M-20,292 C200,232 340,352 540,282 S780,222 820,252" stroke="url(#lg2)" stroke-width="1.2"/>
+    <path id="w3" d="M-20,344 C220,284 360,404 560,334 S800,274 820,304" stroke="url(#lg1)" stroke-width="1" opacity=".6"/>
+    <circle r="2.6" fill="#6FA8FF"><animateMotion dur="9s" repeatCount="indefinite" begin="0s"><mpath href="#w1"/></animateMotion></circle>
+    <circle r="2.2" fill="#2BD96B"><animateMotion dur="11s" repeatCount="indefinite" begin="2.5s"><mpath href="#w2"/></animateMotion></circle>
+    <circle r="2" fill="#6FA8FF" opacity=".8"><animateMotion dur="13s" repeatCount="indefinite" begin="5s"><mpath href="#w3"/></animateMotion></circle>
+    <circle r="2.4" fill="#8FC9FF" opacity=".7"><animateMotion dur="9s" repeatCount="indefinite" begin="4.5s"><mpath href="#w1"/></animateMotion></circle>
+  </svg>
+
+  <!-- 品牌 -->
+  <div class="relative z-10 flex items-center gap-3 fade-up">
+    <div class="w-9 h-9 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="leading-tight">
+      <div class="text-[14.5px] font-semibold tracking-wide">票据智能与合规中台</div>
+      <div class="text-[10.5px] text-gray-400 tracking-wide">INVOICE INTELLIGENCE &amp; COMPLIANCE HUB</div>
+    </div>
+  </div>
+
+  <!-- 核心主张：一句定位 + 一句副文案 + 四枚能力 pill -->
+  <div class="relative z-10 max-w-[560px] -mt-8">
+    <div class="fade-up d1 inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 bg-white/[.06] text-[11.5px] text-gray-300 tracking-wide">
+      <span class="w-1.5 h-1.5 rounded-full bg-[#2BD96B] animate-pulse"></span>采购发票能力中台 · 不是 OCR 工具
+    </div>
+    <h1 class="fade-up d2 mt-5 text-[34px] leading-[1.35] font-semibold tracking-tight">
+      让每一张供应商发票<br>可信 · 可审计 · 可匹配
+    </h1>
+    <p class="fade-up d3 mt-4 text-[13.5px] leading-relaxed text-gray-300 max-w-[460px]">
+      面向 SAP Ariba、Oracle、Coupa、S/4HANA 与自研应付系统的跨地区票据智能与合规适配 —— <b class="text-white font-medium">不替换现有 ERP</b>。
+    </p>
+    <div class="fade-up d4 mt-6 flex flex-wrap gap-2 text-[11.5px] text-gray-300">
+      <span class="px-3 py-1.5 rounded-full border border-white/12 bg-white/[.05]">中国数电票 · CN 扩展包</span>
+      <span class="px-3 py-1.5 rounded-full border border-white/12 bg-white/[.05]">海外 Supplier Invoice</span>
+      <span class="px-3 py-1.5 rounded-full border border-white/12 bg-white/[.05]">可插拔 Provider</span>
+      <span class="px-3 py-1.5 rounded-full border border-white/12 bg-white/[.05]">字段级可解释证据</span>
+    </div>
+  </div>
+
+  <!-- 底部：一行信任摘要 + 纪律声明 -->
+  <div class="relative z-10 fade-up d4">
+    <div class="flex items-center gap-5 text-[11.5px] text-gray-300">
+      <span class="flex items-center gap-1.5"><b class="text-white text-[14px] num">2</b> 实例 · 国外已验证 + 中国扩展包</span>
+      <span class="w-px h-4 bg-white/15"></span>
+      <span class="flex items-center gap-1.5"><b class="text-white text-[14px] num">9</b> 层能力架构</span>
+      <span class="w-px h-4 bg-white/15"></span>
+      <span class="flex items-center gap-1.5"><b class="text-white text-[14px] num">3</b> 类接口契约 · 含 MCP</span>
+    </div>
+    <div class="mt-3 text-[9.5px] text-gray-500 leading-relaxed">
+      身份与权限（SSO / IdP）为设计期预留 · 演示界面不执行真实认证 · v1.2-candidate 蓝图口径 · 仅处理供应商采购发票
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 右侧：登录卡（一屏收纳） ═══════════════ -->
+<section class="flex-1 min-w-0 flex items-center justify-center relative px-6 py-4">
+  <div class="absolute top-4 right-6 flex items-center gap-2">
+    <a href="demo-landing.html" class="text-[12px] text-ink-3 dark:text-gray-500 hover:text-primary px-2 py-1">← 返回演示首页</a>
+    <button onclick="document.documentElement.classList.toggle('dark')" title="深色模式" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div class="w-[400px] max-w-full">
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-login p-6">
+      <div class="flex items-end justify-between">
+        <div>
+          <div class="text-[19px] font-semibold leading-tight">登录平台</div>
+          <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5">采购共享中心 / 财务复核 / 实施运维 · 全操作审计留痕</div>
+        </div>
+        <div class="lg:hidden w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0 mb-1">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <!-- 租户 / 实例：SSO 自动推导（只读）· 账密登录手选 -->
+      <div class="mt-4">
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-[12px] font-medium text-ink-2 dark:text-gray-400">租户 / 实例</label>
+          <span id="tenant-mode" class="text-[10.5px] text-ink-3 dark:text-gray-500">账密登录：请手动选择 · SSO 登录：由 IdP 断言自动推导</span>
+        </div>
+        <div id="tenant-seg" class="flex items-center bg-surface dark:bg-[#23282F] border border-line dark:border-dline rounded-card p-[3px]">
+          <button id="t-cn" onclick="pickTenant('cn')" class="seg-active flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium transition-colors">🇨🇳 澜坞（上海）· 中国实例</button>
+          <button id="t-os" onclick="pickTenant('os')" class="flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium text-ink-2 dark:text-gray-400 transition-colors">🌏 Lanwu Singapore · 海外</button>
+        </div>
+        <div id="tenant-banner" class="hidden mt-1.5 text-[11px] px-2.5 py-1.5 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30 text-[#00874A] dark:text-success"></div>
+        <div id="tenant-note" class="text-[10.5px] text-ink-3 dark:text-gray-500 mt-1.5">数据区域：中国境内存储 · 数据驻留要求待 H39 确认（推断标注）</div>
+      </div>
+
+      <!-- 企业 SSO（Google / Microsoft 式极简） -->
+      <div class="mt-4 space-y-2">
+        <button onclick="ssoLogin('SAP IAS · SAML 2.0','cn')" class="w-full flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] hover:bg-surface dark:hover:bg-[#2A3038] hover:shadow-card transition-all text-[13px] font-medium">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="shrink-0"><rect x="2" y="4" width="20" height="7" rx="1.5" fill="#0FAAFF"/><rect x="2" y="13" width="20" height="7" rx="1.5" fill="#0FAAFF" opacity=".55"/></svg>
+          继续以 SAP IAS 登录
+        </button>
+        <button onclick="ssoLogin('BTP xsuaa · OIDC','os')" class="w-full flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] hover:bg-surface dark:hover:bg-[#2A3038] hover:shadow-card transition-all text-[13px] font-medium">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="shrink-0"><path d="M12 2L22 12L12 22L2 12L12 2Z" fill="#165DFF" opacity=".85"/><circle cx="12" cy="12" r="3" fill="#fff"/></svg>
+          继续以 SAP BTP（xsuaa）登录
+        </button>
+        <div class="text-center text-[10.5px] text-ink-3 dark:text-gray-500 pt-0.5 leading-relaxed">
+          SSO 登录后租户由 IdP 断言自动推导 ·
+          <button type="button" onclick="toast('其他企业 IdP（客户 AD / 自建 OIDC / SAML）：由平台管理员在「平台支撑管理 › 租户与权限」配置后启用（设计期预留 · 演示提示）')" class="hover:text-primary underline underline-offset-2">其他企业 IdP</button>
+        </div>
+      </div>
+
+      <div class="my-3.5 flex items-center gap-3 text-[10.5px] text-ink-3 dark:text-gray-500">
+        <span class="flex-1 h-px bg-line dark:bg-dline"></span>或使用平台账号密码<span class="flex-1 h-px bg-line dark:bg-dline"></span>
+      </div>
+
+      <!-- 账号密码 -->
+      <form onsubmit="return pwdLogin(event)" class="space-y-2.5" novalidate>
+        <div>
+          <label class="block text-[11.5px] font-medium text-ink-2 dark:text-gray-400 mb-1">账号 <span class="text-danger">*</span></label>
+          <input id="in-user" value="wangli@lanwu-procurement.com" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[12.5px] focus:outline-none focus:border-primary" placeholder="企业邮箱 / 用户名">
+          <div id="err-user" class="hidden text-[10.5px] text-danger mt-0.5">请输入账号</div>
+        </div>
+        <div>
+          <label class="block text-[11.5px] font-medium text-ink-2 dark:text-gray-400 mb-1">密码 <span class="text-danger">*</span></label>
+          <div class="relative">
+            <input id="in-pwd" type="password" value="demo-password" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 pr-12 text-[12.5px] focus:outline-none focus:border-primary" placeholder="密码">
+            <button type="button" onclick="const p=document.getElementById('in-pwd');p.type=p.type==='password'?'text':'password'" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 dark:text-gray-500 hover:text-primary text-[11px]">显示</button>
+          </div>
+          <div id="err-pwd" class="hidden text-[10.5px] text-danger mt-0.5">请输入密码</div>
+        </div>
+        <div class="flex items-center justify-between text-[11.5px]">
+          <label class="flex items-center gap-1.5 text-ink-2 dark:text-gray-400 cursor-pointer"><input type="checkbox" checked class="accent-[#165DFF]">记住此设备（受信任 30 天）</label>
+          <button type="button" onclick="toast('密码重置：SSO 用户请走企业 IdP 流程；平台账号请联系租户管理员重置（操作记入审计日志）')" class="text-ink-3 dark:text-gray-500 hover:text-primary">忘记密码？</button>
+        </div>
+        <button id="btn-login" type="submit" class="w-full py-2.5 rounded-card bg-primary text-white text-[13.5px] font-medium hover:bg-[#4080FF] shadow-card transition-colors">登 录</button>
+      </form>
+
+      <!-- MFA 与合规说明（紧凑） -->
+      <div class="mt-3 p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[10.5px] text-ink-2 dark:text-gray-400 leading-relaxed">
+        🛡 登录后按策略完成 <b>MFA 多因子验证</b>（复核员/管理员强制）· 会话与全部业务操作记入<b>不可篡改审计日志</b> · 凭证由 KMS/Vault 管理，高风险动作保留企业授权与人工审批
+      </div>
+    </div>
+
+    <div class="mt-2.5 text-center text-[10px] text-ink-3 dark:text-gray-600 leading-relaxed">
+      演示环境：点击登录直接进入总览仪表盘，不执行真实认证 · v1.2-candidate 蓝图口径 · © 2026 票据智能与合规中台
+    </div>
+  </div>
+</section>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-login opacity-0 pointer-events-none translate-y-2 max-w-[640px]"></div>
+
+<script>
+let tenant = 'cn', locked = false;
+const TENANTS = {
+  cn:{ name:'澜坞（上海）· 中国实例', note:'数据区域：中国境内存储 · 数据驻留要求待 H39 确认（推断标注）' },
+  os:{ name:'Lanwu Singapore · 海外实例', note:'数据区域：新加坡 · 海外实例（某海外真实场景链路已验证）· 租户四隔离（数据/配置/Provider Key/发票池）' }
+};
+function setSeg(k){
+  const cn=document.getElementById('t-cn'), os=document.getElementById('t-os');
+  const active='seg-active flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium transition-colors';
+  const idle='flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium text-ink-2 dark:text-gray-400 transition-colors';
+  cn.className = k==='cn'?active:idle; os.className = k==='os'?active:idle;
+  document.getElementById('tenant-note').textContent = TENANTS[k].note;
+}
+function pickTenant(k){
+  if(locked){ toast('租户已由 SSO IdP 断言推导（只读）· 如需切换请改用账号密码登录或另一企业 IdP'); return; }
+  tenant = k; setSeg(k);
+}
+function ssoLogin(name, derived){
+  /* SSO：租户由 IdP 断言自动推导 → 锁定选择器（只读展示） */
+  tenant = derived; locked = true;
+  setSeg(derived);
+  document.getElementById('tenant-seg').classList.add('tenant-lock');
+  document.getElementById('tenant-mode').textContent = 'SSO 会话 · 租户只读';
+  const b = document.getElementById('tenant-banner');
+  b.innerHTML = `✓ 已从 IdP 断言自动推导租户：<b>${TENANTS[derived].name}</b>（SAML/OIDC claim · 只读，服务端二次校验归属）`;
+  b.classList.remove('hidden');
+  enter('企业 SSO（'+name+'）');
+}
+function enter(way){
+  const btn=document.getElementById('btn-login');
+  btn.disabled=true; btn.textContent='认证中…'; btn.classList.add('opacity-70');
+  setTimeout(()=>{
+    toast(`✓ ${way} 认证成功（演示）· 租户：${TENANTS[tenant].name} · 王莉 · 复核员 · MFA 已通过 · 登录事件已记入审计日志`);
+    setTimeout(()=>location.href='dashboard-overview.html', 1100);
+  }, 800);
+}
+function pwdLogin(e){
+  e.preventDefault();
+  if(locked){ toast('当前为 SSO 推导会话（演示）· 账密登录请刷新页面后重试'); return false; }
+  const u=document.getElementById('in-user').value.trim(), p=document.getElementById('in-pwd').value.trim();
+  let ok=true;
+  document.getElementById('err-user').classList.toggle('hidden', !!u); if(!u) ok=false;
+  document.getElementById('err-pwd').classList.toggle('hidden', !!p); if(!p) ok=false;
+  if(ok) enter('账号密码 · 手选租户「'+TENANTS[tenant].name+'」');
+  return false;
+}
+function toast(msg){
+  const t=document.getElementById('toast'); t.innerHTML=msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3600);
+}
+setSeg('cn');
+</script>
+</body>
+</html>

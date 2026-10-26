@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>匹配就绪与字段映射治理 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      primary: { DEFAULT:'#165DFF', light:'#F0F5FF', mid:'#BEDAFF' },
+      success: { DEFAULT:'#00B42A', light:'#E8FFEA' },
+      warning: { DEFAULT:'#FF7D00', light:'#FFF7E8' },
+      danger:  { DEFAULT:'#F53F3F', light:'#FFECE8' },
+      purple:  { DEFAULT:'#722ED1', light:'#F5E8FF' },
+      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
+      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
+    },
+    fontFamily:{ sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif'] },
+    boxShadow:{ card:'0 2px 8px rgba(29,33,41,.06)', cardhover:'0 4px 16px rgba(29,33,41,.10)' },
+    borderRadius:{ card:'8px' }
+  } }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .row-click{cursor:pointer;}
+  .row-click:hover{background:#F0F5FF;}
+  .dark .row-click:hover{background:#23282F;}
+  .toast{transition:opacity .3s,transform .3s;}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header：面包屑 + 深色切换 + 用户 ═══════════════ -->
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5 min-w-0">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary shrink-0">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <span class="text-ink-3 dark:text-gray-500 shrink-0">复核运营</span>
+      <span class="text-ink-4">›</span>
+      <b class="text-ink-1 dark:text-white truncate">匹配就绪与字段映射</b>
+    </nav>
+  </div>
+  <div class="flex items-center gap-4 shrink-0">
+    <button onclick="toggleDark()" title="深色模式切换"
+      class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">王莉</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">王莉 · 复核员</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">亚太采购共享中心</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-4">
+
+  <!-- ═══════════════ 页面标题 + 蓝图定位 ═══════════════ -->
+  <section class="flex items-end justify-between gap-4">
+    <div>
+      <h1 class="text-[20px] font-semibold leading-tight">匹配就绪与字段映射治理 <span class="text-[13px] font-normal text-ink-3 dark:text-gray-500 ml-1">Matching Readiness &amp; Field Mapping Governance</span></h1>
+      <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1">对应蓝图：⑥匹配就绪化层 · §4.4 字段映射治理 · §4.7 红字票 / Credit Note Link · LLM 只建议，规则与人工决定</div>
+    </div>
+    <div class="flex items-center gap-2 text-[11px] shrink-0">
+      <span class="px-2 py-1 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium border border-primary-mid dark:border-[#2A3F6B]">🇨🇳 CN + 🌏 OS 统一队列</span>
+      <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">购买方：澜坞（上海）采购科技有限公司 / Lanwu Procurement Technology (Singapore) Pte. Ltd.</span>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Tab 导航 ═══════════════ -->
+  <nav class="flex items-center gap-6 border-b border-line dark:border-dline px-1">
+    <button id="tabbtn-1" onclick="switchTab(1)" class="pb-2.5 pt-1 text-[14px] font-medium border-b-2 border-primary text-primary">① 匹配确认工作台</button>
+    <button id="tabbtn-2" onclick="switchTab(2)" class="pb-2.5 pt-1 text-[14px] font-medium border-b-2 border-transparent text-ink-2 dark:text-gray-400 hover:text-primary">② 税码与字段映射规则</button>
+    <button id="tabbtn-3" onclick="switchTab(3)" class="pb-2.5 pt-1 text-[14px] font-medium border-b-2 border-transparent text-ink-2 dark:text-gray-400 hover:text-primary">③ 红字票 / Credit Note Link 确认 <span id="q3-count" class="ml-0.5 px-1.5 py-0.5 rounded text-[10px] bg-danger-light dark:bg-[#3A2426] text-danger num align-middle">2</span></button>
+  </nav>
+
+  <!-- ═══════════════ Tab1 匹配确认工作台 ═══════════════ -->
+  <section id="tab-1" class="space-y-4">
+
+    <!-- 顶部边界说明条 -->
+    <div class="rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-4 py-3 flex items-start gap-2.5">
+      <span class="text-primary shrink-0 mt-0.5">ⓘ</span>
+      <div class="text-[12.5px] leading-relaxed text-ink-2 dark:text-gray-300">
+        <b class="text-ink-1 dark:text-white">边界说明：</b>三单匹配在目标平台或ERP执行（边界待H38确认），本工作台只做匹配就绪化：<b class="text-primary">PO推断确认、行项目映射、税码映射、税额尾差、供应商/法人核对</b>。
+      </div>
+    </div>
+
+    <!-- 待确认队列 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+        <div>
+          <div class="text-[15px] font-semibold">待确认队列 <span class="text-[12px] text-ink-3 dark:text-gray-500 font-normal ml-2">点击行「确认」展开确认卡 · 差异构成由规则引擎判定，AI 仅提供解释建议</span></div>
+        </div>
+        <span class="text-[12px] text-ink-3 dark:text-gray-500">已处理 <b id="q1-done" class="num text-success">0</b> / 5</span>
+      </div>
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-5 py-2.5 font-medium">案件号</th>
+            <th class="px-3 py-2.5 font-medium">供应商</th>
+            <th class="px-3 py-2.5 font-medium text-right">发票金额</th>
+            <th class="px-3 py-2.5 font-medium">PO / 候选</th>
+            <th class="px-3 py-2.5 font-medium">差异摘要</th>
+            <th class="px-3 py-2.5 font-medium">差异类型</th>
+            <th class="px-3 py-2.5 font-medium">状态</th>
+            <th class="px-3 py-2.5 font-medium text-right pr-5">操作</th>
+          </tr>
+        </thead>
+        <tbody id="q1-tbody" class="divide-y divide-line dark:divide-dline"></tbody>
+      </table>
+      <div class="px-5 py-2.5 text-[12px] text-ink-3 dark:text-gray-500 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+        受控写操作：确认匹配需复核员权限（王莉）+ 二次确认 + 写入不可篡改审计日志 · 案件号可跳转 <a href="case-detail.html" class="text-primary hover:underline">票据案件详情</a> 查看完整证据链
+      </div>
+    </div>
+
+    <!-- 确认卡（点击「确认」后展开） -->
+    <div id="q1-card" class="hidden"></div>
+  </section>
+
+  <!-- ═══════════════ Tab2 税码与字段映射规则 ═══════════════ -->
+  <section id="tab-2" class="hidden space-y-4">
+
+    <!-- H24/H25 前置说明 -->
+    <div class="rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 px-4 py-3 flex items-start gap-2.5">
+      <span class="text-warning shrink-0 mt-0.5">⚠</span>
+      <div class="text-[12.5px] leading-relaxed text-ink-2 dark:text-gray-300">
+        <b class="text-ink-1 dark:text-white">前置输入说明：</b>字段与数据类型定义以<b>目标系统真实接口调查</b>为前置输入（<span class="px-1.5 py-0.5 rounded bg-card dark:bg-dcard border border-warning/40 text-warning font-medium">H24 / H25 待确认</span>）。当前映射目标字段以 Ariba cXML / 统一 Schema 演示口径呈现，接口调查完成后按真实字段面刷新版。
+      </div>
+    </div>
+
+    <!-- 税码映射表 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+        <div>
+          <div class="text-[15px] font-semibold">税码映射表 <span class="text-[12px] text-ink-3 dark:text-gray-500 font-normal ml-2">来源税率 → 目标平台 Tax Code · 确定性映射由规则引擎执行</span></div>
+        </div>
+        <span class="text-[11px] px-2 py-1 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium num">映射表版本 v1.4</span>
+      </div>
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-5 py-2.5 font-medium">实例</th>
+            <th class="px-3 py-2.5 font-medium">来源税率 / 口径</th>
+            <th class="px-3 py-2.5 font-medium">目标 Tax Code</th>
+            <th class="px-3 py-2.5 font-medium">适用说明</th>
+            <th class="px-3 py-2.5 font-medium">版本</th>
+            <th class="px-3 py-2.5 font-medium">更新时间</th>
+            <th class="px-3 py-2.5 font-medium pr-5">来源</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line dark:divide-dline">
+          <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 13%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J1</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">一般纳税人 · 货物 / 加工修理修配</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
+          <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 9%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J2</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">交通运输 / 建筑 / 农产品等</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
+          <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 6%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J3</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">现代服务 / 增值电信等</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
+          <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 3%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J4</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">小规模纳税人征收率</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
+          <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 1%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J5</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">小规模纳税人优惠征收率</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
+          <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 0%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J6</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">出口零税率</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
+          <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">免税</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J7</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">免税项目 · 票面标注「免税」</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
+          <tr class="bg-surface/60 dark:bg-[#23282F]/60"><td class="px-5 py-2.5">🌏 SG</td><td class="px-3 py-2.5 num font-medium">GST 9%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">SG-SR</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">Standard-Rated · zero-rated 行项目映射 <code class="num">SG-ZR</code></td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-10-08</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 字段映射治理三区 -->
+    <div class="grid grid-cols-12 gap-4">
+      <!-- ① 预设规则库 -->
+      <div class="col-span-5 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-4 pt-4 pb-3 border-b border-line dark:border-dline">
+          <div class="text-[14px] font-semibold">① 预设规则库 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">Preset Mapping Rules</span></div>
+          <div class="text-[12px] text-ink-2 dark:text-gray-400 mt-1">本月命中 <b class="num text-primary">12,847</b> 次 · 覆盖率 <b class="num text-success">96.2%</b> · 命中即自动映射，无需人工</div>
+        </div>
+        <table class="w-full text-[12.5px]">
+          <thead><tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-4 py-2 font-medium">源字段（票面 / 原件）</th><th class="px-3 py-2 font-medium">目标字段</th><th class="px-3 py-2 font-medium text-right pr-4">本月命中</th>
+          </tr></thead>
+          <tbody class="divide-y divide-line dark:divide-dline num">
+            <tr><td class="px-4 py-2.5">价税合计（小写）</td><td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">total.gross_amount</code></td><td class="px-3 py-2.5 text-right pr-4">4,213</td></tr>
+            <tr><td class="px-4 py-2.5">合计金额（不含税）</td><td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">total.net_amount</code></td><td class="px-3 py-2.5 text-right pr-4">3,980</td></tr>
+            <tr><td class="px-4 py-2.5">销售方名称 / Supplier Name</td><td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">seller.name</code></td><td class="px-3 py-2.5 text-right pr-4">2,554</td></tr>
+            <tr><td class="px-4 py-2.5">发票号码 / Invoice No.</td><td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">header.invoice_no</code></td><td class="px-3 py-2.5 text-right pr-4">1,206</td></tr>
+            <tr><td class="px-4 py-2.5">Total Due（海外票面）</td><td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">total.gross_amount</code></td><td class="px-3 py-2.5 text-right pr-4">894</td></tr>
+          </tbody>
+        </table>
+        <div class="px-4 py-2.5 text-[11px] text-ink-3 dark:text-gray-500 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F]">预设规则库随 CN / OS 扩展包出厂，客户可按目标平台覆写版本</div>
+      </div>
+
+      <!-- ② LLM 推荐待确认队列 -->
+      <div class="col-span-7 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-4 pt-4 pb-3 border-b border-line dark:border-dline flex items-center justify-between">
+          <div>
+            <div class="text-[14px] font-semibold">② LLM 推荐待确认队列 <span class="inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 font-medium align-middle">AI 生成 · 仅建议</span></div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1">预设库未覆盖的新字段 / 语义差异，由 LLM 推荐映射；<b class="text-ink-2 dark:text-gray-400">确认一次即沉淀为规则（人工确认沉淀机制）</b>，长期复用</div>
+          </div>
+          <span class="text-[11px] text-ink-3 dark:text-gray-500 num shrink-0">模型：qwen-finance-v2 · 2026-10-15</span>
+        </div>
+        <div id="q2-list" class="divide-y divide-line dark:divide-dline"></div>
+      </div>
+    </div>
+
+    <!-- ③ 人工确认历史 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-4 pt-4 pb-3 border-b border-line dark:border-dline flex items-center justify-between">
+        <div class="text-[14px] font-semibold">③ 人工确认历史 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">已沉淀规则 · 不可篡改审计日志可追溯</span></div>
+        <span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">🔒 全量留痕</span>
+      </div>
+      <table class="w-full text-[12.5px]">
+        <thead><tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+          <th class="px-4 py-2 font-medium">确认时间</th><th class="px-3 py-2 font-medium">源字段</th><th class="px-3 py-2 font-medium">沉淀映射</th><th class="px-3 py-2 font-medium">确认人</th><th class="px-3 py-2 font-medium pr-4">沉淀后命中</th>
+        </tr></thead>
+        <tbody class="divide-y divide-line dark:divide-dline">
+          <tr>
+            <td class="px-4 py-2.5 num text-ink-3">2026-10-12 15:22</td>
+            <td class="px-3 py-2.5">GST Reg. No（海外票面 Tax ID）</td>
+            <td class="px-3 py-2.5"><code class="num text-success bg-success-light dark:bg-[#1C2E22] px-1.5 py-0.5 rounded text-[11.5px]">seller.tax_id</code> <span class="text-[11px] text-success ml-1">✓ 已沉淀 · 长期复用</span></td>
+            <td class="px-3 py-2.5">王莉 · 复核员</td>
+            <td class="px-3 py-2.5 pr-4 num">317 次</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-2.5 num text-ink-3">2026-10-08 10:47</td>
+            <td class="px-3 py-2.5">收货单号 / GRN Reference</td>
+            <td class="px-3 py-2.5"><code class="num text-success bg-success-light dark:bg-[#1C2E22] px-1.5 py-0.5 rounded text-[11.5px]">links.grn[].grn_no</code> <span class="text-[11px] text-success ml-1">✓ 已沉淀 · 长期复用</span></td>
+            <td class="px-3 py-2.5">王莉 · 复核员</td>
+            <td class="px-3 py-2.5 pr-4 num">562 次</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Tab3 红字票 / Credit Note Link 确认（G8） ═══════════════ -->
+  <section id="tab-3" class="hidden space-y-4">
+
+    <!-- 说明条 -->
+    <div class="rounded-card bg-danger-light dark:bg-[#3A2426] border border-danger/30 px-4 py-3 flex items-start gap-2.5">
+      <span class="text-danger shrink-0 mt-0.5">⛓</span>
+      <div class="text-[12.5px] leading-relaxed text-ink-2 dark:text-gray-300">
+        <b class="text-ink-1 dark:text-white">为什么必须确认 Link：</b>红字票不关联原票将导致<b class="text-danger">重复付款与匹配风险</b>；Link 是对象模型中<b>可查询、可校验的结构化关系</b>（冲减 → 原票），而非文字描述。确认后写入案件时间线与对象模型，Ariba 建档前自动校验相关 Link。
+      </div>
+    </div>
+
+    <!-- 待关联列表 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+        <div class="text-[15px] font-semibold">待关联列表 <span class="text-[12px] text-ink-3 dark:text-gray-500 font-normal ml-2">规则引擎 Link 校验 v1.1 产出候选 + AI 推荐理由（仅建议）· 建立 Link 属受控写操作</span></div>
+        <span class="text-[11px] text-ink-3 dark:text-gray-500">对象模型关系：红字票 / Credit Note —冲减→ 原票</span>
+      </div>
+      <div id="q3-list" class="divide-y divide-line dark:divide-dline"></div>
+    </div>
+  </section>
+
+  <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
+    Invoice Intelligence &amp; Compliance Hub · 匹配就绪与字段映射治理 · 数据为演示样例 · v1.2-candidate 蓝图口径
+  </footer>
+</main>
+
+<!-- ═══════════════ 受控写操作 · 二次确认弹窗（通用） ═══════════════ -->
+<div id="act-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 p-6" onclick="if(event.target===this)closeAct()">
+  <div class="w-[480px] max-w-full rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div id="act-head" class="px-5 py-3.5 border-b border-line dark:border-dline text-[14px] font-semibold"></div>
+    <div class="px-5 py-4 space-y-3">
+      <div id="act-warn" class="text-[12px] leading-relaxed rounded-card border p-3"></div>
+      <div class="text-[12px] text-ink-2 dark:text-gray-400 space-y-1">
+        <div>权限校验：<b class="text-success">✓ 复核员（王莉）</b> · 操作将绑定用户身份与时间戳 · <b>写入不可篡改审计日志</b></div>
+        <div>对象：<b id="act-case" class="num"></b></div>
+      </div>
+      <textarea id="act-note" rows="2" placeholder="处置意见 / 备注（选填，将写入案件时间线与审计日志）" class="w-full text-[13px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 focus:outline-none focus:border-primary resize-none"></textarea>
+      <label class="flex items-start gap-2 text-[12px] text-ink-2 dark:text-gray-400 cursor-pointer">
+        <input id="act-confirm-chk" type="checkbox" class="mt-0.5 accent-[#165DFF]">
+        <span>我已核对差异构成 / 证据与校验结果，确认由<b>本人（王莉 · 复核员）</b>执行该操作（AI 建议不自动执行）</span>
+      </label>
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline flex justify-end gap-2 bg-surface dark:bg-[#23282F]">
+      <button onclick="closeAct()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[13px] text-ink-2 dark:text-gray-300">取消</button>
+      <button id="act-ok" onclick="doAct()" disabled class="px-3.5 py-1.5 rounded-card text-[13px] font-medium text-white bg-ink-4 cursor-not-allowed">确认执行</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[720px] text-center"></div>
+
+<script>
+/* ════════════════ 状态 / 徽章 / 置信度（与 dashboard-overview / case-detail 同一套标记结构） ════════════════ */
+const STATUS = {
+  RECOGNIZED:   {label:'RECOGNIZED 已识别',   cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]'},
+  VERIFYING:    {label:'VERIFYING 查验中',    cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]'},
+  NEEDS_REVIEW: {label:'NEEDS_REVIEW 待复核', cls:'bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30'},
+  INVESTIGATING:{label:'INVESTIGATING 调查中',cls:'bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30'},
+  RESOLVED:     {label:'RESOLVED 已解决',     cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30'},
+  BLOCKED:      {label:'BLOCKED 已拦截',      cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30'}
+};
+function confBadge(c){
+  if(c>=95) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success num shrink-0">${c}%<i class="w-1.5 h-1.5 rounded-full bg-success inline-block"></i></span>`;
+  if(c>=80) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-warning-light dark:bg-[#2E2417] text-warning num shrink-0">${c}%<i class="w-1.5 h-1.5 rounded-full bg-warning inline-block"></i></span>`;
+  return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-danger-light dark:bg-[#3A2426] text-danger num shrink-0">${c}%<i class="w-1.5 h-1.5 rounded-full bg-danger inline-block"></i></span>`;
+}
+const DIFFBADGE = {
+  primary:{cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]'},
+  warning:{cls:'bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30'},
+  danger: {cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30'},
+  purple: {cls:'bg-purple-light dark:bg-[#2B1F3D] text-purple border border-purple/30'}
+};
+const AI_TAG = `<span class="inline-block text-[10px] px-1.5 py-0.5 rounded bg-warning text-white font-medium align-middle">AI 生成</span>`;
+const AI_MODEL = 'qwen-finance-v2 · 2026-10-15';
+const AI_DISCLAIMER = `⚠ 大模型生成的建议不自动执行业务操作，请人工确认后操作`;
+
+/* ════════════════ Tab1 待确认队列数据（与既有页面同源样例） ════════════════ */
+const QUEUE = [
+{ id:'INV-CN-2026-0387', supplier:'北京中科华创科技有限公司', amount:'¥113,000.00', neg:false,
+  po:'PO-2026-0881 · GRN-2026-1102（部分收货）',
+  diff:'差异 ¥13,000.00 = 13% 增值税税额（含税 vs 不含税口径）',
+  badges:[{t:'税额口径',c:'primary'}], status:'NEEDS_REVIEW', processed:false, doneLabel:null,
+  detail:{
+    comp:[
+      {k:'发票价税合计（含税）', v:'¥113,000.00', note:'XML 直读 + 百望云 OCR 交叉验证一致'},
+      {k:'PO-2026-0881 净额口径', v:'¥100,000.00', note:'PO 以不含税净额口径登记'},
+      {k:'差异 = 税额（13%）', v:'¥13,000.00', note:'规则引擎：amount_tax_sum_check ✓ 净额 + 税额 = 价税合计'}
+    ],
+    grn:'GRN-2026-1102（部分收货）· 已收数量覆盖发票行项目，行级勾稽通过',
+    taxmap:[{from:'增值税 13%（一般纳税人 · 货物）', to:'Ariba Tax Code J1', note:'映射表 v1.4 · 预设'}],
+    tol:'尾差容差 ±0.06 由规则引擎判定：本案差异 ¥13,000.00 远超尾差容差 → 判定为「税额口径差异」而非尾差',
+    ai:{conf:88,
+        body:'差异金额 ¥13,000.00 <b>恰等于本票税额</b>。PO-2026-0881 以<b>不含税净额</b>口径登记（¥100,000.00），发票以<b>含税价税合计</b>口径开具（¥113,000.00）。规则引擎复核：amount_tax_sum_check ✓、行级勾稽 ✓、税率 13% ✓。',
+        conclude:'初步结论：疑似<b>含税/不含税口径差异</b>，而非金额错误。建议按「口径差异」标记后放行，并回填 PO 含税金额字段。'}
+  }},
+{ id:'INV-CN-2026-0384', supplier:'广州粤海物流服务有限公司', amount:'¥-8,420.00', neg:true,
+  po:'候选原票 INV-CN-2026-0310（供应商 + 金额匹配 92%）',
+  diff:'红字票待关联原票 · 冲减 Link 未建立（重复付款风险）',
+  badges:[{t:'红字待关联',c:'danger'}], status:'NEEDS_REVIEW', processed:false, doneLabel:null,
+  detail:{
+    comp:[
+      {k:'红字票金额（负数冲减）', v:'¥-8,420.00', note:'销售方：广州粤海物流服务有限公司'},
+      {k:'候选原票 INV-CN-2026-0310', v:'¥8,420.00', note:'供应商一致 + 金额冲减对应 + 开票日期先后 · 匹配度 92%'},
+      {k:'Link 校验', v:'未建立', note:'规则引擎 Link 校验 v1.1 产出候选，待人工确认（→ Tab3）'}
+    ],
+    grn:'原票对应收货记录完整；红字票本身不产生新收货行',
+    taxmap:[{from:'增值税 13%（红字 · 负数冲减）', to:'Ariba Tax Code J1', note:'红字票沿用原票税码 · 冲减方向'}],
+    tol:'本案无尾差问题；关联判定走 Link 校验 v1.1（冲减金额 = 原票金额 → 全额冲减）',
+    ai:{conf:92,
+        body:'红字票销售方、服务品类（物流服务费冲减）与金额与候选原票 INV-CN-2026-0310 <b>完全一致</b>，红字票开票日期晚于原票，符合红冲时序。',
+        conclude:'疑似供应商原票开错后的红字冲销，建议前往 <b>Tab3「红字票 / Credit Note Link 确认」</b>建立冲减 Link 后再进入建档，避免重复付款。'},
+    hint:'请前往 Tab3 完成本红字票的冲减 Link 确认（受控写操作，需二次确认）'
+  }},
+{ id:'INV-CN-2026-0381', supplier:'苏州恒信电子材料有限公司', amount:'¥5,650.00', neg:false,
+  po:'—（票面 OCR vs XML 口径冲突）',
+  diff:'票面 OCR ¥5,650.00 vs XML ¥5,680.00 · 差额 ¥30.00 超容差 ±0.06',
+  badges:[{t:'尾差',c:'warning'}], status:'NEEDS_REVIEW', processed:false, doneLabel:null,
+  detail:{
+    comp:[
+      {k:'票面 OCR 价税合计', v:'¥5,650.00', note:'来源：OCR Provider · 该字段置信度已降至 82%'},
+      {k:'XML 直读价税合计', v:'¥5,680.00', note:'来源：结构化原件 · SM2 验签通过'},
+      {k:'多源冲突差额', v:'¥30.00', note:'命中规则：amount_tax_sum_check · 不含税金额 + 税额 ≠ 价税合计（按 OCR 口径）'}
+    ],
+    grn:'收货记录与 XML 口径金额一致，无 PO 差异',
+    taxmap:[{from:'增值税 13%', to:'Ariba Tax Code J1', note:'税码映射不受金额冲突影响'}],
+    tol:'尾差容差 ±0.06 由规则引擎判定：¥30.00 ≫ ±0.06 → 非尾差，判定为「多源字段冲突」，路由人工复核',
+    ai:{conf:84,
+        body:'XML 结构化原件（验签通过）与票面 OCR 数值差异达 ¥30.00，超过正常尾差区间；冲突模式更接近 OCR 行识别偏差或票面打印异常，而非口径差异。',
+        conclude:'建议以 <b>XML 直读值 ¥5,680.00 为准</b>，并人工比对原件坐标片段后，要求供应商书面确认或换开票面异常票。'}
+  }},
+{ id:'INV-SG-2026-0125', supplier:'Siemens Energy Pte. Ltd.', amount:'S$84,200.00', neg:false,
+  po:'PO-4500123456 · GRN-2026-1180 / 1181 / 1187',
+  diff:'差异 S$5,600.00 = GST S$4,100.00 + 运费 S$1,500.00（PO 无对应收货行）',
+  badges:[{t:'税额口径',c:'primary'},{t:'PO 外费用',c:'purple'}], status:'INVESTIGATING', processed:false, doneLabel:null,
+  detail:{
+    comp:[
+      {k:'Invoice Gross', v:'S$84,200.00', note:'Net S$78,600.00 + GST S$4,100.00 + Freight S$1,500.00'},
+      {k:'GST S$4,100.00', v:'税率映射 GST 9% · 部分行 zero-rated', note:'PO-4500123456 以 Net 口径登记 → 税额口径差异'},
+      {k:'Freight S$1,500.00', v:'PO 无对应行 · 无收货记录', note:'合同含运费条款摘录：“Supplier-prepaid freight shall be reimbursed at cost by Buyer”'}
+    ],
+    grn:'GRN-2026-1180 / 1181 / 1187 共 3 张收货单 · 覆盖 PO 服务行与备件行（zero-rated export）',
+    taxmap:[
+      {from:'GST 9%（Standard-Rated）', to:'SG-SR', note:'映射表 v1.4 · 预设'},
+      {from:'GST 0%（zero-rated · 出口备件行）', to:'SG-ZR', note:'Spare parts kit 行项目'}
+    ],
+    tol:'BTP 匹配容差 ±S$50 由规则引擎判定：差异 S$5,600.00 超容差 → 状态机进入 INVESTIGATING 主动调查（证据收集为只读）',
+    ai:{conf:88,
+        body:'系统已自动收集证据：PO 行项目 2 条 + 收货单 GRN 3 条 + GST 税率映射。差异 S$5,600.00 = <b>GST S$4,100.00</b>（PO 以净额登记，其中 spare parts 为 zero-rated）+ <b>运费行 S$1,500.00</b>（PO 无对应行，无收货记录）。',
+        conclude:'初步结论：GST 部分为口径差异；运费行属 <b>PO 外费用</b>，建议按合同条款判定——合同含运费条款，可<b>要求补 PO 行</b>后放行，否则部分退回供应商。'}
+  }},
+{ id:'INV-SG-2026-0123', supplier:'AWS Asia Pacific (Singapore)', amount:'US$-2,450.00', neg:true,
+  po:'候选原票 INV-SG-2026-0101（供应商 + 金额匹配 92%）',
+  diff:'Credit Note 待关联原票 · 冲减 Link 未建立',
+  badges:[{t:'Credit Note 待关联',c:'warning'}], status:'NEEDS_REVIEW', processed:false, doneLabel:null,
+  detail:{
+    comp:[
+      {k:'Credit Note 金额（负数冲减）', v:'US$-2,450.00', note:'AWS Asia Pacific (Singapore) · 云服务账期部分 credit'},
+      {k:'候选原票 INV-SG-2026-0101', v:'US$49,000.00', note:'供应商一致 + 部分冲减金额对应 · 匹配度 92%'},
+      {k:'Link 校验', v:'未建立', note:'对象模型 Link 校验规则 v1.4 产出候选，待复核员确认（→ Tab3）'}
+    ],
+    grn:'原票对应账期服务已确认；Credit Note 不产生新收货行',
+    taxmap:[{from:'GST 9%（Credit Note · 负数）', to:'SG-SR', note:'沿用原票税码 · 冲减方向'}],
+    tol:'本案无尾差问题；关联判定走 Link 校验（部分冲减 US$2,450.00 ≤ 原票金额）',
+    ai:{conf:90,
+        body:'Credit Note 备注引用原票账期（Sep 2026 billing cycle），金额为原票子集，供应商 UEN 与主数据一致，属典型云服务部分 credit 场景。',
+        conclude:'建议前往 <b>Tab3</b> 建立部分冲减 Link（US$-2,450.00 → INV-SG-2026-0101），确认后进入 Ariba 建档。'},
+    hint:'请前往 Tab3 完成本 Credit Note 的冲减 Link 确认（受控写操作，需二次确认）'
+  }}
+];
+
+let selectedIdx = -1;
+
+/* ════════════════ Tab1 渲染 ════════════════ */
+function renderQueue(){
+  document.getElementById('q1-tbody').innerHTML = QUEUE.map((c,i)=>`
+    <tr class="row-click transition-colors ${i===selectedIdx?'bg-primary-light dark:bg-[#1B2A4A]':''}" onclick="selectCase(${i})">
+      <td class="px-5 py-3 num font-medium whitespace-nowrap"><a href="case-detail.html?case=${c.id}" onclick="event.stopPropagation()" class="text-primary hover:underline">${c.id}</a></td>
+      <td class="px-3 py-3 max-w-[170px] truncate" title="${c.supplier}">${c.supplier}</td>
+      <td class="px-3 py-3 text-right num font-medium whitespace-nowrap ${c.neg?'text-danger':''}">${c.amount}</td>
+      <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 max-w-[190px] leading-snug">${c.po}</td>
+      <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 max-w-[230px] leading-snug">${c.diff}</td>
+      <td class="px-3 py-3 whitespace-nowrap">${c.badges.map(b=>`<span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-medium mr-1 ${DIFFBADGE[b.c].cls}">${b.t}</span>`).join('')}</td>
+      <td class="px-3 py-3 whitespace-nowrap">${c.processed
+        ? `<span class="inline-flex items-center gap-1 text-success text-[12px] font-medium">✓ 已处理</span>`
+        : `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[c.status].cls}">${STATUS[c.status].label}</span>`}</td>
+      <td class="px-3 py-3 pr-5 text-right whitespace-nowrap">${c.processed
+        ? `<a href="case-detail.html?case=${c.id}" onclick="event.stopPropagation()" class="text-[12px] text-success font-medium hover:underline">✓ 已确认 · 留痕 →</a>`
+        : `<button onclick="event.stopPropagation();selectCase(${i})" class="px-3 py-1.5 rounded-card bg-primary text-white text-[12px] font-medium hover:bg-[#4080FF] transition-colors">确认</button>`}</td>
+    </tr>`).join('');
+  document.getElementById('q1-done').textContent = QUEUE.filter(c=>c.processed).length;
+}
+
+function selectCase(i){
+  selectedIdx = i;
+  renderQueue();
+  renderConfirm(i);
+  const el = document.getElementById('q1-card');
+  el.classList.remove('hidden');
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function closeCard(){
+  selectedIdx = -1;
+  document.getElementById('q1-card').classList.add('hidden');
+  renderQueue();
+}
+
+function renderConfirm(i){
+  const c = QUEUE[i], d = c.detail;
+  const btnRow = c.processed
+    ? `<div class="flex items-center gap-3 px-5 py-3.5 border-t border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
+         <span class="text-[13px] text-success font-medium">✓ 已执行「${c.doneLabel}」· 权限校验通过（王莉 · 复核员）· 已写入不可篡改审计日志与案件时间线</span>
+         <a href="case-detail.html?case=${c.id}" class="ml-auto text-[13px] text-primary font-medium hover:underline shrink-0">查看案件详情与时间线 →</a>
+       </div>`
+    : `<div class="px-5 py-3.5 border-t border-line dark:border-dline flex items-center justify-between gap-3">
+         <div class="text-[11px] text-ink-3 dark:text-gray-500 leading-snug">⚖️ <b class="text-ink-2 dark:text-gray-400">受控写操作</b>：需复核员权限（王莉）+ 二次确认 + 勾选本人执行，写入不可篡改审计日志；AI 建议<b class="text-danger">不自动执行</b>。</div>
+         <div class="flex items-center gap-2.5 shrink-0">
+           <button onclick="openAct('q1',${i},'q1_release')" class="px-3.5 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF] shadow-card transition-colors">✓ 确认口径差异并放行建议</button>
+           <button onclick="openAct('q1',${i},'q1_po')" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">＋ 要求补PO行</button>
+           <button onclick="openAct('q1',${i},'q1_return')" class="px-3.5 py-2 rounded-card border border-warning text-warning text-[13px] font-medium hover:bg-warning-light dark:hover:bg-[#2E2417] transition-colors">↩ 退回供应商</button>
+         </div>
+       </div>`;
+  document.getElementById('q1-card').innerHTML = `
+    <div class="rounded-card bg-card dark:bg-dcard border-2 border-primary-mid dark:border-[#2A3F6B] shadow-card overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-[14px] font-semibold num text-primary">${c.id}</span>
+          <span class="text-[13px] text-ink-2 dark:text-gray-400 truncate">${c.supplier}</span>
+          <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium shrink-0 ${STATUS[c.status].cls}">${STATUS[c.status].label}</span>
+          ${c.badges.map(b=>`<span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-medium shrink-0 ${DIFFBADGE[b.c].cls}">${b.t}</span>`).join('')}
+        </div>
+        <button onclick="closeCard()" class="text-ink-3 hover:text-ink-1 dark:hover:text-white text-lg leading-none px-1 shrink-0" title="收起确认卡">✕</button>
+      </div>
+      <div class="grid grid-cols-2 gap-5 p-5">
+        <!-- 左：差异构成明细（规则引擎口径） + 容差说明 -->
+        <div class="space-y-4 min-w-0">
+          <div>
+            <div class="text-[13px] font-semibold mb-2">差异构成明细 <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium align-middle">规则引擎 · 确定性判定</span></div>
+            <div class="rounded-card border border-line dark:border-dline divide-y divide-line dark:divide-dline overflow-hidden">
+              ${d.comp.map(r=>`
+                <div class="px-3.5 py-2.5 flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-[12.5px] font-medium">${r.k}</div>
+                    <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 leading-snug">${r.note}</div>
+                  </div>
+                  <span class="num text-[13px] font-semibold shrink-0 text-right">${r.v}</span>
+                </div>`).join('')}
+            </div>
+            <div class="mt-2 text-[11.5px] text-ink-2 dark:text-gray-400 leading-relaxed">📦 ${d.grn}</div>
+          </div>
+          <div class="rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-3.5 py-2.5">
+            <div class="text-[11px] font-medium text-ink-3 dark:text-gray-500 mb-1">容差说明（规则引擎判定 · 非模型推断）</div>
+            <div class="text-[12px] text-ink-2 dark:text-gray-300 leading-relaxed">${d.tol}</div>
+          </div>
+          ${d.hint?`<div class="rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 px-3.5 py-2.5 text-[12px] text-ink-2 dark:text-gray-300 leading-relaxed">🔗 ${d.hint} <button onclick="switchTab(3)" class="ml-1 text-primary font-medium hover:underline">前往 Tab3 →</button></div>`:''}
+        </div>
+        <!-- 右：税码映射建议 + AI 建议卡 -->
+        <div class="space-y-4 min-w-0">
+          <div>
+            <div class="text-[13px] font-semibold mb-2">税码映射建议 <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium align-middle">映射表 v1.4</span></div>
+            <div class="rounded-card border border-line dark:border-dline divide-y divide-line dark:divide-dline overflow-hidden">
+              ${d.taxmap.map(t=>`
+                <div class="px-3.5 py-2.5 flex items-center gap-2.5">
+                  <span class="text-[12.5px] font-medium shrink-0">${t.from}</span>
+                  <span class="text-ink-3">→</span>
+                  <code class="num text-[12px] text-primary bg-primary-light dark:bg-[#1B2A4A] px-2 py-0.5 rounded shrink-0">${t.to}</code>
+                  <span class="text-[11px] text-ink-3 dark:text-gray-500 truncate ml-auto">${t.note}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+          <div class="rounded-card border-2 border-warning/40 bg-warning-light dark:bg-[#2E2417] p-4">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-card bg-warning text-white flex items-center justify-center text-[13px] shrink-0">🤖</span>
+              <div class="min-w-0">
+                <div class="text-[13px] font-semibold text-ink-1 dark:text-white">AI 建议卡 ${AI_TAG} <span class="text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 font-medium ml-0.5">LLM 仅建议 · 不自动执行</span></div>
+                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 flex items-center gap-1.5 num"><span>${AI_MODEL}</span><span>· 置信度</span>${confBadge(d.ai.conf)}</div>
+              </div>
+            </div>
+            <div class="mt-2.5 text-[12.5px] leading-relaxed text-ink-2 dark:text-gray-300">${d.ai.body}</div>
+            <div class="mt-1.5 text-[12.5px] leading-relaxed text-ink-1 dark:text-gray-200 font-medium">${d.ai.conclude}</div>
+            <div class="mt-2 text-[11px] text-warning font-medium">${AI_DISCLAIMER}</div>
+          </div>
+        </div>
+      </div>
+      ${btnRow}
+    </div>`;
+}
+
+/* ════════════════ Tab2 LLM 推荐待确认队列 ════════════════ */
+const MAPQ = [
+  { src:'报关单号（CN 新增字段）', to:'custom_fields.customs_ref', conf:86,
+    reason:'海关电子回执新增「报关单号」节点，语义上与目标平台报关参考字段对应；近 3 家供应商票据已出现同名字段，建议沉淀为长期规则。',
+    state:'pending', note:'' },
+  { src:'折扣行（行级负数折扣）', to:'discount_lines', conf:78,
+    reason:'票面行项目含负数折扣行，候选映射 discount_lines；存在「行内折扣 vs 独立折扣行」两种口径歧义，需人工判定目标平台入账方式。',
+    state:'pending', note:'' },
+  { src:'“发票” vs “采购发票”（CN / OS 语义差异）', to:'invoice_type 统一枚举 SUPPLIER_INVOICE', conf:91,
+    reason:'海外票面标题「Invoice」与中国口径「采购发票」语义一致，建议归一为统一枚举，避免跨实例统计口径分裂。',
+    state:'pending', note:'' }
+];
+
+function renderQ2(){
+  document.getElementById('q2-list').innerHTML = MAPQ.map((m,i)=>{
+    if(m.state==='adopted') return `
+      <div class="px-4 py-3 bg-success-light dark:bg-[#1C2E22] flex items-center gap-3">
+        <span class="w-6 h-6 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
+        <div class="min-w-0">
+          <div class="text-[12.5px] font-medium text-ink-1 dark:text-gray-200 truncate">「${m.src}」 → <code class="num text-success">${m.to}</code></div>
+          <div class="text-[11px] text-ink-2 dark:text-gray-400 mt-0.5">已沉淀 · 长期复用 · 人工确认沉淀机制 · 记入不可篡改审计日志（确认人：王莉 · 复核员）</div>
+        </div>
+        <span class="ml-auto text-[11px] px-2 py-0.5 rounded bg-success text-white font-medium shrink-0">✓ 已沉淀 · 长期复用</span>
+      </div>`;
+    if(m.state==='rejected') return `
+      <div class="px-4 py-3 bg-surface dark:bg-[#23282F] flex items-center gap-3 opacity-80">
+        <span class="w-6 h-6 rounded-full bg-ink-4 text-white flex items-center justify-center text-[12px] shrink-0">✕</span>
+        <div class="min-w-0">
+          <div class="text-[12.5px] font-medium text-ink-3 dark:text-gray-500 truncate line-through">「${m.src}」 → <code class="num">${m.to}</code></div>
+          <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">已拒绝 · 不沉淀为规则 · 备注「${m.note}」已记入审计日志</div>
+        </div>
+        <span class="ml-auto text-[11px] px-2 py-0.5 rounded bg-danger-light dark:bg-[#3A2426] text-danger font-medium shrink-0">已拒绝 · 留痕</span>
+      </div>`;
+    return `
+      <div class="px-4 py-3.5 flex items-start justify-between gap-4 hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[12.5px] font-medium">「${m.src}」</span>
+            <span class="text-ink-3">→</span>
+            <code class="num text-[12px] text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded">${m.to}</code>
+            ${AI_TAG}
+            <span class="text-[10px] text-ink-3 dark:text-gray-500 num">${AI_MODEL}</span>
+            ${confBadge(m.conf)}
+            ${m.conf<80?`<span class="text-[10px] px-1.5 py-0.5 rounded bg-danger-light dark:bg-[#3A2426] text-danger font-medium">低置信 · 强制人工</span>`:''}
+          </div>
+          <div class="text-[11.5px] text-ink-2 dark:text-gray-400 mt-1.5 leading-relaxed">${m.reason}</div>
+          <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">${AI_DISCLAIMER}</div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 mt-0.5">
+          <button onclick="openAct('q2',${i},'q2_adopt')" class="px-3 py-1.5 rounded-card bg-primary text-white text-[12px] font-medium hover:bg-[#4080FF] transition-colors">确认沉淀为规则</button>
+          <button onclick="openAct('q2',${i},'q2_reject')" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-danger hover:text-danger transition-colors">拒绝</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ════════════════ Tab3 红字票 / Credit Note Link 数据 ════════════════ */
+const LINKS = [
+  { inv:'INV-CN-2026-0384', kind:'红字票', amount:'¥-8,420.00', date:'2026-10-16', supplier:'广州粤海物流服务有限公司',
+    orig:{ id:'INV-CN-2026-0310', amount:'¥8,420.00', date:'2026-09-28', supplier:'广州粤海物流服务有限公司' },
+    match:92, mode:'全额冲减',
+    evidence:[
+      {k:'供应商一致', v:'✓ 通过', note:'销售方名称 + 税号完全一致，与供应商主数据匹配'},
+      {k:'金额冲减对应', v:'✓ 通过', note:'|¥-8,420.00| = 原票 ¥8,420.00 → 全额冲减，冲减后余额 0'},
+      {k:'开票日期先后', v:'✓ 通过', note:'原票 2026-09-28 在前 · 红字票 2026-10-16 在后，符合红冲时序'},
+      {k:'重复 Link 检查', v:'✓ 通过', note:'原票无既有冲减关系 · 全局无其他红字票命中同一原票'}
+    ],
+    ai:{conf:92,
+        body:'服务品类一致（物流服务费冲减）、金额与原票完全相等、开票时序符合红冲规则；三项证据相互印证。',
+        conclude:'建议建立<b>全额冲减 Link</b>：INV-CN-2026-0384 —冲减→ INV-CN-2026-0310。'},
+    toastMsg:'Link已建立：红字票→冲减→原票，写入案件时间线与对象模型',
+    state:'pending', note:'', open:false },
+  { inv:'INV-SG-2026-0123', kind:'Credit Note', amount:'US$-2,450.00', date:'2026-10-17', supplier:'AWS Asia Pacific (Singapore)',
+    orig:{ id:'INV-SG-2026-0101', amount:'US$49,000.00', date:'2026-09-30', supplier:'AWS Asia Pacific (Singapore)' },
+    match:92, mode:'部分冲减',
+    evidence:[
+      {k:'供应商一致', v:'✓ 通过', note:'UEN 一致 · 与 SUP 主数据匹配（Lanwu Procurement Technology (Singapore) Pte. Ltd. 为购买方）'},
+      {k:'金额冲减对应', v:'✓ 通过', note:'US$2,450.00 ≤ 原票 US$49,000.00 → 部分冲减，冲减后余额 US$46,550.00'},
+      {k:'开票日期先后', v:'✓ 通过', note:'原票 2026-09-30 在前 · Credit Note 2026-10-17 在后'},
+      {k:'重复 Link 检查', v:'✓ 通过', note:'原票无既有冲减关系'}
+    ],
+    ai:{conf:90,
+        body:'Credit Note 备注引用原票账期（Sep 2026 billing cycle），金额为原票子集，属典型云服务部分 credit 场景。',
+        conclude:'建议建立<b>部分冲减 Link</b>：INV-SG-2026-0123 —冲减→ INV-SG-2026-0101（US$-2,450.00）。'},
+    toastMsg:'Link已建立：Credit Note→冲减→原票，写入案件时间线与对象模型',
+    state:'pending', note:'', open:false }
+];
+
+function renderQ3(){
+  document.getElementById('q3-list').innerHTML = LINKS.map((L,i)=>{
+    const stateBanner = L.state==='confirmed'
+      ? `<div class="px-5 py-3 bg-success-light dark:bg-[#1C2E22] border-t border-line dark:border-dline flex items-center gap-3">
+           <span class="text-[13px] text-success font-medium">✓ Link 已确认 · ${L.mode} · 权限校验通过（王莉 · 复核员）· 已写入案件时间线与对象模型（不可篡改审计日志）</span>
+           <a href="case-detail.html?case=${L.inv}" class="ml-auto text-[13px] text-primary font-medium hover:underline shrink-0">查看案件详情 →</a>
+         </div>`
+      : L.state==='rejected'
+      ? `<div class="px-5 py-3 bg-surface dark:bg-[#23282F] border-t border-line dark:border-dline text-[12.5px] text-ink-3 dark:text-gray-500">✕ 已拒绝并备注「${L.note}」· 未建立 Link · 案件保持人工复核（备注已记入审计日志）</div>`
+      : `<div class="px-5 py-3 border-t border-line dark:border-dline flex items-center justify-between gap-3">
+           <div class="text-[11px] text-ink-3 dark:text-gray-500 leading-snug">⚖️ 确认 Link 属<b class="text-ink-2 dark:text-gray-400">受控写操作</b>：复核员权限 + 二次确认 + 写入不可篡改审计日志；AI 推荐理由<b class="text-danger">不自动执行</b>。</div>
+           <div class="flex items-center gap-2.5 shrink-0">
+             <button onclick="openAct('q3',${i},'q3_confirm')" class="px-3.5 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF] shadow-card transition-colors">⛓ 确认冲减Link</button>
+             <button onclick="openAct('q3',${i},'q3_reject')" class="px-3.5 py-2 rounded-card border border-warning text-warning text-[13px] font-medium hover:bg-warning-light dark:hover:bg-[#2E2417] transition-colors">拒绝并备注</button>
+           </div>
+         </div>`;
+    return `
+    <div class="${L.state==='confirmed'?'bg-success-light/40 dark:bg-[#1C2E22]/40':''}">
+      <div class="px-5 py-4 flex items-center gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="shrink-0">
+            <div class="text-[10px] text-ink-3 dark:text-gray-500">${L.kind}</div>
+            <div class="text-[13px] font-semibold num text-danger">${L.inv}</div>
+            <div class="text-[12px] num font-medium text-danger">${L.amount} <span class="text-ink-3 dark:text-gray-500 font-normal num">· ${L.date}</span></div>
+          </div>
+          <div class="flex flex-col items-center px-1 shrink-0">
+            <span class="text-[10px] text-danger font-medium">冲减 →</span>
+            <svg width="44" height="12" viewBox="0 0 44 12" fill="none"><path d="M0 6h38m0 0l-5-4m5 4l-5 4" stroke="#F53F3F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 num">${L.mode}</span>
+          </div>
+          <div class="shrink-0">
+            <div class="text-[10px] text-ink-3 dark:text-gray-500">候选原票</div>
+            <div class="text-[13px] font-semibold num text-primary">${L.orig.id}</div>
+            <div class="text-[12px] num font-medium">${L.orig.amount} <span class="text-ink-3 dark:text-gray-500 font-normal num">· ${L.orig.date}</span></div>
+          </div>
+        </div>
+        <div class="min-w-0 ml-2">
+          <div class="text-[12px] text-ink-2 dark:text-gray-400 truncate" title="${L.supplier}">${L.supplier}</div>
+          <div class="flex items-center gap-1.5 mt-1 text-[11px] text-ink-3 dark:text-gray-500">匹配度 <span class="num font-semibold text-warning">${L.match}%</span> ${confBadge(L.match)}</div>
+        </div>
+        <div class="ml-auto flex items-center gap-2 shrink-0">
+          ${L.state==='confirmed'
+            ? `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-card bg-success text-white text-[11px] font-medium">✓ Link 已确认 · 留痕</span>`
+            : L.state==='rejected'
+            ? `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 text-[11px] font-medium">已拒绝 · 留痕</span>`
+            : `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-warning text-[11px] font-medium">待确认 Link</span>`}
+          <button onclick="toggleEv(${i})" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">${L.open?'收起证据 ▴':'展开证据对照 ▾'}</button>
+        </div>
+      </div>
+      <div id="q3-ev-${i}" class="${L.open?'':'hidden'} px-5 pb-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-card border border-line dark:border-dline overflow-hidden">
+            <div class="px-3.5 py-2 bg-surface dark:bg-[#23282F] border-b border-line dark:border-dline text-[12px] font-semibold">规则引擎 Link 校验 <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium num align-middle">link-check v1.1</span> <span class="text-[10px] text-ink-3 dark:text-gray-500 font-normal">确定性判定</span></div>
+            <div class="divide-y divide-line dark:divide-dline">
+              ${L.evidence.map(e=>`
+                <div class="px-3.5 py-2 flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="text-[12px] font-medium">${e.k}</div>
+                    <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 leading-snug">${e.note}</div>
+                  </div>
+                  <span class="text-[11px] font-semibold text-success shrink-0 num">${e.v}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+          <div class="rounded-card border-2 border-warning/40 bg-warning-light dark:bg-[#2E2417] p-3.5">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-card bg-warning text-white flex items-center justify-center text-[12px] shrink-0">🤖</span>
+              <div class="text-[12.5px] font-semibold text-ink-1 dark:text-white">AI 推荐理由 ${AI_TAG}</div>
+              <span class="text-[10px] text-ink-3 dark:text-gray-500 num ml-auto">${AI_MODEL}</span>
+              ${confBadge(L.ai.conf)}
+            </div>
+            <div class="mt-2 text-[12px] leading-relaxed text-ink-2 dark:text-gray-300">${L.ai.body}</div>
+            <div class="mt-1.5 text-[12px] leading-relaxed text-ink-1 dark:text-gray-200 font-medium">${L.ai.conclude}</div>
+            <div class="mt-2 text-[11px] text-warning font-medium">${AI_DISCLAIMER}</div>
+          </div>
+        </div>
+      </div>
+      ${stateBanner}
+    </div>`;
+  }).join('');
+  const cnt = LINKS.filter(L=>L.state==='pending').length;
+  document.getElementById('q3-count').textContent = cnt;
+  document.getElementById('q3-count').classList.toggle('hidden', cnt===0);
+}
+function toggleEv(i){ LINKS[i].open = !LINKS[i].open; renderQ3(); }
+
+/* ════════════════ 受控写操作：二次确认弹窗（通用） ════════════════ */
+const ACT_DEFS = {
+  q1_release:{label:'确认口径差异并放行建议', icon:'✓', danger:false,
+    warn:'确认后差异将标记「口径差异」结论并建议放行（三单匹配与建档在目标平台 / ERP 执行，边界待 H38 确认）。请核对差异构成明细与税码映射后操作。'},
+  q1_po:{label:'要求补PO行', icon:'＋', danger:false,
+    warn:'将生成补 PO 行请求并通知采购员（如运费等 PO 外费用补齐后再行匹配），案件保持 <b>INVESTIGATING</b>，cXML 建档保持挂起。'},
+  q1_return:{label:'退回供应商', icon:'↩', danger:true,
+    warn:'将生成退回通知（邮件渠道），案件置为 <b>BLOCKED</b>，<b>不会</b>推送目标系统建档。属对外动作，请确认退回理由并填写处置意见。'},
+  q2_adopt:{label:'确认沉淀为规则', icon:'⬇', danger:false,
+    warn:'该 LLM 推荐映射确认后即<b>沉淀入预设规则库</b>（人工确认沉淀机制），同类字段后续自动复用；沉淀动作记入不可篡改审计日志，可在「人工确认历史」追溯。'},
+  q2_reject:{label:'拒绝推荐', icon:'✕', danger:true, noteRequired:true, notePlaceholder:'拒绝备注（必填，审计要求）：如「目标平台以行内折扣入账，不使用独立折扣行」',
+    warn:'拒绝后该推荐<b>不会沉淀为规则</b>，字段继续路由人工处理队列。请填写拒绝备注（审计必填）。'},
+  q3_confirm:{label:'确认冲减Link', icon:'⛓', danger:false,
+    warn:'确认后将建立「红字票 / Credit Note —冲减→ 原票」结构化关系，写入案件时间线与对象模型；Ariba 建档前将自动校验该 Link。'},
+  q3_reject:{label:'拒绝并备注', icon:'✕', danger:true, noteRequired:true, notePlaceholder:'拒绝备注（必填，审计要求）：如「金额对应但账期不符，待供应商补充说明」',
+    warn:'拒绝后不建立 Link，候选关系保留可追溯；案件继续路由人工复核（未关联红字票存在<b>重复付款风险</b>）。请填写拒绝备注（审计必填）。'}
+};
+let pending = null;
+
+function openAct(tab, idx, key){
+  pending = {tab, idx, key};
+  const D = ACT_DEFS[key];
+  let obj;
+  if(tab==='q1') obj = `${QUEUE[idx].id} · ${QUEUE[idx].supplier}`;
+  else if(tab==='q2') obj = `映射推荐「${MAPQ[idx].src}」→ ${MAPQ[idx].to}`;
+  else obj = `${LINKS[idx].inv} —冲减→ ${LINKS[idx].orig.id}`;
+  document.getElementById('act-head').innerHTML = `${D.icon} ${D.label} · 受控写操作二次确认`;
+  const w = document.getElementById('act-warn');
+  w.innerHTML = D.warn;
+  w.className = `text-[12px] leading-relaxed rounded-card border p-3 ${D.danger?'border-danger/40 bg-danger-light dark:bg-[#3A2426] text-ink-1 dark:text-gray-200':'border-primary-mid dark:border-[#2A3F6B] bg-primary-light dark:bg-[#1B2A4A] text-ink-1 dark:text-gray-200'}`;
+  document.getElementById('act-case').textContent = obj;
+  const note = document.getElementById('act-note');
+  note.value = ''; note.placeholder = D.notePlaceholder || '处置意见 / 备注（选填，将写入案件时间线与审计日志）';
+  const chk = document.getElementById('act-confirm-chk'); chk.checked = false; chk.onchange = ()=>{
+    const ok = document.getElementById('act-ok');
+    ok.disabled = !chk.checked;
+    ok.className = `px-3.5 py-1.5 rounded-card text-[13px] font-medium text-white ${chk.checked ? (D.danger?'bg-danger hover:opacity-90':'bg-primary hover:bg-[#4080FF]') : 'bg-ink-4 cursor-not-allowed'}`;
+  };
+  chk.onchange();
+  showModal('act-modal');
+}
+function closeAct(){ hideModal('act-modal'); pending = null; }
+
+function doAct(){
+  if(!pending) return;
+  const D = ACT_DEFS[pending.key];
+  const note = document.getElementById('act-note').value.trim();
+  if(D.noteRequired && !note){ toast('拒绝操作必须填写备注（审计要求）'); return; }
+  let msg;
+  if(pending.tab==='q1'){
+    const c = QUEUE[pending.idx];
+    c.processed = true; c.doneLabel = D.label;
+    renderQueue();
+    if(selectedIdx===pending.idx) renderConfirm(pending.idx);
+    msg = `已写入案件时间线：「${D.label}」· 案件 ${c.id} · 操作人 王莉（复核员）· 不可篡改审计日志`;
+  } else if(pending.tab==='q2'){
+    const m = MAPQ[pending.idx];
+    if(pending.key==='q2_adopt'){
+      m.state = 'adopted';
+      msg = '确认一次即沉淀为规则（人工确认沉淀机制），记入审计日志';
+    } else {
+      m.state = 'rejected'; m.note = note;
+      msg = '已拒绝该 LLM 推荐 · 不沉淀为规则 · 备注已记入审计日志';
+    }
+    renderQ2();
+  } else {
+    const L = LINKS[pending.idx];
+    if(pending.key==='q3_confirm'){
+      L.state = 'confirmed'; L.open = false;
+      msg = L.toastMsg;
+    } else {
+      L.state = 'rejected'; L.note = note; L.open = false;
+      msg = `已拒绝Link并备注 · 未建立冲减关系 · 备注与操作已记入审计日志`;
+    }
+    renderQ3();
+  }
+  closeAct();
+  toast(msg);
+}
+
+/* ════════════════ Tab 切换 / 深色模式 / 工具 ════════════════ */
+function switchTab(n){
+  for(let k=1;k<=3;k++){
+    document.getElementById('tab-'+k).classList.toggle('hidden', k!==n);
+    const b = document.getElementById('tabbtn-'+k);
+    b.className = k===n
+      ? 'pb-2.5 pt-1 text-[14px] font-medium border-b-2 border-primary text-primary'
+      : 'pb-2.5 pt-1 text-[14px] font-medium border-b-2 border-transparent text-ink-2 dark:text-gray-400 hover:text-primary';
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function toggleDark(){ document.documentElement.classList.toggle('dark'); }
+function showModal(id){ const m=document.getElementById(id); m.classList.remove('hidden'); m.classList.add('flex'); }
+function hideModal(id){ const m=document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex'); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3200);
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAct(); });
+
+/* ════════════════ 初始化 ════════════════ */
+renderQueue();
+renderQ2();
+renderQ3();
+switchTab(1);
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='matching';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平台适配器管理 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF'},
+      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
+      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
+      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
+      purple:{DEFAULT:'#722ED1',light:'#F5E8FF'},
+      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
+      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
+    },
+    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
+    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',cardhover:'0 4px 16px rgba(29,33,41,.10)'},
+    borderRadius:{card:'8px'}
+  } }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .toast{transition:opacity .3s,transform .3s;}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header ═══════════════ -->
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <span class="text-ink-3 dark:text-gray-500">平台配置</span>
+      <span class="text-ink-4">›</span>
+      <b class="text-ink-1 dark:text-white">适配器管理</b>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <span class="text-[11px] num px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">Adapter 契约 v1 · 已随蓝图冻结 · 破坏性变更走 /v2</span>
+    <button onclick="toggleDark()" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="深色模式">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">陈铮 · 实施管理员</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">Adapter 管理权限</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-4">
+
+  <!-- ═══════════════ ① 顶部横幅：东向 Adapter API + 统计 ═══════════════ -->
+  <section class="rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-6 py-4 flex items-center justify-between gap-6">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-card bg-primary flex items-center justify-center shrink-0 text-white">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7" stroke-linecap="round"/></svg>
+      </div>
+      <div class="min-w-0">
+        <div class="text-[15px] font-semibold">东向 Adapter API：平台 → 目标系统
+          <span class="text-[11px] font-medium ml-1 px-1.5 py-0.5 rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">新目标系统按 Adapter 模板开发 · 复用统一 Schema 出口</span>
+        </div>
+        <div class="text-[12px] text-ink-2 dark:text-gray-300 mt-0.5 leading-relaxed">中台定位：<b class="text-ink-1 dark:text-white">补充采购平台票据能力，不替代流程平台</b>。Adapter 契约 v1 已随蓝图评审冻结，支撑第三方独立接入；破坏性变更一律走 /v2，契约文档与 Demo 同步更新。本页仅覆盖供应商采购发票的建档适配与数据输出通道。</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 shrink-0 text-[12px]">
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-success">3</b><span class="text-ink-3 dark:text-gray-500">目标系统已对接</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-warning">1</b><span class="text-ink-3 dark:text-gray-500">适配中</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-ink-2 dark:text-gray-400">1</b><span class="text-ink-3 dark:text-gray-500">规划中</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-primary">5,836</b><span class="text-ink-3 dark:text-gray-500">本月建档总量（张）</span></div>
+    </div>
+  </section>
+  <div class="-mt-1.5 text-[11px] text-ink-3 dark:text-gray-500">＊「已对接 3」口径为采购平台 / 应付系统等建档目标系统；另有 Data Lake / BI 数据输出通道已对接（只读输出，不计入建档统计）。</div>
+
+  <!-- ═══════════════ ② Adapter 卡片网格（3×2） ═══════════════ -->
+  <section>
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <div class="text-[15px] font-semibold">Adapter 实例总览</div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">点击「配置」查看连接配置 / 字段映射模板 / 建档回执与重试队列 ·「测试建档」走沙箱通道模拟</div>
+      </div>
+      <span class="text-[11px] px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">🔒 Adapter 配置变更为受控写操作：权限校验 + 二次确认 + 审计留痕</span>
+    </div>
+    <div id="adapter-grid" class="grid grid-cols-3 gap-4"></div>
+  </section>
+
+  <!-- ═══════════════ ③ 选中 Adapter 详情区 ═══════════════ -->
+  <section id="detail" class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden"></section>
+
+  <!-- ═══════════════ ④ 底部契约治理条 ═══════════════ -->
+  <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card px-5 py-4 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-2.5 min-w-0 flex-wrap text-[12.5px] text-ink-2 dark:text-gray-400">
+      <span class="text-[14px] font-semibold text-ink-1 dark:text-white mr-1">契约治理</span>
+      <span class="px-2 py-1 rounded-card bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">v1 接口面已随蓝图评审冻结</span>
+      <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline">破坏性变更一律走 <b class="num">/v2</b>（并行过渡，不中断存量接入）</span>
+      <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline">契约文档与 Demo 同步更新</span>
+      <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline">第三方按 Adapter 模板独立接入，复用统一 Schema 出口</span>
+    </div>
+    <a href="api-portal.html" class="shrink-0 px-3 py-1.5 rounded-card border border-primary text-primary text-[12.5px] font-medium hover:bg-primary-light dark:hover:bg-[#1B2A4A]">查看 Adapter API 契约文档 →</a>
+  </section>
+
+  <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
+    平台适配器管理仅服务供应商采购发票建档与数据输出 · 真实建档为受控写操作（二次确认 + 权限校验 + 审计留痕）· 数据为演示样例 · v1.2-candidate 蓝图口径
+  </footer>
+</main>
+
+<!-- ═══════════════ 测试建档 模拟弹窗 ═══════════════ -->
+<div id="test-modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-ink-1/50 dark:bg-black/60" onclick="closeTest()"></div>
+  <div class="relative mx-auto mt-[8vh] w-[760px] max-w-[94vw] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-6 pt-5 pb-4 border-b border-line dark:border-dline flex items-center justify-between">
+      <div>
+        <div class="text-[15px] font-semibold flex items-center gap-2">测试建档 · <span id="tm-adapter" class="text-primary"></span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30 font-medium">沙箱通道 · 模拟</span>
+        </div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">选取案件 → Schema 校验 → 报文组装 → 签名 → 发送 → 回执归档，全链路预演</div>
+      </div>
+      <button onclick="closeTest()" class="w-7 h-7 rounded-card border border-line dark:border-dline text-ink-3 hover:text-danger hover:border-danger text-[13px]" title="关闭">✕</button>
+    </div>
+
+    <div class="px-6 py-4 space-y-4">
+      <!-- 测试通道提示 -->
+      <div class="px-3 py-2.5 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-[12px] text-ink-2 dark:text-gray-300 leading-relaxed">
+        ⚠ <b class="text-warning">测试通道，不影响生产数据；真实建档为受控写操作，需人工确认后执行</b>（二次确认 + Adapter 管理员权限校验 + 操作人 / 时间 / 报文摘要记入审计日志）。
+      </div>
+
+      <!-- 案件信息 -->
+      <div class="rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] p-3.5">
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-2">测试案件（样例数据）</div>
+        <div id="tm-case" class="grid grid-cols-3 gap-x-4 gap-y-2 text-[12.5px]"></div>
+        <div id="tm-case-note" class="mt-2 text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed"></div>
+      </div>
+
+      <!-- 步骤条 -->
+      <div>
+        <div id="tm-steps" class="flex items-center"></div>
+        <div id="tm-step-detail" class="mt-3 min-h-[44px] px-3 py-2.5 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">
+          点击「开始测试建档」，按当前 Adapter 契约推演完整链路（只读预演，不产生真实调用）。
+        </div>
+      </div>
+
+      <!-- 结果区 -->
+      <div id="tm-result" class="hidden px-3 py-2.5 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30 text-[12.5px] text-ink-2 dark:text-gray-300 leading-relaxed"></div>
+    </div>
+
+    <div class="px-6 py-4 border-t border-line dark:border-dline flex items-center justify-between bg-surface dark:bg-[#23282F]">
+      <div class="text-[11px] text-ink-3 dark:text-gray-500">回执将归档至案件时间线（测试标记）· 全程留痕可审计</div>
+      <div class="flex items-center gap-2">
+        <button id="tm-cancel" onclick="closeTest()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">取消</button>
+        <button id="tm-run" onclick="runTest()" class="px-3.5 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">▶ 开始测试建档</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[680px]"></div>
+
+<script>
+/* ════════════════ InvoiceCase 状态六值（与蓝图 §4.7 一致） ════════════════ */
+const STATUS = {
+  RECOGNIZED:    { label:'RECOGNIZED 已识别',   cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
+  VERIFYING:     { label:'VERIFYING 查验中',    cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
+  NEEDS_REVIEW:  { label:'NEEDS_REVIEW 待复核', cls:'bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30' },
+  INVESTIGATING: { label:'INVESTIGATING 调查中',cls:'bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30' },
+  RESOLVED:      { label:'RESOLVED 已解决',     cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30' },
+  BLOCKED:       { label:'BLOCKED 已拦截',      cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30' }
+};
+
+/* ════════════════ Adapter 实例数据 ════════════════ */
+const ADAPTERS = [
+  {
+    id:'ariba', mono:'AR', name:'SAP Ariba', sub:'采购平台 · cXML 建档', status:'live',
+    contracts:['cXML InvoiceDetailRequest（契约 v1）','BTP Destination + xsuaa OAuth2 鉴权','XML 原件 + PDF 票面随档（AttachmentMessage）'],
+    metrics:[{k:'本月建档',v:'1,284'},{k:'成功率',v:'99.6%'},{k:'P95 时延',v:'1.8s'}],
+    conn:[
+      ['Endpoint','https://service.ariba.com/Transactions/cXMLAdapter（Production）'],
+      ['BTP Destination','ariba-prod-cn-lanwu · Cloud Connector 内网穿透'],
+      ['认证方式','xsuaa OAuth2 Client Credentials（凭证托管 KMS/Vault，界面不回显）'],
+      ['Custom Fields 映射数','14 个（Extrinsic 字段）'],
+      ['附件策略','XML 原件 + PDF 票面随档 · Base64 分段 ≤ 5MB/段 · SHA-256 摘要校验'],
+      ['契约版本','Adapter API v1（已冻结）· cXML 3.0 Profile']
+    ],
+    mapping:{ ver:'v1.4', target:'Ariba cXML InvoiceDetailRequest', rows:[
+      ['header.invoice_no','InvoiceDetailRequest/InvoiceID','发票号 · 与幂等键 requestId 同源','preset','预设 v1.0'],
+      ['header.invoice_date','InvoiceDetailRequest/InvoiceDate','ISO 8601 → cXML 日期格式转换','preset','预设 v1.0'],
+      ['total.gross_amount','InvoiceDetailRequest/TotalAmount','价税合计 · Money @currency=CNY','preset','预设 v1.0'],
+      ['total.tax_amount','InvoiceDetailTax/TaxAmount','行级税额汇总 · 尾差容差 ±0.06','preset','预设 v1.0'],
+      ['tax.rate','TaxCategory「J1」','增值税 13% → Ariba 税类目 J1','manual','人工沉淀 · 2026-08 实施定制'],
+      ['seller.tax_id','SupplierPartID / TaxID','统一社会信用代码（北京中科华创科技有限公司）','preset','预设 v1.0'],
+      ['seller.name','InvoiceDetailSupplierParty/Contact/Name','供应商主数据映射 · Ariba Supplier ID 对齐','preset','预设 v1.0'],
+      ['links.po','InvoiceDetailItem/POReference','PO 三单匹配引用（PO / GRN / Invoice）','preset','预设 v1.0'],
+      ['ext.reviewer_note','Extrinsic/ReviewerNote','复核员备注随单透传，供审批链参考','manual','人工沉淀 · 2026-09 复核确认'],
+      ['ext.project_desc','Extrinsic/ProjectDesc','AI 生成','ai','AI 生成 · 映射助手 v0.9.2 · 置信度 88% · 待人工确认']
+    ]},
+    queue:[
+      { c:'INV-CN-2026-0386', st:'ok', s:'成功回执', d:'InvoiceDocument ID: AID-2026-90218 · 2026-10-20 14:32', a:'XML 原件 + PDF 票面已随档 · 回执已归档案件时间线' },
+      { c:'INV-CN-2026-0383', st:'retry', s:'失败重试中', d:'网络超时（Timeout）· 自动第 2/3 次重试', a:'幂等键 requestId 保证不重复建档 · 重试留痕' },
+      { c:'INV-CN-2026-0381', st:'manual', s:'失败待人工', d:'Custom Field「项目说明」超长（&gt;255 字符）', a:'需实施管理员确认截断 / 转附件策略 · 案件转 NEEDS_REVIEW · 已记审计' }
+    ],
+    sim:{
+      caseId:'INV-CN-2026-0387', supplier:'北京中科华创科技有限公司', amount:'¥113,000.00',
+      buyer:'澜坞（上海）采购科技有限公司', cstatus:'NEEDS_REVIEW', provider:'百望云',
+      note:'案件当前为 NEEDS_REVIEW（PO 金额差异）：测试通道仅预演报文组装与发送，<b>不写回案件状态、不触发真实建档</b>。',
+      steps:[
+        { t:'Schema 校验', d:'统一 Schema v1.4 字段完整性 + 必填项校验通过（invoice_no / gross_amount / seller.tax_id / links.po）' },
+        { t:'cXML 组装', d:'按映射规则 v1.4 生成 InvoiceDetailRequest · TaxCategory J1 · POReference 已挂 · Extrinsic 14 字段' },
+        { t:'签名', d:'xsuaa OAuth2 令牌获取成功 · cXML 报文 HMAC 签名 · 凭证由 KMS/Vault 加载（不回显）' },
+        { t:'发送', d:'BTP Destination ariba-prod-cn-lanwu → 沙箱网关（测试通道，不路由生产）· 附件 XML 原件 + PDF 随档' },
+        { t:'回执', d:'Ariba 回执校验通过 · InvoiceDocument ID 登记 · 回执归档案件时间线（测试标记）' }
+      ],
+      ok:'✓ 测试建档成功 · Ariba Invoice Document ID: <b class="num">AID-2026-90341</b> · 回执已归档案件时间线'
+    }
+  },
+  {
+    id:'oracle', mono:'OF', name:'Oracle Fusion Procurement / Payables', sub:'采购 / 应付 · REST 建档', status:'live',
+    contracts:['AP Invoice Import REST（FBDI 兼容）','Supplier / PO / Tax 三向映射','附件走 FBDI 目录 + 影像外链（SHA-256）'],
+    metrics:[{k:'本月建档',v:'642'},{k:'成功率',v:'99.4%'},{k:'P95 时延',v:'2.4s'}],
+    conn:[
+      ['Endpoint','https://fa-eezt.oraclecloud.com（Fusion Procurement / Payables）'],
+      ['接口','AP Invoice Import REST · /fscmRestApi/resources/latest/invoices'],
+      ['认证方式','OAuth2 Client Credentials（OCI Vault 托管，界面不回显）'],
+      ['映射范围','Supplier / PO / Tax 三向映射 · 27 个字段'],
+      ['附件策略','FBDI 附件目录 + 影像外链 · SHA-256 摘要校验'],
+      ['契约版本','Adapter API v1（已冻结）']
+    ],
+    mapping:{ ver:'v1.4', target:'Oracle AP Invoice Import REST', rows:[
+      ['header.invoice_no','invoices/invoiceNumber','发票号 · 幂等键同源','preset','预设 v1.0'],
+      ['seller.name','suppliers/supplierName','Supplier 主数据映射 · 供应商编码 SUP-00421','preset','预设 v1.0'],
+      ['links.po','invoiceLines/poNumber','PO 三向匹配（Supplier / PO / Tax）','preset','预设 v1.0'],
+      ['total.gross_amount','invoiceAmount','价税合计 · currency=CNY','preset','预设 v1.0'],
+      ['tax.rate','taxClassificationCode','增值税 13% → CN VAT STD','manual','人工沉淀 · 2026-09 税务顾问复核'],
+      ['attachments[]','FBDI 附件目录','影像外链 + SHA-256 摘要','preset','预设 v1.0']
+    ]},
+    queue:[
+      { c:'INV-CN-2026-0382', st:'ok', s:'成功回执', d:'AP Invoice ID: 3024556781 · 2026-10-19 10:05', a:'回执已归档案件时间线' },
+      { c:'INV-CN-2026-0380', st:'retry', s:'失败重试中', d:'PO 行项目锁定（三向匹配进行中）· 第 1/3 次重试', a:'退避策略 30s/2min/10min · 留痕' },
+      { c:'INV-SG-2026-0124', st:'manual', s:'失败待人工', d:'Supplier Site 映射缺失（Dell Asia Pacific Pte. Ltd.）', a:'需实施管理员维护供应商站点后重推 · 已记审计' }
+    ],
+    sim:{
+      caseId:'INV-CN-2026-0386', supplier:'上海临港智造装备股份有限公司', amount:'¥56,500.00',
+      buyer:'澜坞（上海）采购科技有限公司', cstatus:'RECOGNIZED', provider:'XML 直读（免 Provider）',
+      note:'案件为 RECOGNIZED：测试通道仅预演 REST 报文，不写回案件状态、不触发真实建档。',
+      steps:[
+        { t:'Schema 校验', d:'统一 Schema v1.4 完整性校验通过' },
+        { t:'REST 报文组装', d:'AP Invoice Import payload 生成 · Supplier / PO / Tax 映射规则 v1.4' },
+        { t:'OAuth2 鉴权', d:'OCI Vault 加载凭证 · 令牌获取成功（不回显）' },
+        { t:'REST 发送', d:'沙箱网关接收（测试通道，不路由生产）' },
+        { t:'回执', d:'AP Invoice ID 登记 · 回执归档案件时间线（测试标记）' }
+      ],
+      ok:'✓ 测试建档成功 · Oracle AP Invoice ID: <b class="num">3024556902</b> · 回执已归档案件时间线'
+    }
+  },
+  {
+    id:'custom', mono:'AP', name:'自研应付系统', sub:'客户自建 · 双通道建档', status:'live',
+    contracts:['REST/JSON + MQ 双通道（幂等键去重）','mTLS 双向证书 + HMAC-SHA256 报文签名','回执自动归档案件时间线'],
+    metrics:[{k:'本月建档',v:'3,910'},{k:'成功率',v:'99.8%'},{k:'P95 时延',v:'0.9s'}],
+    conn:[
+      ['Endpoint','https://ap.lanwu-internal.com/api/v1/ap/invoices（REST/JSON）'],
+      ['MQ 通道','Kafka topic：ap-invoice-accepted（双通道互备 · 幂等键 caseId）'],
+      ['认证方式','mTLS 双向证书 + HMAC-SHA256 报文签名（证书托管 KMS）'],
+      ['字段映射','统一 Schema 全量透传 · 32 个字段'],
+      ['附件策略','对象存储链接 + SHA-256 摘要（原件不出中台证据库）'],
+      ['契约版本','Adapter API v1（已冻结）']
+    ],
+    mapping:{ ver:'v1.4', target:'自研应付 REST/JSON + MQ', rows:[
+      ['case_id','invoice.caseId','幂等键 · MQ 消费去重','preset','预设 v1.0'],
+      ['header.*','invoice.header','头字段全量透传（12 个字段）','preset','预设 v1.0'],
+      ['total.*','invoice.amounts','价税合计 / 净额 / 税额','preset','预设 v1.0'],
+      ['risk_flags[]','invoice.riskFlags','风险事件随单同步（查重 / 验真 / 冲突）','manual','人工沉淀 · 2026-08 风控对齐']
+    ]},
+    queue:[
+      { c:'INV-CN-2026-0386', st:'ok', s:'成功回执', d:'受理号 AP-2026-118207 · MQ 回执确认 2026-10-20 09:41', a:'回执已归档案件时间线' },
+      { c:'INV-CN-2026-0384', st:'retry', s:'失败重试中', d:'MQ 消费积压（红字票关联校验排队）· 第 2/3 次重试', a:'幂等键去重 · 不重复入账受理' },
+      { c:'INV-CN-2026-0379', st:'manual', s:'失败待人工', d:'金额字段精度异常（小数位 >2）', a:'需实施管理员确认舍入策略 · 已记审计' }
+    ],
+    sim:{
+      caseId:'INV-CN-2026-0386', supplier:'上海临港智造装备股份有限公司', amount:'¥56,500.00',
+      buyer:'澜坞（上海）采购科技有限公司', cstatus:'RECOGNIZED', provider:'XML 直读（免 Provider）',
+      note:'测试通道仅预演 REST + MQ 报文，不写回案件状态、不触发真实受理。',
+      steps:[
+        { t:'Schema 校验', d:'统一 Schema v1.4 完整性校验通过' },
+        { t:'REST/JSON 组装', d:'32 字段全量透传 · riskFlags 随单' },
+        { t:'HMAC 签名', d:'mTLS 证书 + HMAC-SHA256 签名（KMS 加载，不回显）' },
+        { t:'双通道发送', d:'REST 沙箱受理 + MQ 影子 topic（测试通道）' },
+        { t:'MQ 回执', d:'受理号登记 · 回执归档案件时间线（测试标记）' }
+      ],
+      ok:'✓ 测试建档成功 · 应付系统受理号 <b class="num">AP-2026-118403</b> · 回执已归档案件时间线'
+    }
+  },
+  {
+    id:'coupa', mono:'CP', name:'Coupa Invoicing', sub:'采购平台 · 适配中', status:'wip',
+    contracts:['Invoice API + PO Matching','Custom Fields 映射（配置中）','按 Adapter 模板开发 · 复用统一 Schema 出口'],
+    metrics:[{k:'联调进度',v:'60%'},{k:'预计完成',v:'2026-11'},{k:'契约',v:'v1（冻结）'}],
+    plan:{
+      title:'适配进度 · Coupa Invoicing（预计 2026-11 完成）',
+      items:[
+        { st:'done', t:'契约评审完成：Invoice API v3 + PO Matching 字段核对（基于 Adapter 模板 v1，未引入破坏性变更）' },
+        { st:'doing', t:'沙箱联调：Invoice 创建 API 连通性已验证 · PO Matching 场景覆盖 60%（PO / non-PO 两路径）' },
+        { st:'todo', t:'Custom Fields 映射确认：购买方 Lanwu Procurement Technology (Singapore) Pte. Ltd. 实体配置' },
+        { st:'todo', t:'测试建档与回执归档验证（INV-SG-2026-0125 等海外样例案件）' }
+      ],
+      note:'目标样例：Siemens Energy Pte. Ltd. 等海外 Supplier Invoice（S$/US$）· 完成后纳入「已对接」口径并开放测试建档。'
+    },
+    wipToast:'Coupa Invoicing 适配中 · 联调沙箱预计 2026-11 开放测试建档（当前仅支持契约评审与映射预配置）'
+  },
+  {
+    id:'s4hana', mono:'S4', name:'SAP S/4HANA Supplier Invoice', sub:'ERP 建档 · 规划中', status:'plan',
+    contracts:['Supplier Invoice API（OData）/ MIRO 兼容建档','Tax Code 映射 · Accounting Document 回写引用','依赖 Adapter 契约 v1（已冻结）'],
+    metrics:[{k:'规划评估',v:'2027-Q1'},{k:'契约',v:'v1（冻结）'},{k:'开发方式',v:'Adapter 模板'}],
+    plan:{
+      title:'规划范围 · SAP S/4HANA Supplier Invoice（2027-Q1 方案评估）',
+      items:[
+        { st:'todo', t:'范围：Supplier Invoice API（OData）/ MIRO 兼容建档 / Tax Code 映射 / Accounting Document 回写引用' },
+        { st:'todo', t:'依赖：Adapter 契约 v1（已冻结，无破坏性变更需求）· S/4 版本兼容性评估' },
+        { st:'todo', t:'开发方式：按 Adapter 模板开发，复用统一 Schema 出口，不改平台内核' },
+        { st:'todo', t:'目标样例：澜坞（上海）S/4 实例 · 中国数电票 → Supplier Invoice 建档（供应商：北京中科华创科技有限公司 等）' }
+      ],
+      note:'规划阶段不开放配置与测试建档；接口面以契约文档为准（见底部治理条）。'
+    },
+    wipToast:'S/4HANA Supplier Invoice Adapter 规划中（2027-Q1 评估）· 暂未开放配置与测试建档'
+  },
+  {
+    id:'datalake', mono:'DL', name:'Data Lake / BI 输出', sub:'数据输出通道 · 只读', status:'live',
+    contracts:['统一 Schema 案件快照输出（Parquet / JSON）','风险事件 + 审计数据订阅','只读输出通道 · 不回写业务流程'],
+    metrics:[{k:'本月输出',v:'12,846 快照'},{k:'事件推送',v:'实时'},{k:'格式',v:'Parquet + JSON'}],
+    conn:[
+      ['输出通道','OSS / S3 对象存储（Parquet）+ Kafka 事件流（JSON Lines）'],
+      ['输出内容','统一 Schema 案件快照 · 风险事件 · 审计数据（操作人 / 时间 / 前后值）'],
+      ['频率','每日全量快照 02:00 + 实时事件推送'],
+      ['一致性','SHA-256 校验和登记 · 断点续传 · 批次号可追溯'],
+      ['权限','只读输出 · 不回写业务系统 · 下载需数据管理员权限并留痕'],
+      ['契约版本','统一 Schema v1.4（随 Adapter 契约 v1 冻结）']
+    ],
+    mapping:{ ver:'v1.4', target:'Data Lake / BI 输出（Parquet / JSON Lines）', rows:[
+      ['case.*','case_snapshot.parquet','案件全量快照（含状态机与证据链索引）','preset','预设 v1.0'],
+      ['risk_events[]','risk_event.jsonl','风险事件：查重拦截 / 验真异常 / 字段冲突','preset','预设 v1.0'],
+      ['audit.actions[]','audit_log.jsonl','Action 审计留痕（操作人 / 时间 / 前后值）','preset','预设 v1.0'],
+      ['attachments.digest','manifest.json','附件摘要清单（原件不出证据库）','manual','人工沉淀 · 2026-09 安全评审']
+    ]},
+    queue:[
+      { c:'job-20261020-full', st:'ok', s:'输出成功', d:'全量快照 12,846 条 · 校验和一致', a:'批次号 B-20261020-02 登记' },
+      { c:'job-20261021-inc', st:'retry', s:'重试中', d:'OSS 网络抖动 · 第 1/3 次重试', a:'断点续传 · 不影响实时事件流' },
+      { c:'risk-event-stream', st:'manual', s:'待人工', d:'3 条审计记录 Schema 版本不一致（v1.3 旧格式）', a:'需数据管理员确认升版转换规则 · 已记审计' }
+    ],
+    sim:{
+      caseId:'INV-CN-2026-0383', supplier:'杭州云栖信息技术有限公司', amount:'¥9,990.00',
+      buyer:'澜坞（上海）采购科技有限公司', cstatus:'VERIFYING', provider:'百望云',
+      note:'测试通道仅预演快照序列化与写入沙箱桶，不写生产 Data Lake。',
+      steps:[
+        { t:'Schema 校验', d:'统一 Schema v1.4 快照字段完整性校验通过' },
+        { t:'Parquet/JSON 序列化', d:'case_snapshot 行组生成 · 列式压缩 · 事件 JSONL 拼装' },
+        { t:'校验和登记', d:'SHA-256 摘要计算 · 批次号登记' },
+        { t:'沙箱桶写入', d:'写入 sandbox 存储桶（测试通道，不路由生产）' },
+        { t:'输出回执', d:'清单 manifest 回执 · 归档案件时间线（测试标记）' }
+      ],
+      ok:'✓ 测试输出成功 · 快照文件 <b class="num">case-snapshot-0383.parquet</b> 已写入沙箱桶 · 校验和已登记'
+    }
+  }
+];
+
+let selected = 'ariba';
+let simAdapter = null, simTimers = [], simRunning = false;
+
+/* ════════════════ 状态徽章 ════════════════ */
+function statusBadge(s){
+  if(s==='live') return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 whitespace-nowrap">已对接 ✓</span>';
+  if(s==='wip')  return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30 whitespace-nowrap">适配中 ◐</span>';
+  return '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-400 border border-line dark:border-dline whitespace-nowrap">规划中 ○</span>';
+}
+
+/* ════════════════ ② 卡片网格 ════════════════ */
+function renderCards(){
+  document.getElementById('adapter-grid').innerHTML = ADAPTERS.map(a=>`
+    <div class="rounded-card bg-card dark:bg-dcard border ${a.id===selected?'border-primary ring-1 ring-primary':'border-line dark:border-dline'} shadow-card hover:shadow-cardhover transition-shadow p-4 flex flex-col">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="w-9 h-9 rounded-card ${a.id===selected?'bg-primary text-white':'bg-primary-light dark:bg-[#1B2A4A] text-primary'} border ${a.id===selected?'border-primary':'border-primary-mid dark:border-[#2A3F6B]'} flex items-center justify-center text-[12px] font-bold shrink-0">${a.mono}</span>
+          <div class="min-w-0">
+            <div class="text-[14px] font-semibold leading-snug">${a.name}</div>
+            <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">${a.sub}</div>
+          </div>
+        </div>
+        ${statusBadge(a.status)}
+      </div>
+      <ul class="mt-3 space-y-1.5 text-[12px] text-ink-2 dark:text-gray-400 leading-snug flex-1">
+        ${a.contracts.map(c=>`<li class="flex gap-1.5"><span class="text-primary shrink-0">▪</span><span>${c}</span></li>`).join('')}
+      </ul>
+      <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+        ${a.metrics.map(m=>`<div class="rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-1 py-1.5"><b class="block num text-[13px] font-semibold">${m.v}</b><span class="block text-[10.5px] text-ink-3 dark:text-gray-500 mt-0.5">${m.k}</span></div>`).join('')}
+      </div>
+      <div class="mt-3 pt-3 border-t border-line dark:border-dline flex items-center gap-2">
+        <button onclick="selectAdapter('${a.id}')" class="flex-1 py-1.5 rounded-card ${a.id===selected?'bg-primary text-white':'border border-line dark:border-dline text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary'} text-[12.5px] font-medium transition-colors">配置</button>
+        <button onclick="openTest('${a.id}')" class="flex-1 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] font-medium ${a.status==='live'?'text-primary border-primary-mid dark:border-[#2A3F6B] hover:bg-primary-light dark:hover:bg-[#1B2A4A]':'text-ink-3 dark:text-gray-500 opacity-70 hover:opacity-100'} transition-colors">测试建档</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ════════════════ ③ 详情区 ════════════════ */
+function selectAdapter(id){
+  selected = id;
+  renderCards();
+  renderDetail();
+  const el = document.getElementById('detail');
+  if(el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function srcBadge(kind, label){
+  if(kind==='ai') return `<span class="inline-block px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30">✦ ${label}</span>`;
+  if(kind==='manual') return `<span class="inline-block px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">${label}</span>`;
+  return `<span class="inline-block px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-400 border border-line dark:border-dline">${label}</span>`;
+}
+
+function renderDetail(){
+  const a = ADAPTERS.find(x=>x.id===selected);
+  const box = document.getElementById('detail');
+  if(!a || !box) return;
+
+  let body = '';
+  if(a.status==='live'){
+    /* (a) 连接配置（只读表单样式） */
+    body += `
+      <div class="border-t border-line dark:border-dline px-5 py-4">
+        <div class="text-[14px] font-semibold mb-1">（a）连接配置 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">只读展示 · 变更需 Adapter 管理员权限 + 二次确认，记入审计日志（操作人 / 时间 / 前后值）</span></div>
+        <div class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
+          ${a.conn.map(([k,v])=>`
+            <div>
+              <label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">${k}</label>
+              <div class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] px-2.5 py-2 text-[12.5px] text-ink-2 dark:text-gray-300 leading-snug">${v}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    /* (b) 字段映射模板 */
+    body += `
+      <div class="border-t border-line dark:border-dline px-5 py-4">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="text-[14px] font-semibold">（b）字段映射模板 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">统一 Schema（InvoiceCase）→ ${a.mapping.target}</span></div>
+          <div class="flex items-center gap-2 text-[11px]">
+            <span class="num px-2 py-1 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B] font-medium">映射规则版本 ${a.mapping.ver}</span>
+            <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">来源标注：预设 / 人工沉淀 / AI 生成（待确认）</span>
+          </div>
+        </div>
+        <table class="mt-3 w-full text-[12.5px]">
+          <thead>
+            <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+              <th class="px-3 py-2 font-medium rounded-l-card">统一 Schema 字段</th>
+              <th class="px-3 py-2 font-medium">目标字段（${a.mono}）</th>
+              <th class="px-3 py-2 font-medium">说明</th>
+              <th class="px-3 py-2 font-medium rounded-r-card">来源</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line dark:divide-dline">
+            ${a.mapping.rows.map(r=>`
+              <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+                <td class="px-3 py-2 num text-primary whitespace-nowrap">${r[0]}</td>
+                <td class="px-3 py-2 num text-ink-1 dark:text-gray-200 whitespace-nowrap">${r[1]}</td>
+                <td class="px-3 py-2 text-ink-2 dark:text-gray-400">${r[2]}</td>
+                <td class="px-3 py-2 whitespace-nowrap">${srcBadge(r[3], r[4])}</td>
+              </tr>
+              ${r[3]==='ai'?`<tr><td colspan="4" class="px-3 pb-2 pt-0"><div class="px-2.5 py-1.5 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-[11px] text-ink-2 dark:text-gray-400 leading-relaxed">✦ <b class="text-warning">AI 生成</b> · 映射助手 v0.9.2 · 置信度 <b class="num text-warning">88%</b>（中 · 80–95% 橙档）· <b>AI 建议不自动执行业务操作，请人工确认后生效</b>（确认动作需权限校验并留痕）。</div></td></tr>`:''}`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    /* (c) 建档回执与失败重试队列 */
+    const qBadge = { ok:'bg-success-light dark:bg-[#1C2E22] text-success border-success/30',
+                     retry:'bg-primary-light dark:bg-[#1B2A4A] text-primary border-primary-mid dark:border-[#2A3F6B]',
+                     manual:'bg-danger-light dark:bg-[#3A2426] text-danger border-danger/30' };
+    body += `
+      <div class="border-t border-line dark:border-dline px-5 py-4">
+        <div class="text-[14px] font-semibold mb-1">（c）建档回执与失败重试队列 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">最近 3 条样例 · 全量记录见审计日志（不可篡改）</span></div>
+        <table class="mt-3 w-full text-[12.5px]">
+          <thead>
+            <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+              <th class="px-3 py-2 font-medium rounded-l-card">案件号 / 任务</th>
+              <th class="px-3 py-2 font-medium">状态</th>
+              <th class="px-3 py-2 font-medium">回执 / 失败原因</th>
+              <th class="px-3 py-2 font-medium rounded-r-card">处置</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line dark:divide-dline">
+            ${a.queue.map(q=>`
+              <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+                <td class="px-3 py-2.5 num font-medium text-primary whitespace-nowrap">${q.c}</td>
+                <td class="px-3 py-2.5 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${qBadge[q.st]}">${q.s}</span></td>
+                <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">${q.d}</td>
+                <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">${q.a}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    /* 适配中 / 规划中：进度面板 */
+    const stIcon = { done:'<span class="w-5 h-5 rounded-full bg-success text-white text-[11px] flex items-center justify-center shrink-0">✓</span>',
+                     doing:'<span class="w-5 h-5 rounded-full bg-warning-light dark:bg-[#2E2417] border border-warning text-warning text-[11px] flex items-center justify-center shrink-0">◐</span>',
+                     todo:'<span class="w-5 h-5 rounded-full bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 text-[11px] flex items-center justify-center shrink-0">○</span>' };
+    body += `
+      <div class="border-t border-line dark:border-dline px-5 py-4">
+        <div class="text-[14px] font-semibold mb-3">${a.plan.title}</div>
+        <div class="space-y-2.5">
+          ${a.plan.items.map(it=>`
+            <div class="flex items-start gap-2.5 p-3 rounded-card border ${it.st==='doing'?'border-warning/30 bg-warning-light dark:bg-[#2E2417]':'border-line dark:border-dline bg-surface dark:bg-[#23282F]'}">
+              ${stIcon[it.st]}
+              <div class="text-[12.5px] text-ink-2 dark:text-gray-300 leading-relaxed">${it.t}</div>
+            </div>`).join('')}
+        </div>
+        <div class="mt-3 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">📋 ${a.plan.note}</div>
+      </div>`;
+  }
+
+  box.innerHTML = `
+    <div class="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="w-8 h-8 rounded-card bg-primary text-white flex items-center justify-center text-[11px] font-bold shrink-0">${a.mono}</span>
+        <div class="min-w-0">
+          <div class="text-[15px] font-semibold flex items-center gap-2">${a.name} ${statusBadge(a.status)}
+            <span class="text-[10.5px] num px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-normal">Adapter 契约 v1 · 冻结</span>
+          </div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">${a.sub} · 仅覆盖供应商采购发票建档 / 输出 · 不涉及报销、差旅、销项开票、税务申报与资金支付</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        ${a.status==='live'
+          ? `<button onclick="openTest('${a.id}')" class="px-3 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">▶ 测试建档（沙箱）</button>`
+          : `<button onclick="toast('${a.wipToast}')" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-3 dark:text-gray-500 font-medium">▶ 测试建档（未开放）</button>`}
+      </div>
+    </div>
+    ${body}`;
+}
+
+/* ════════════════ ④ 测试建档模拟 ════════════════ */
+function openTest(id){
+  const a = ADAPTERS.find(x=>x.id===id);
+  if(!a) return;
+  if(a.status!=='live'){ toast(a.wipToast); return; }
+  simAdapter = a; simRunning = false;
+  simTimers.forEach(clearTimeout); simTimers = [];
+
+  document.getElementById('tm-adapter').textContent = a.name;
+  const s = a.sim;
+  document.getElementById('tm-case').innerHTML = `
+    <div><span class="text-ink-3 dark:text-gray-500">案件号：</span><b class="num text-primary">${s.caseId}</b></div>
+    <div><span class="text-ink-3 dark:text-gray-500">供应商：</span><span>${s.supplier}</span></div>
+    <div><span class="text-ink-3 dark:text-gray-500">金额：</span><b class="num">${s.amount}</b></div>
+    <div><span class="text-ink-3 dark:text-gray-500">购买方：</span><span>${s.buyer}</span></div>
+    <div><span class="text-ink-3 dark:text-gray-500">Provider 来源：</span><span>🔌 ${s.provider}</span></div>
+    <div><span class="text-ink-3 dark:text-gray-500">案件状态：</span><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[s.cstatus].cls}">${STATUS[s.cstatus].label}</span></div>`;
+  document.getElementById('tm-case-note').innerHTML = 'ℹ ' + s.note;
+
+  /* 步骤条初始态 */
+  document.getElementById('tm-steps').innerHTML = s.steps.map((st,i)=>`
+    <div class="flex flex-col items-center shrink-0" style="width:96px">
+      <div id="stn-${i}" class="w-7 h-7 rounded-full border-2 border-line dark:border-dline bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-500 flex items-center justify-center text-[12px] font-semibold num">${i+1}</div>
+      <div id="stl-${i}" class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 text-center leading-tight">${st.t}</div>
+    </div>
+    ${i<s.steps.length-1?`<div id="stk-${i}" class="flex-1 h-[2px] bg-line dark:bg-dline -mt-6 min-w-[16px]"></div>`:''}`).join('');
+  document.getElementById('tm-step-detail').innerHTML = '点击「开始测试建档」，按当前 Adapter 契约推演完整链路（只读预演，不产生真实调用）。';
+  document.getElementById('tm-result').classList.add('hidden');
+  const run = document.getElementById('tm-run');
+  run.disabled = false; run.textContent = '▶ 开始测试建档'; run.classList.remove('opacity-60');
+  document.getElementById('test-modal').classList.remove('hidden');
+}
+
+function setStep(i, state){
+  const n = document.getElementById('stn-'+i), l = document.getElementById('stl-'+i), k = document.getElementById('stk-'+i);
+  if(!n) return;
+  if(state==='active'){
+    n.className = 'w-7 h-7 rounded-full border-2 border-primary bg-primary text-white flex items-center justify-center text-[12px] font-semibold num';
+    if(l) l.className = 'mt-1.5 text-[11px] text-primary font-medium text-center leading-tight';
+  } else if(state==='done'){
+    n.className = 'w-7 h-7 rounded-full border-2 border-success bg-success text-white flex items-center justify-center text-[12px] font-semibold';
+    n.textContent = '✓';
+    if(l) l.className = 'mt-1.5 text-[11px] text-ink-2 dark:text-gray-400 text-center leading-tight';
+    if(k) k.className = 'flex-1 h-[2px] bg-success -mt-6 min-w-[16px]';
+  }
+}
+
+function runTest(){
+  if(!simAdapter || simRunning) return;
+  simRunning = true;
+  const s = simAdapter.sim;
+  const run = document.getElementById('tm-run');
+  run.disabled = true; run.textContent = '测试执行中…'; run.classList.add('opacity-60');
+
+  s.steps.forEach((st,i)=>{
+    simTimers.push(setTimeout(()=>{
+      if(i>0) setStep(i-1,'done');
+      setStep(i,'active');
+      document.getElementById('tm-step-detail').innerHTML =
+        `<b class="text-primary">步骤 ${i+1}/${s.steps.length} · ${st.t}</b> —— ${st.d}<br><span class="text-[11px] text-ink-3 dark:text-gray-500">测试通道，不影响生产数据；真实建档为受控写操作，需人工确认后执行。</span>`;
+    }, 300 + i*850));
+  });
+  simTimers.push(setTimeout(()=>{
+    setStep(s.steps.length-1,'done');
+    document.getElementById('tm-step-detail').innerHTML = `<b class="text-success">✓ 全链路推演完成</b> —— 步骤 ${s.steps.length}/${s.steps.length} · ${s.steps[s.steps.length-1].t} · ${s.steps[s.steps.length-1].d}`;
+    const res = document.getElementById('tm-result');
+    res.innerHTML = `${s.ok}<br><span class="text-[11px] text-ink-3 dark:text-gray-500 mt-1 block">本次为沙箱模拟：未写回案件状态、未触发生产建档；操作记录（操作人：陈铮 · 时间 · 报文摘要）已留痕。</span>`;
+    res.classList.remove('hidden');
+    run.textContent = '✓ 测试完成';
+    simRunning = false;
+    toast(s.ok.replace(/<[^>]+>/g,'') + '（测试通道 · 已留痕）');
+  }, 300 + s.steps.length*850 + 500));
+}
+
+function closeTest(){
+  simTimers.forEach(clearTimeout); simTimers = [];
+  simRunning = false;
+  document.getElementById('test-modal').classList.add('hidden');
+}
+
+/* ════════════════ 通用 ════════════════ */
+function toggleDark(){ document.documentElement.classList.toggle('dark'); }
+function toast(msg){
+  const t = document.getElementById('toast'); t.innerHTML = msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3800);
+}
+
+/* 初始化：默认选中 SAP Ariba */
+renderCards();
+renderDetail();
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='adapter';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

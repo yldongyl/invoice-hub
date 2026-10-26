@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>票据接入与批次管理 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        primary: { DEFAULT: '#165DFF', light: '#F0F5FF', mid: '#BEDAFF' },
+        success: { DEFAULT: '#00B42A', light: '#E8FFEA' },
+        warning: { DEFAULT: '#FF7D00', light: '#FFF7E8' },
+        danger:  { DEFAULT: '#F53F3F', light: '#FFECE8' },
+        ink:  { 1: '#1D2129', 2: '#4E5969', 3: '#86909C', 4: '#C9CDD4' },
+        line: '#E5E6EB',
+        surface: '#F7F8FA',
+        card: '#FFFFFF',
+        dcard: '#1D2129',
+        dline: '#333A45'
+      },
+      fontFamily: { sans: ['Inter', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'sans-serif'] },
+      boxShadow: { card: '0 2px 8px rgba(29,33,41,.06)', cardhover: '0 4px 16px rgba(29,33,41,.10)' },
+      borderRadius: { card: '8px' }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: Inter, 'Noto Sans SC', 'Source Han Sans SC', sans-serif; }
+  .num { font-variant-numeric: tabular-nums; }
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .toast{transition:opacity .3s,transform .3s;}
+  .dropzone.dragover{border-color:#165DFF;background:#F0F5FF;}
+  .dark .dropzone.dragover{background:#1B2A4A;}
+  .pl-step{opacity:.45;}
+  .pl-step.pl-active{opacity:1;}
+  .pl-step.pl-done{opacity:1;}
+  .pl-spin{display:inline-block;animation:plspin 1s linear infinite;}
+  @keyframes plspin{to{transform:rotate(360deg);}}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header ═══════════════ -->
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <span class="text-ink-3 dark:text-gray-500">接入与受理</span>
+      <span class="text-ink-4">›</span>
+      <b class="text-ink-1 dark:text-white">票据接入与批次管理</b>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <span class="text-[11px] num px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">受理规则版本 v2026-10-20.2 · 已发布</span>
+    <button onclick="toggleDark()" title="深色模式切换"
+      class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">陈铮 · 实施管理员</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">接入与受理配置权限</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-4">
+
+  <!-- ═══════════════ ① 顶部统计条（今日受理 KPI） ═══════════════ -->
+  <section class="grid grid-cols-5 gap-4">
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[13px] text-ink-2 dark:text-gray-400">今日接入票据数</div>
+      <div class="mt-2 flex items-end gap-2">
+        <span class="num text-[26px] font-semibold leading-none">540</span>
+        <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">张 · 四渠道合计</span>
+      </div>
+      <!-- 手写内联 SVG：今日分时接入迷你柱图 -->
+      <svg class="mt-2 w-full" height="26" viewBox="0 0 120 26" preserveAspectRatio="none" aria-label="今日分时接入趋势">
+        <g fill="#BEDAFF">
+          <rect x="1"  y="16" width="7" height="10" rx="1"/><rect x="11" y="12" width="7" height="14" rx="1"/>
+          <rect x="21" y="8"  width="7" height="18" rx="1"/><rect x="31" y="4"  width="7" height="22" rx="1"/>
+          <rect x="41" y="7"  width="7" height="19" rx="1"/><rect x="51" y="10" width="7" height="16" rx="1"/>
+          <rect x="61" y="6"  width="7" height="20" rx="1"/><rect x="71" y="3"  width="7" height="23" rx="1"/>
+          <rect x="81" y="9"  width="7" height="17" rx="1"/><rect x="91" y="13" width="7" height="13" rx="1"/>
+        </g>
+        <rect x="101" y="11" width="7" height="15" rx="1" fill="#165DFF"/>
+        <text x="119" y="24" text-anchor="end" font-size="7" fill="#86909C">08–13 时</text>
+      </svg>
+    </div>
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[13px] text-ink-2 dark:text-gray-400">自动过滤非发票数</div>
+      <div class="mt-2 flex items-end gap-2">
+        <span class="num text-[26px] font-semibold leading-none text-warning">23</span>
+        <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">件 · 已退回并通知</span>
+      </div>
+      <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">合同 9 · 对账单 8 · 报价单 6 · 规则引擎判定</div>
+    </div>
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[13px] text-ink-2 dark:text-gray-400">待人工分拣</div>
+      <div class="mt-2 flex items-end gap-2">
+        <span class="num text-[26px] font-semibold leading-none text-danger">7</span>
+        <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">件 · 含 2 件加密 PDF</span>
+      </div>
+      <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">载体无法机读 / 疑似非发票待确认</div>
+    </div>
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[13px] text-ink-2 dark:text-gray-400">受理成功率</div>
+      <div class="mt-2 flex items-end gap-2">
+        <span class="num text-[26px] font-semibold leading-none text-success">98.7%</span>
+      </div>
+      <div class="mt-2 w-full h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden">
+        <div class="h-full rounded-full bg-success" style="width:98.7%"></div>
+      </div>
+      <div class="mt-1.5 text-[12px] text-ink-3 dark:text-gray-500">口径：受理登记成功 / 接入总量</div>
+    </div>
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[13px] text-ink-2 dark:text-gray-400">平均受理时延</div>
+      <div class="mt-2 flex items-end gap-2">
+        <span class="num text-[26px] font-semibold leading-none text-primary">1.8</span>
+        <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">秒 · 接入 → 摘要登记</span>
+      </div>
+      <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">P95 3.6s · 不含后续识别耗时</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ②③ 左主区（渠道 + 上传） + 右侧受理规则说明 ═══════════════ -->
+  <section class="grid grid-cols-12 gap-4">
+
+    <div class="col-span-8 space-y-4">
+
+      <!-- ② 接入渠道管理卡片组（4 卡） -->
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+          <div>
+            <div class="text-[15px] font-semibold">接入渠道管理 <span class="text-[11px] font-medium ml-1 px-1.5 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary">① 接入与受理层</span></div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">多渠道统一受理：信封解析 · 非发票过滤 · 载体检测 · 原件摘要登记 · 路由识别引擎（仅供应商采购发票）</div>
+          </div>
+          <span class="text-[11px] text-ink-3 dark:text-gray-500 num">数据截至 12:40</span>
+        </div>
+        <div class="p-4 grid grid-cols-2 gap-4">
+
+          <!-- 渠道① 供应商专用邮箱 -->
+          <div class="rounded-card border border-line dark:border-dline p-4 hover:shadow-cardhover transition-shadow">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-primary shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <b class="text-[13.5px] font-semibold">供应商专用邮箱</b>
+              </div>
+              <span class="flex items-center gap-1.5 text-[11.5px] text-success font-medium"><i class="w-2 h-2 rounded-full bg-success inline-block"></i>运行中</span>
+            </div>
+            <div class="mt-2 text-[12px] num text-ink-2 dark:text-gray-400">ap-invoices@lanwu-procurement.com</div>
+            <div class="mt-2 flex items-center gap-4 text-[12px]">
+              <span class="text-ink-3 dark:text-gray-500">今日接收 <b class="num text-[15px] text-ink-1 dark:text-white">63</b> 件</span>
+              <span class="text-ink-3 dark:text-gray-500">非发票退回 <b class="num text-warning">5</b></span>
+            </div>
+            <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">定时 Job 每 15 分钟拉取 · 海外实例走 SAP DOX 桥接。信封解析：邮件头 / 多附件拆分为独立文件；非发票过滤：合同、对账单、报价单附件自动退回并通知供应商。</div>
+            <button onclick="toast('邮箱渠道配置项：IMAP 收件频率（15 分钟）· 发件域白名单 · 附件类型限制（XML/OFD/PDF/JPG/PNG）· 单附件 ≤20MB · 退回邮件模板 · 海外 DOX 桥接开关（演示入口）')"
+              class="mt-3 w-full py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">⚙ 渠道配置</button>
+          </div>
+
+          <!-- 渠道② API 集成 -->
+          <div class="rounded-card border border-line dark:border-dline p-4 hover:shadow-cardhover transition-shadow">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-primary shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <b class="text-[13.5px] font-semibold">API 集成</b>
+              </div>
+              <span class="flex items-center gap-1.5 text-[11.5px] text-success font-medium"><i class="w-2 h-2 rounded-full bg-success inline-block"></i>运行中</span>
+            </div>
+            <div class="mt-2 text-[12px] num text-ink-2 dark:text-gray-400">POST /v1/invoices:recognize</div>
+            <div class="mt-2 flex items-center gap-4 text-[12px]">
+              <span class="text-ink-3 dark:text-gray-500">今日接收 <b class="num text-[15px] text-ink-1 dark:text-white">412</b> 件</span>
+              <span class="text-ink-3 dark:text-gray-500">同步 P95 <b class="num text-success">2.4s</b></span>
+            </div>
+            <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">同步模式 P95 &lt; 3s，仅限 XML / OFD / PDF 文本层<b class="text-ink-2 dark:text-gray-400">直读快速路径</b>；其余载体转异步，结果经 Webhook 回调。信封解析：校验 trace-id / 幂等键 / 签名，重复提交去重。</div>
+            <button onclick="toast('API 渠道配置项：AppKey 凭证（KMS 管理，界面不回显）· 限流 QPS · 同步直读路径开关 · Webhook 回调地址与重试策略 · 幂等键有效期（演示入口）')"
+              class="mt-3 w-full py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">⚙ 渠道配置</button>
+          </div>
+
+          <!-- 渠道③ 门户手工上传 -->
+          <div class="rounded-card border border-line dark:border-dline p-4 hover:shadow-cardhover transition-shadow">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-primary shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4m0 0l-4 4m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke-linecap="round"/></svg>
+                </span>
+                <b class="text-[13.5px] font-semibold">门户手工上传</b>
+              </div>
+              <span class="flex items-center gap-1.5 text-[11.5px] text-success font-medium"><i class="w-2 h-2 rounded-full bg-success inline-block"></i>运行中</span>
+            </div>
+            <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">采购共享中心坐席 · 供应商门户</div>
+            <div class="mt-2 flex items-center gap-4 text-[12px]">
+              <span class="text-ink-3 dark:text-gray-500">今日接收 <b class="num text-[15px] text-ink-1 dark:text-white">37</b> 件</span>
+              <span class="text-ink-3 dark:text-gray-500">非发票退回 <b class="num text-warning">2</b></span>
+            </div>
+            <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">拖拽 / 点击批量上传（见下方上传区）。信封解析：上传即受理，实时回执批次号；非发票过滤：疑似合同 / 对账单在受理阶段即提示上传人并拒绝入池。</div>
+            <button onclick="toast('门户渠道配置项：允许文件类型（XML/OFD/PDF/JPG/PNG）· 单文件上限 20MB · 单次批量上限 · 上传人权限组 · 受理回执通知方式（演示入口）')"
+              class="mt-3 w-full py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">⚙ 渠道配置</button>
+          </div>
+
+          <!-- 渠道④ SAP DOX（海外） -->
+          <div class="rounded-card border border-line dark:border-dline p-4 hover:shadow-cardhover transition-shadow">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-primary shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.6 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3z" stroke-linecap="round"/></svg>
+                </span>
+                <b class="text-[13.5px] font-semibold">SAP DOX <span class="text-[10.5px] px-1.5 py-px rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium">海外 · 新加坡</span></b>
+              </div>
+              <span class="flex items-center gap-1.5 text-[11.5px] text-success font-medium"><i class="w-2 h-2 rounded-full bg-success inline-block"></i>运行中</span>
+            </div>
+            <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">SAP Document Exchange 桥接</div>
+            <div class="mt-2 flex items-center gap-4 text-[12px]">
+              <span class="text-ink-3 dark:text-gray-500">今日接收 <b class="num text-[15px] text-ink-1 dark:text-white">28</b> 件</span>
+              <span class="text-ink-3 dark:text-gray-500">非发票退回 <b class="num text-warning">3</b></span>
+            </div>
+            <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">海外 Supplier Invoice / Credit Note 经 DOX 通道进入海外实例。信封解析：Peppol / UBL 传输信封校验 · 参与方 ID 核对；非发票过滤：Order Response、对账类文档自动退回。</div>
+            <button onclick="toast('SAP DOX 渠道配置项：DOX 租户端点 · 参与方 ID（Lanwu SG）· Peppol AP 证书 · 传输信封校验级别 · 桥接轮询间隔 · 失败重试次数（演示入口）')"
+              class="mt-3 w-full py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">⚙ 渠道配置</button>
+          </div>
+        </div>
+        <div class="px-5 py-2.5 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] text-[11.5px] text-ink-3 dark:text-gray-500">
+          ℹ️ XML / OFD / PDF 文本层直读为<b class="text-ink-2 dark:text-gray-400">平台内置解析能力（非 Provider、非自研 OCR）</b>；需模型识别的载体由 Provider 编排层路由（百望云 / 诺诺 / 客户自有 OCR / 自托管 OCR-VLM / 海外 e-invoicing / 人工兜底）。
+        </div>
+      </div>
+
+      <!-- ③ 手工上传区 -->
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
+          <div class="text-[15px] font-semibold">手工上传受理</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">支持 XML / OFD / PDF / JPG / PNG · 单文件 ≤ 20MB · 多文件批量 · 上传即进入受理流水线</div>
+        </div>
+        <div class="p-5 grid grid-cols-12 gap-5">
+          <!-- 左：拖拽上传 -->
+          <div class="col-span-7">
+            <div id="dropzone" onclick="document.getElementById('file-input').click()"
+              class="dropzone rounded-card border-2 border-dashed border-ink-4/60 dark:border-dline bg-surface dark:bg-[#23282F] px-6 py-8 text-center cursor-pointer hover:border-primary transition-colors">
+              <svg class="mx-auto" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#86909C" stroke-width="1.6"><path d="M12 16V4m0 0l-4 4m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke-linecap="round"/></svg>
+              <div class="mt-2 text-[13.5px] font-medium">拖拽文件到此处，或 <span class="text-primary">点击选择文件</span></div>
+              <div class="mt-1 text-[11.5px] text-ink-3 dark:text-gray-500">仅限供应商采购发票（数电票 / 增值税票 / Supplier Invoice / Credit Note）· 单文件 ≤ 20MB</div>
+              <input type="file" id="file-input" multiple accept=".xml,.ofd,.pdf,.jpg,.jpeg,.png" class="hidden" onchange="addFiles(this.files)">
+            </div>
+            <div id="file-list" class="mt-3 space-y-1.5"></div>
+          </div>
+          <!-- 右：受理参数 -->
+          <div class="col-span-5 flex flex-col">
+            <div>
+              <label class="block text-[12px] text-ink-2 dark:text-gray-400 mb-1.5">目标实例 <span class="text-danger">*</span></label>
+              <div class="flex gap-2">
+                <label class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary text-[12.5px] has-[:checked]:border-primary has-[:checked]:bg-primary-light dark:has-[:checked]:bg-[#1B2A4A] has-[:checked]:text-primary">
+                  <input type="radio" name="inst" value="cn" checked class="accent-[#165DFF]"> 🇨🇳 中国实例
+                </label>
+                <label class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary text-[12.5px] has-[:checked]:border-primary has-[:checked]:bg-primary-light dark:has-[:checked]:bg-[#1B2A4A] has-[:checked]:text-primary">
+                  <input type="radio" name="inst" value="os" class="accent-[#165DFF]"> 🌏 海外实例
+                </label>
+              </div>
+            </div>
+            <div class="mt-3">
+              <label class="block text-[12px] text-ink-2 dark:text-gray-400 mb-1.5" for="po-input">附 PO 号 <span class="text-ink-3 dark:text-gray-500">（选填，用于后续 PO 匹配就绪化）</span></label>
+              <input id="po-input" type="text" placeholder="如 PO-4500123456"
+                class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[12.5px] num placeholder:text-ink-4 focus:outline-none focus:border-primary">
+            </div>
+            <div class="mt-3 p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed">
+              🔒 <b class="text-ink-2 dark:text-gray-400">数据合规</b>：能直读的不送 OCR（数据最小外发）；原件摘要受理即登记，任何替换可被检测。
+            </div>
+            <button id="btn-upload" onclick="confirmUpload()" disabled
+              class="mt-4 w-full py-2.5 rounded-card bg-primary text-white text-[13.5px] font-medium hover:bg-[#4080FF] shadow-card disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary">提交受理</button>
+            <div class="mt-1.5 text-[10.5px] text-ink-3 dark:text-gray-500 text-center">受理为业务写操作：提交前二次确认 · 权限校验 · 写入不可篡改审计日志</div>
+          </div>
+        </div>
+
+        <!-- 受理流水线模拟（提交后显示） -->
+        <div id="pipeline" class="hidden px-5 pb-5">
+          <div class="rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] p-4">
+            <div class="flex items-center justify-between">
+              <div class="text-[13.5px] font-semibold">受理流水线 · <span id="pl-batch" class="num text-primary"></span></div>
+              <span id="pl-state" class="text-[11.5px] text-ink-3 dark:text-gray-500"></span>
+            </div>
+            <ol id="pl-steps" class="mt-3 space-y-2"></ol>
+            <!-- 完成面板 -->
+            <div id="pl-done" class="hidden mt-4 pt-3 border-t border-line dark:border-dline">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="text-[13px]">已生成票据案件：</span>
+                <span class="num text-[14px] font-semibold text-primary">INV-CN-2026-0390</span>
+                <span id="pl-status-badge"></span>
+                <a href="case-detail.html?case=INV-CN-2026-0387"
+                  class="px-3 py-1.5 rounded-card border border-primary text-primary text-[12.5px] font-medium hover:bg-primary-light dark:hover:bg-[#1B2A4A]">查看示例案件 →</a>
+              </div>
+              <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">⏳ 识别中，完成后可在<a href="#" onclick="toast('复核工作台为独立页面入口（演示提示）');return false;" class="text-primary hover:underline">复核工作台</a>查看。</div>
+              <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed">
+                ⚖️ 以上受理各步均为<b>规则引擎确定性判断（非模型推断）</b>；后续识别环节如含大模型输出，将一律标注「AI 生成」+ 来源模型版本 + 置信度 —— 大模型生成的建议不自动执行业务操作，请人工确认。<br>
+                🧾 本次受理操作（操作人：陈铮 · 时间 · 文件 SHA-256 摘要 · 目标实例）已写入不可篡改审计日志。
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑤ 右侧：受理规则说明 -->
+    <div class="col-span-4">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden sticky top-[72px]">
+        <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
+          <div class="text-[15px] font-semibold">受理规则说明</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">规则引擎确定性判断 · 版本化管理 · 变更留痕</div>
+        </div>
+        <div class="p-5 space-y-4 text-[12.5px]">
+          <div>
+            <div class="font-semibold text-[13px] flex items-center gap-1.5"><span class="text-warning">⛔</span>非发票过滤</div>
+            <div class="mt-1.5 text-ink-2 dark:text-gray-400 leading-relaxed">合同、对账单、报价单等<b>非供应商发票文档</b>在受理阶段自动识别并退回，同时向供应商 / 上传人发送通知；退回原因与规则命中记录随批次留痕，可申诉重提。</div>
+          </div>
+          <div class="pt-3 border-t border-line dark:border-dline">
+            <div class="font-semibold text-[13px] flex items-center gap-1.5"><span class="text-primary">🔀</span>载体检测分流</div>
+            <ul class="mt-1.5 space-y-1.5 text-ink-2 dark:text-gray-400 leading-relaxed">
+              <li>· <b>XML / OFD 原件</b> → 结构化直读路径（平台内置解析，不送 OCR，数据最小外发）</li>
+              <li>· <b>纸质扫描 / 图片</b> → OCR 路由（按 Provider 编排策略选择识别引擎）</li>
+              <li>· <b>加密件 / 损坏件</b> → 无法机读，转人工分拣并向来源渠道回执</li>
+            </ul>
+          </div>
+          <div class="pt-3 border-t border-line dark:border-dline">
+            <div class="font-semibold text-[13px] flex items-center gap-1.5"><span class="text-success">🔁</span>失败重试与断点续跑</div>
+            <div class="mt-1.5 text-ink-2 dark:text-gray-400 leading-relaxed">批次内单文件失败<b>只重试相关步骤</b>（如信封解析失败重试解析），不重跑已完成的识别；批次级断点续跑：Job 中断后从最后成功检查点继续，已登记摘要的文件不重复受理。</div>
+          </div>
+          <div class="pt-3 border-t border-line dark:border-dline">
+            <div class="font-semibold text-[13px] flex items-center gap-1.5"><span class="text-danger">🛡</span>原件摘要登记</div>
+            <div class="mt-1.5 text-ink-2 dark:text-gray-400 leading-relaxed">受理即对原件计算并登记 SHA-256 摘要，贯穿案件全生命周期；后续任何环节的文件替换 / 篡改均可被检测，保障证据链可信。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ④ 批次列表表格 ═══════════════ -->
+  <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+    <div class="px-5 pt-4 pb-3 flex items-center justify-between gap-4 border-b border-line dark:border-dline">
+      <div>
+        <div class="text-[15px] font-semibold">受理批次列表</div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">批次 = 渠道一次拉取 / 一次上传提交的文件集合 · 展示今日最近 9 个批次（共 31 个）· 点击「查看明细」展开文件级受理结果</div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <label class="text-[12px] text-ink-3 dark:text-gray-500">渠道</label>
+        <select id="f-channel" onchange="renderBatches()"
+          class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+          <option value="">全部</option><option>供应商邮箱</option><option>API 集成</option><option>门户上传</option><option>SAP DOX</option>
+        </select>
+        <label class="text-[12px] text-ink-3 dark:text-gray-500 ml-2">状态</label>
+        <select id="f-status" onchange="renderBatches()"
+          class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+          <option value="">全部</option><option>受理中</option><option>识别中</option><option>已完成</option><option>部分异常</option>
+        </select>
+      </div>
+    </div>
+    <table class="w-full text-[13px]">
+      <thead>
+        <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+          <th class="px-5 py-2.5 font-medium">批次号</th>
+          <th class="px-3 py-2.5 font-medium">渠道</th>
+          <th class="px-3 py-2.5 font-medium">实例</th>
+          <th class="px-3 py-2.5 font-medium text-right">文件数</th>
+          <th class="px-3 py-2.5 font-medium">进度状态</th>
+          <th class="px-3 py-2.5 font-medium text-right">成功 / 异常</th>
+          <th class="px-3 py-2.5 font-medium text-right">非发票过滤</th>
+          <th class="px-3 py-2.5 font-medium">受理时间</th>
+          <th class="px-3 py-2.5 font-medium text-right pr-5">操作</th>
+        </tr>
+      </thead>
+      <tbody id="bt-tbody" class="divide-y divide-line dark:divide-dline"></tbody>
+    </table>
+    <div class="px-5 py-2.5 text-[12px] text-ink-3 dark:text-gray-500 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+      异常文件不阻断批次内其他文件（单项失败只重试相关步骤）· 批次与文件级操作均记入不可篡改审计日志
+    </div>
+  </section>
+
+  <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
+    票据接入与批次管理 · 仅服务供应商采购发票受理 · 数据为演示样例 · v1.2-candidate 蓝图口径
+  </footer>
+</main>
+
+<!-- 二次确认弹窗 -->
+<div id="confirm-mask" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+  <div class="w-[480px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover p-5">
+    <div class="text-[15px] font-semibold">确认提交受理？</div>
+    <div id="confirm-body" class="mt-3 text-[12.5px] text-ink-2 dark:text-gray-400 leading-relaxed"></div>
+    <div class="mt-3 p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">
+      🔐 权限校验：当前用户 <b class="text-ink-2 dark:text-gray-400">陈铮 · 实施管理员</b> — 受理提交权限 <span class="text-success font-medium">✓ 已通过</span><br>
+      🧾 提交后本次操作（操作人 / 时间 / 文件 SHA-256 摘要 / 目标实例）将写入<b class="text-ink-2 dark:text-gray-400">不可篡改审计日志</b>。
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <button onclick="closeConfirm()" class="px-4 py-2 rounded-card border border-line dark:border-dline text-[13px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">取消</button>
+      <button onclick="startPipeline()" class="px-4 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF]">确认受理</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[640px]"></div>
+
+<script>
+/* ════════════════ 复用 dashboard 状态 / 置信度徽章 ════════════════ */
+const STATUS = {
+  RECOGNIZED:    { label:'RECOGNIZED 已识别',   cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
+  VERIFYING:     { label:'VERIFYING 查验中',    cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
+  NEEDS_REVIEW:  { label:'NEEDS_REVIEW 待复核', cls:'bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30' },
+  INVESTIGATING: { label:'INVESTIGATING 调查中',cls:'bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30' },
+  RESOLVED:      { label:'RESOLVED 已解决',     cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30' },
+  BLOCKED:       { label:'BLOCKED 已拦截',      cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30' }
+};
+function confBadge(c){
+  if (c >= 95) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success num">${c}%<i class="w-1.5 h-1.5 rounded-full bg-success inline-block"></i></span>`;
+  if (c >= 80) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-warning-light dark:bg-[#3A2E1C] text-warning num">${c}%<i class="w-1.5 h-1.5 rounded-full bg-warning inline-block"></i></span>`;
+  return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-danger-light dark:bg-[#3A2426] text-danger num">${c}%<i class="w-1.5 h-1.5 rounded-full bg-danger inline-block"></i></span>`;
+}
+
+/* ════════════════ 批次样例数据 ════════════════ */
+const PROG = {
+  '受理中':  { cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]', bar:'bg-primary' },
+  '识别中':  { cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]', bar:'bg-primary' },
+  '已完成':  { cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30', bar:'bg-success' },
+  '部分异常':{ cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30', bar:'bg-danger' }
+};
+const BATCHES = [
+  { id:'BT-20261020-001', ch:'供应商邮箱', inst:'中国', files:24, st:'已完成', ok:24, err:0, filt:2, t:'08:02',
+    detail:[
+      { f:'数电票_中科华创_24442000000387.xml', carrier:'XML 原件 → 直读', case:'INV-CN-2026-0387', st:'NEEDS_REVIEW', conf:92 },
+      { f:'数电票_临港智造_24442000000386.ofd', carrier:'OFD 原件 → 直读', case:'INV-CN-2026-0386', st:'RECOGNIZED', conf:98 },
+      { f:'对账单_中科华创_202609.xlsx', carrier:'—', case:null, st:null, conf:null, note:'非发票 · 已自动退回并通知供应商（规则引擎）' } ] },
+  { id:'BT-20261020-002', ch:'API 集成', inst:'中国', files:12, st:'已完成', ok:12, err:0, filt:0, t:'08:26',
+    detail:[
+      { f:'深圳广合_专票扫描_0385.pdf', carrier:'纸质扫描 → OCR（诺诺）', case:'INV-CN-2026-0385', st:'BLOCKED', conf:99 },
+      { f:'广州粤海_红字票_0384.pdf', carrier:'扫描 → OCR（自托管）', case:'INV-CN-2026-0384', st:'NEEDS_REVIEW', conf:88 } ] },
+  { id:'BT-20261020-003', ch:'SAP DOX', inst:'海外', files:9, st:'识别中', ok:7, err:0, filt:1, t:'09:05',
+    detail:[
+      { f:'Siemens_Energy_INV-88218.pdf', carrier:'文本层直读 + e-invoicing', case:'INV-SG-2026-0125', st:'INVESTIGATING', conf:91 },
+      { f:'Dell_APAC_INV-56300.pdf', carrier:'PDF 文本层 → 直读', case:'INV-SG-2026-0124', st:'RECOGNIZED', conf:98 } ] },
+  { id:'BT-20261020-004', ch:'门户上传', inst:'中国', files:6, st:'已完成', ok:6, err:0, filt:0, t:'09:31',
+    detail:[
+      { f:'恒信电子_数电票_0383.xml', carrier:'XML 原件 → 直读', case:'INV-CN-2026-0383', st:'VERIFYING', conf:97 },
+      { f:'天府新材料_数电票_0379.xml', carrier:'XML 原件 → 直读', case:'INV-CN-2026-0379', st:'RECOGNIZED', conf:99 } ] },
+  { id:'BT-20261020-005', ch:'供应商邮箱', inst:'中国', files:18, st:'部分异常', ok:16, err:2, filt:1, t:'10:12',
+    detail:[
+      { f:'扫描件_加密_24442000000381-A.pdf', carrier:'加密 PDF · 无法机读', case:null, st:null, conf:null, note:'异常 · 转人工分拣，已向供应商回执索取未加密件', bad:true },
+      { f:'扫描件_加密_24442000000381-B.pdf', carrier:'加密 PDF · 无法机读', case:null, st:null, conf:null, note:'异常 · 转人工分拣（断点续跑：其余 16 件不受影响）', bad:true },
+      { f:'数电票_云栖信息_0381.xml', carrier:'XML 原件 → 直读', case:'INV-CN-2026-0381', st:'NEEDS_REVIEW', conf:82 } ] },
+  { id:'BT-20261020-006', ch:'API 集成', inst:'海外', files:15, st:'已完成', ok:15, err:0, filt:0, t:'10:44',
+    detail:[
+      { f:'AWS_SG_CreditNote-2450.pdf', carrier:'文本层直读 + e-invoicing', case:'INV-SG-2026-0123', st:'NEEDS_REVIEW', conf:89 },
+      { f:'Schaeffler_INV-77410.pdf', carrier:'PDF 文本层 → 直读', case:'INV-SG-2026-0122', st:'BLOCKED', conf:97 } ] },
+  { id:'BT-20261020-007', ch:'门户上传', inst:'中国', files:4, st:'受理中', ok:0, err:0, filt:0, t:'11:15',
+    detail:[
+      { f:'（4 个文件排队中）', carrier:'信封解析进行中', case:null, st:null, conf:null, note:'受理完成后生成案件号，可在本行展开查看' } ] },
+  { id:'BT-20261020-008', ch:'SAP DOX', inst:'海外', files:11, st:'已完成', ok:11, err:0, filt:2, t:'11:52',
+    detail:[
+      { f:'Johnson_Controls_INV-33750.pdf', carrier:'PDF 文本层 → 直读', case:'INV-SG-2026-0121', st:'VERIFYING', conf:96 },
+      { f:'Quotation_Siemens_Q3-2026.pdf', carrier:'—', case:null, st:null, conf:null, note:'非发票（报价单）· 已经 DOX 通道自动退回' } ] },
+  { id:'BT-20261020-009', ch:'供应商邮箱', inst:'中国', files:21, st:'识别中', ok:14, err:0, filt:3, t:'12:30',
+    detail:[
+      { f:'数电票_上海临港_PO4500123.xml', carrier:'XML 原件 → 直读', case:null, st:null, conf:null, note:'识别中 · 案件号待生成（直读路径，预计 P95 < 3s）' },
+      { f:'合同扫描件_苏州恒信_FW2026.pdf', carrier:'—', case:null, st:null, conf:null, note:'非发票（合同）· 已自动退回并通知供应商' } ] }
+];
+
+function instBadge(i){
+  return i === '中国'
+    ? '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">🇨🇳 中国</span>'
+    : '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">🌏 海外</span>';
+}
+
+function renderBatches(){
+  const fc = document.getElementById('f-channel').value;
+  const fs = document.getElementById('f-status').value;
+  const rows = BATCHES.map((b,i)=>({b,i})).filter(({b}) => (!fc || b.ch===fc) && (!fs || b.st===fs));
+  const tbody = document.getElementById('bt-tbody');
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="9" class="px-5 py-8 text-center text-[13px] text-ink-3 dark:text-gray-500">当前筛选条件下无批次 · 请调整渠道 / 状态筛选</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(({b,i})=>{
+    const p = PROG[b.st];
+    const pct = b.st==='已完成' ? 100 : Math.round((b.ok + b.err) / b.files * 100);
+    return `
+    <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors ${b.st==='部分异常' ? 'bg-danger-light/40 dark:bg-[#2A1D1E]' : ''}">
+      <td class="px-5 py-3 num font-medium text-primary whitespace-nowrap">${b.id}</td>
+      <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${b.ch}</td>
+      <td class="px-3 py-3 whitespace-nowrap">${instBadge(b.inst)}</td>
+      <td class="px-3 py-3 text-right num whitespace-nowrap">${b.files}</td>
+      <td class="px-3 py-3 whitespace-nowrap">
+        <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${p.cls}">${b.st}</span>
+        ${b.st!=='已完成' ? `<div class="mt-1 w-24 h-1 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full ${p.bar}" style="width:${pct}%"></div></div>` : ''}
+      </td>
+      <td class="px-3 py-3 text-right num whitespace-nowrap"><span class="text-success">${b.ok}</span> / <span class="${b.err?'text-danger font-semibold':'text-ink-3 dark:text-gray-500'}">${b.err}</span></td>
+      <td class="px-3 py-3 text-right num whitespace-nowrap ${b.filt?'text-warning font-medium':'text-ink-3 dark:text-gray-500'}">${b.filt}</td>
+      <td class="px-3 py-3 num text-[12px] text-ink-2 dark:text-gray-400 whitespace-nowrap">今日 ${b.t}</td>
+      <td class="px-3 py-3 pr-5 text-right whitespace-nowrap"><button onclick="toggleDetail(${i})" class="text-primary text-[12px] hover:underline" id="dt-btn-${i}">查看明细 ▾</button></td>
+    </tr>
+    <tr id="dt-row-${i}" class="hidden">
+      <td colspan="9" class="px-5 py-3 bg-surface dark:bg-[#23282F]">
+        <div class="text-[11px] font-medium text-ink-3 dark:text-gray-500 mb-2">文件级受理明细（样例节选）· 批次 ${b.id} · 共 ${b.files} 件</div>
+        <div class="space-y-1.5">
+          ${b.detail.map(d=>`
+            <div class="flex items-center gap-3 px-3 py-2 rounded-card bg-card dark:bg-dcard border ${d.bad?'border-danger/40':'border-line dark:border-dline'} text-[12px]">
+              <span class="num font-medium min-w-[240px] truncate ${d.bad?'text-danger':''}" title="${d.f}">${d.bad?'🛑 ':'📄 '}${d.f}</span>
+              <span class="text-ink-3 dark:text-gray-500 min-w-[170px] whitespace-nowrap">${d.carrier}</span>
+              ${d.case ? `<a href="case-detail.html?case=${d.case}" class="num text-primary hover:underline whitespace-nowrap">${d.case}</a>` : '<span class="text-ink-4 whitespace-nowrap">—</span>'}
+              ${d.st ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[d.st].cls} whitespace-nowrap">${STATUS[d.st].label}</span>` : ''}
+              ${d.conf!=null ? confBadge(d.conf) : ''}
+              ${d.note ? `<span class="text-[11.5px] ${d.bad?'text-danger':'text-ink-3 dark:text-gray-500'} truncate" title="${d.note}">${d.note}</span>` : ''}
+            </div>`).join('')}
+        </div>
+        <div class="mt-2 text-[11px] text-ink-3 dark:text-gray-500">明细中识别置信度来自 Provider / 直读解析输出，字段级证据（原文片段 / 坐标 / 模型版本）见案件详情；模型输出一律标注「AI 生成」，不自动执行业务操作。</div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function toggleDetail(i){
+  const row = document.getElementById('dt-row-'+i), btn = document.getElementById('dt-btn-'+i);
+  const open = row.classList.toggle('hidden');
+  btn.textContent = open ? '查看明细 ▾' : '收起明细 ▴';
+}
+
+/* ════════════════ 手工上传：文件选择 / 拖拽 ════════════════ */
+let uploadFiles = [];
+const dz = document.getElementById('dropzone');
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+dz.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+const ALLOWED = ['xml','ofd','pdf','jpg','jpeg','png'];
+function addFiles(list){
+  for(const f of list){
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    if(!ALLOWED.includes(ext)){ toast(`⚠ 「${f.name}」类型不支持：仅限 XML / OFD / PDF / JPG / PNG（供应商采购发票）`); continue; }
+    if(f.size > 20*1024*1024){ toast(`⚠ 「${f.name}」超过单文件 20MB 上限，已跳过`); continue; }
+    if(uploadFiles.some(x => x.name === f.name && x.size === f.size)) continue;
+    uploadFiles.push({ name:f.name, size:f.size });
+  }
+  document.getElementById('file-input').value = '';
+  renderFileList();
+}
+function removeFile(i){ uploadFiles.splice(i,1); renderFileList(); }
+function fmtSize(n){ return n >= 1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(n/1024))+' KB'; }
+function renderFileList(){
+  document.getElementById('file-list').innerHTML = uploadFiles.map((f,i)=>`
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard text-[12px]">
+      <span class="text-primary">📎</span>
+      <span class="num font-medium truncate flex-1" title="${f.name}">${f.name}</span>
+      <span class="num text-ink-3 dark:text-gray-500 shrink-0">${fmtSize(f.size)}</span>
+      <button onclick="removeFile(${i})" class="text-ink-3 hover:text-danger shrink-0" title="移除">✕</button>
+    </div>`).join('');
+  document.getElementById('btn-upload').disabled = uploadFiles.length === 0;
+}
+
+/* ════════════════ 二次确认 + 受理流水线模拟 ════════════════ */
+function confirmUpload(){
+  if(!uploadFiles.length) return;
+  const inst = document.querySelector('input[name="inst"]:checked').value === 'cn' ? '🇨🇳 中国实例' : '🌏 海外实例';
+  const po = document.getElementById('po-input').value.trim();
+  document.getElementById('confirm-body').innerHTML =
+    `即将提交 <b class="num">${uploadFiles.length}</b> 个文件进入受理流水线：<br>` +
+    uploadFiles.map(f=>`· ${f.name}（${fmtSize(f.size)}）`).join('<br>') +
+    `<br>目标实例：<b>${inst}</b> · 附 PO 号：<b class="num">${po || '（未填写）'}</b>`;
+  document.getElementById('confirm-mask').classList.remove('hidden');
+}
+function closeConfirm(){ document.getElementById('confirm-mask').classList.add('hidden'); }
+
+/* 确定性伪 SHA-256（演示样例，非真实密码学实现） */
+function fakeSha(str){
+  let h1 = 0x8a8b8c8d, h2 = 0x12345678;
+  for(let i=0;i<str.length;i++){
+    h1 = (h1 ^ str.charCodeAt(i)) >>> 0; h1 = (h1 * 16777619) >>> 0;
+    h2 = (h2 + str.charCodeAt(i) * (i+7)) >>> 0; h2 = (h2 ^ (h2 >>> 13)) >>> 0;
+  }
+  let out = '';
+  let s1 = h1, s2 = h2;
+  for(let i=0;i<16;i++){
+    s1 = (s1 * 1103515245 + 12345) >>> 0;
+    s2 = (s2 ^ (s1 >>> 7)) >>> 0; s2 = (s2 * 2654435761) >>> 0;
+    out += ((s1 ^ s2) >>> 0).toString(16).padStart(8,'0');
+  }
+  return out.slice(0,64);
+}
+
+const PL_STEPS = [
+  { t:'① 信封解析', d:'解析文件头与传输信封 · 拆分独立文件 · 校验类型与大小限制（规则引擎）' },
+  { t:'② 非发票过滤', d:'判定为供应商采购发票 · 未命中合同 / 对账单 / 报价单退回规则' },
+  { t:'③ 载体检测', d:'检测到可机读载体 → 分流至直读 / OCR 路由（加密件将转人工分拣）' },
+  { t:'④ 原件摘要登记', d:'' },
+  { t:'⑤ 路由识别引擎', d:'按当前路由策略派生 InvoiceCase，进入识别与证据挂载' }
+];
+let plRunning = false;
+
+function startPipeline(){
+  closeConfirm();
+  if(plRunning) return;
+  plRunning = true;
+  document.getElementById('btn-upload').disabled = true;
+
+  const names = uploadFiles.map(f=>f.name).join('|');
+  const sha = fakeSha(names + uploadFiles.length);
+  const steps = PL_STEPS.map(s => ({...s}));
+  steps[3].d = `SHA-256：<span class="num break-all">${sha.slice(0,32)}<br>${sha.slice(32)}</span> · 已随受理记录登记（任何替换可被检测）`;
+
+  const batchId = 'BT-20261020-0' + (10 + uploadFiles.length);
+  document.getElementById('pl-batch').textContent = batchId;
+  document.getElementById('pipeline').classList.remove('hidden');
+  document.getElementById('pl-done').classList.add('hidden');
+  document.getElementById('pl-state').textContent = '受理中…';
+  document.getElementById('pl-steps').innerHTML = steps.map((s,i)=>`
+    <li class="pl-step flex items-start gap-2.5 p-2.5 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard" id="pl-${i}">
+      <span class="mt-0.5 shrink-0 w-4 text-center" id="pl-ico-${i}"><span class="text-ink-4">○</span></span>
+      <div class="min-w-0">
+        <div class="text-[12.5px] font-medium leading-snug">${s.t}</div>
+        <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5 leading-relaxed">${s.d}</div>
+      </div>
+    </li>`).join('');
+  document.getElementById('pipeline').scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+  let i = 0;
+  function tick(){
+    if(i > 0){
+      const prev = document.getElementById('pl-'+(i-1));
+      prev.classList.remove('pl-active'); prev.classList.add('pl-done');
+      document.getElementById('pl-ico-'+(i-1)).innerHTML = '<span class="text-success">✔</span>';
+    }
+    if(i >= steps.length){
+      document.getElementById('pl-state').innerHTML = '<span class="text-success font-medium">✓ 受理完成 · 耗时 3.0s</span>';
+      document.getElementById('pl-status-badge').innerHTML =
+        `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS.RECOGNIZED.cls}">${STATUS.RECOGNIZED.label}</span>`;
+      document.getElementById('pl-done').classList.remove('hidden');
+      toast(`✓ 受理完成：案件 INV-CN-2026-0390 已创建（RECOGNIZED）· 操作已写入不可篡改审计日志`);
+      plRunning = false;
+      uploadFiles = [];
+      renderFileList();   /* 清空已受理文件并复位「提交受理」按钮 */
+      return;
+    }
+    const el = document.getElementById('pl-'+i);
+    el.classList.add('pl-active');
+    document.getElementById('pl-ico-'+i).innerHTML = '<span class="pl-spin text-primary">◌</span>';
+    document.getElementById('pl-state').textContent = `受理中… ${i+1}/${steps.length} ${steps[i].t.slice(1).trim()}`;
+    i++;
+    setTimeout(tick, 600);
+  }
+  tick();
+}
+
+/* ════════════════ 通用 ════════════════ */
+function toggleDark(){ document.documentElement.classList.toggle('dark'); }
+function toast(msg){
+  const t = document.getElementById('toast'); t.innerHTML = msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3600);
+}
+
+renderBatches();
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='intake';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

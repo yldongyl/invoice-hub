@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>审计日志与报表中心 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF'},
+      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
+      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
+      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
+      purple:{DEFAULT:'#722ED1',light:'#F5E8FF'},
+      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
+      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
+    },
+    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
+    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',cardhover:'0 4px 16px rgba(29,33,41,.10)'},
+    borderRadius:{card:'8px'}
+  } }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .toast{transition:opacity .3s,transform .3s;}
+  .log-row:hover{background:#F7F8FA;} .dark .log-row:hover{background:#23282F;}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header：面包屑 + 深色切换 + 用户 ═══════════════ -->
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5 min-w-0">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary shrink-0">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <span class="text-ink-3 dark:text-gray-500 shrink-0">复核运营</span>
+      <span class="text-ink-4">›</span>
+      <b class="text-ink-1 dark:text-white shrink-0">审计与报表</b>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3 shrink-0">
+    <span class="text-[11px] num px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">🔒 哈希链头 blk#<span id="head-blk">10343</span> · 完整性 100%</span>
+    <button onclick="toggleDark()" title="深色模式切换" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">王莉</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">王莉 · 财务经理</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">亚太采购共享中心 · 复核员 / 审计查询权限</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-4">
+
+  <!-- ═══════════════ ① 页面标题 + 蓝图口径 + 相关页面 ═══════════════ -->
+  <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card px-5 py-4">
+    <div class="flex items-start justify-between gap-6">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-[20px] font-semibold leading-none">审计日志与报表中心</h1>
+          <span class="text-[11px] px-2 py-0.5 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium">Audit Log &amp; Compliance Reporting</span>
+        </div>
+        <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">
+          供应商采购发票全链路留痕：渠道受理 → 识别解析 → 验签查验 → 查重 → 匹配 → 人工处置 → 原件归档，
+          每条记录哈希链接前一条，<b class="text-ink-1 dark:text-white">任何篡改可被检测</b>；性能 SLA 与质量指标按 §9 双指标体系呈现。
+        </div>
+        <div class="mt-2.5 flex items-center gap-2 flex-wrap text-[11px]">
+          <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">蓝图 §4.1-⑤ 归档审计</span>
+          <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">蓝图 §9 性能与质量指标</span>
+          <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">蓝图 §10 审计可追溯 · 原件归档</span>
+          <span class="px-2 py-1 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30 text-success">仅供应商采购发票（Supplier Invoice / Credit Note / 数电票）</span>
+        </div>
+      </div>
+      <div class="shrink-0 text-right">
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-1.5">相关页面</div>
+        <div class="flex items-center gap-2 justify-end flex-wrap">
+          <a href="dashboard-overview.html" class="text-[12px] px-2.5 py-1.5 rounded-card border border-line dark:border-dline text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">📊 总览仪表盘</a>
+          <a href="agent-workbench.html" class="text-[12px] px-2.5 py-1.5 rounded-card border border-line dark:border-dline text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">🗂 复核工作台</a>
+          <a href="case-detail.html?case=INV-CN-2026-0387" class="text-[12px] px-2.5 py-1.5 rounded-card border border-line dark:border-dline text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">📄 案件详情 · 时间线</a>
+          <a href="provider-orchestration.html" class="text-[12px] px-2.5 py-1.5 rounded-card border border-line dark:border-dline text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">🔌 Provider 编排</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ② Tab 栏 ═══════════════ -->
+  <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card px-5 flex items-center justify-between">
+    <div class="flex items-center gap-1">
+      <button id="tab-log" onclick="switchTab('log')" class="-mb-px px-4 py-3 text-[14px] font-medium border-b-2 border-primary text-primary">审计日志检索</button>
+      <button id="tab-sla" onclick="switchTab('sla')" class="-mb-px px-4 py-3 text-[14px] font-medium border-b-2 border-transparent text-ink-2 dark:text-gray-400 hover:text-ink-1">SLA 与质量报表 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">§9</span></button>
+      <button id="tab-arch" onclick="switchTab('arch')" class="-mb-px px-4 py-3 text-[14px] font-medium border-b-2 border-transparent text-ink-2 dark:text-gray-400 hover:text-ink-1">归档合规视图 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">§10</span></button>
+    </div>
+    <div class="text-[11px] text-ink-3 dark:text-gray-500">审计范围：中国实例 + 海外实例 · 集中日志 · 只追加（append-only）</div>
+  </div>
+
+  <!-- ═══════════════ Tab 1：审计日志检索 ═══════════════ -->
+  <section id="pane-log" class="space-y-4">
+
+    <!-- 筛选栏 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card px-5 py-3.5">
+      <div class="flex items-end gap-3 flex-wrap">
+        <div>
+          <label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">时间范围</label>
+          <select id="f-range" onchange="renderLogs()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+            <option value="today">今日</option>
+            <option value="7d" selected>近 7 日</option>
+            <option value="30d">近 30 日</option>
+            <option value="custom" disabled>自定义…（演示版置灰）</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">操作主体</label>
+          <select id="f-actor" onchange="renderLogs()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+            <option value="" selected>全部</option>
+            <option value="system">系统</option>
+            <option value="provider">Provider</option>
+            <option value="human">人工</option>
+            <option value="ai">AI 建议</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">动作类型</label>
+          <select id="f-action" onchange="renderLogs()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+            <option value="" selected>全部</option>
+            <option value="parse">识别解析</option>
+            <option value="verify">验签查验</option>
+            <option value="dedup">查重</option>
+            <option value="match">匹配</option>
+            <option value="status">状态变更</option>
+            <option value="field">字段修改</option>
+            <option value="action">受控 Action</option>
+            <option value="policy">策略发布</option>
+            <option value="export">导出</option>
+          </select>
+        </div>
+        <div class="flex-1 min-w-[220px]">
+          <label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">案件号 / trace ID 搜索</label>
+          <input id="f-kw" oninput="renderLogs()" placeholder="如 INV-CN-2026-0387 或 tr-8f3a21c9" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] num focus:outline-none focus:border-primary">
+        </div>
+        <button onclick="resetFilters()" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-ink-3 transition-colors">重置</button>
+        <button onclick="exportCsv()" class="ml-auto px-3.5 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF] shadow-card transition-colors flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1" stroke-linecap="round"/></svg>
+          导出检索结果（CSV）
+        </button>
+      </div>
+    </div>
+
+    <!-- 日志表格 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <!-- 说明条 -->
+      <div class="px-5 py-3 bg-primary-light dark:bg-[#1B2A4A] border-b border-primary-mid dark:border-[#2A3F6B] flex items-start gap-2.5">
+        <span class="w-5 h-5 rounded bg-primary text-white flex items-center justify-center text-[11px] shrink-0 mt-px">🔒</span>
+        <div class="text-[12px] leading-relaxed text-ink-2 dark:text-gray-300">
+          <b class="text-ink-1 dark:text-white">集中日志 + 不可篡改审计</b>：每条记录哈希链接前一条（链式 SHA-256），任何篡改可被检测；
+          <b class="text-ink-1 dark:text-white">导出行为本身也记入日志</b>（操作人 / 时间 / 检索条件 / 行数）。
+          受控写操作（放行 / 挂起 / 退回 / 字段修改）均需人工确认，AI 建议<b class="text-danger">不自动执行</b>。
+        </div>
+      </div>
+
+      <!-- 统计条 -->
+      <div class="px-5 py-2.5 border-b border-line dark:border-dline flex items-center justify-between gap-4 flex-wrap">
+        <div class="flex items-center gap-4 text-[12px] text-ink-2 dark:text-gray-400">
+          <span>命中 <b id="stat-count" class="num text-ink-1 dark:text-white">15</b> 条</span>
+          <span class="text-ink-4">|</span>
+          <span>受控 Action <b id="stat-action" class="num text-ink-1 dark:text-white">0</b> 次</span>
+          <span class="text-ink-4">|</span>
+          <span>人工字段修改 <b id="stat-field" class="num text-ink-1 dark:text-white">0</b> 次</span>
+          <span class="text-ink-4">|</span>
+          <span>拦截 / 阻断 <b id="stat-block" class="num text-danger">0</b> 起</span>
+          <span class="text-ink-4">|</span>
+          <span class="text-success">哈希链完整性 <b class="num">100%</b></span>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <span id="chain-checked" class="text-[11px] text-ink-3 dark:text-gray-500 num">最近校验：2026-10-21 09:50 · 王莉</span>
+          <button onclick="verifyChain()" class="px-2.5 py-1 rounded-card border border-line dark:border-dline text-[11.5px] text-ink-2 dark:text-gray-300 hover:border-success hover:text-success transition-colors">↻ 重新校验哈希链</button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+      <table class="w-full text-[12.5px]">
+        <thead>
+          <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-4 py-2.5 font-medium whitespace-nowrap">时间戳</th>
+            <th class="px-3 py-2.5 font-medium whitespace-nowrap">trace ID</th>
+            <th class="px-3 py-2.5 font-medium whitespace-nowrap">主体</th>
+            <th class="px-3 py-2.5 font-medium whitespace-nowrap">动作 code</th>
+            <th class="px-3 py-2.5 font-medium whitespace-nowrap">案件号</th>
+            <th class="px-3 py-2.5 font-medium">变更摘要（前值 → 后值）</th>
+            <th class="px-3 py-2.5 font-medium whitespace-nowrap">操作人 / 版本</th>
+            <th class="px-4 py-2.5 font-medium whitespace-nowrap">哈希链校验</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody" class="divide-y divide-line dark:divide-dline align-top"></tbody>
+      </table>
+      </div>
+
+      <div id="log-empty" class="hidden px-5 py-10 text-center text-[12.5px] text-ink-3 dark:text-gray-500">
+        当前筛选条件下无日志记录 · 请调整时间范围 / 主体 / 动作类型 / 案件号
+      </div>
+      <div class="px-5 py-2.5 text-[11.5px] text-ink-3 dark:text-gray-500 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
+        <span>点击案件号可跳转对应页面查看完整证据链与案件时间线 · 日志按时间倒序，链式哈希自下向上校验</span>
+        <span class="num">共 <b id="stat-total">15</b> 条（演示样例数据集）</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ Tab 2：SLA 与质量报表（§9 双指标体系） ═══════════════ -->
+  <section id="pane-sla" class="space-y-4 hidden">
+
+    <!-- 性能 SLA（§9.1） -->
+    <div>
+      <div class="flex items-end justify-between mb-2.5">
+        <div>
+          <div class="text-[16px] font-semibold">性能 SLA · 分链路 P95 <span class="text-[12px] text-ink-3 dark:text-gray-500 font-normal ml-1">蓝图 §9.1 · 近 30 日滚动统计 · 试点单实例口径</span></div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1">按处理链路分别度量：能直读的不送 OCR，各链路 SLA 独立承诺，避免用平均值掩盖长尾</div>
+        </div>
+        <span class="text-[11px] px-2 py-1 rounded-card bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">6 / 6 链路达标</span>
+      </div>
+      <div class="grid grid-cols-6 gap-3">
+        <!-- XML / OFD 直读 -->
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-3.5">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="text-[12px] text-ink-2 dark:text-gray-400 leading-snug">XML / OFD 结构化直读</div>
+            <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 达标</span>
+          </div>
+          <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">380</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">ms · P95</span></div>
+          <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 num">目标 &lt; 500ms</div>
+          <div class="mt-2 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:76%"></div></div>
+          <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">数电票原件直读 · 免 Provider 调用</div>
+        </div>
+        <!-- PDF 文本层 -->
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-3.5">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="text-[12px] text-ink-2 dark:text-gray-400 leading-snug">PDF 文本层抽取</div>
+            <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 达标</span>
+          </div>
+          <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">0.8</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">s · P95</span></div>
+          <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 num">目标 &lt; 1s</div>
+          <div class="mt-2 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:80%"></div></div>
+          <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">海外 Supplier Invoice 原生文本层可用时优先</div>
+        </div>
+        <!-- OCR Provider -->
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-3.5">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="text-[12px] text-ink-2 dark:text-gray-400 leading-snug">OCR Provider 识别</div>
+            <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 达标</span>
+          </div>
+          <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">6.2</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">s · P95</span></div>
+          <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 num">建议 5–10s 区间</div>
+          <div class="mt-2 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:62%"></div></div>
+          <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">扫描版专票 / 低质图像 · 可插拔 Provider（百望云、诺诺、自托管 VLM）</div>
+        </div>
+        <!-- 同步表单识别 -->
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-3.5">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="text-[12px] text-ink-2 dark:text-gray-400 leading-snug">同步表单识别（交互式）</div>
+            <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 达标</span>
+          </div>
+          <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">2.4</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">s · P95</span></div>
+          <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 num">目标 &lt; 3s</div>
+          <div class="mt-2 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:80%"></div></div>
+          <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">工作台单张上传即时反馈 · 人在环路</div>
+        </div>
+        <!-- 查重 -->
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-3.5">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="text-[12px] text-ink-2 dark:text-gray-400 leading-snug">全局查重</div>
+            <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 达标</span>
+          </div>
+          <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">140</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">ms · P95</span></div>
+          <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 num">目标 &lt; 200ms</div>
+          <div class="mt-2 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:70%"></div></div>
+          <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">发票号 + 价税合计 + 销售方税号 组合键</div>
+        </div>
+        <!-- 归档 -->
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-3.5">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="text-[12px] text-ink-2 dark:text-gray-400 leading-snug">归档（原件 + 证据链）</div>
+            <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 达标</span>
+          </div>
+          <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">0.7</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">s · P95</span></div>
+          <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 num">目标 &lt; 1s</div>
+          <div class="mt-2 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:70%"></div></div>
+          <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">对象存储写入 + SHA-256 摘要登记</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 可用性 + 吞吐 -->
+    <div class="grid grid-cols-12 gap-4">
+      <div class="col-span-8 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="text-[15px] font-semibold">服务可用性 <span class="text-[12px] text-ink-3 dark:text-gray-500 font-normal ml-1">试点口径 · 近 30 日</span></div>
+            <div class="mt-2 flex items-end gap-2">
+              <span class="num text-[28px] font-semibold leading-none text-success">99.62%</span>
+              <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-1 num">实际 / 目标 99.5%</span>
+              <span class="mb-1 text-[10.5px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 达标 +0.12pp</span>
+            </div>
+            <div class="mt-1.5 text-[11.5px] text-ink-3 dark:text-gray-500">单次不可用窗口最长 11 分钟（Provider 通道抖动 · 已自动降级至链上下一节点并留痕）</div>
+          </div>
+          <div class="shrink-0 text-right">
+            <div class="text-[11px] text-ink-3 dark:text-gray-500">可用性口径</div>
+            <div class="text-[11px] text-ink-2 dark:text-gray-400 mt-0.5 leading-relaxed">受理接口成功 + 解析链路可完成<br>（含降级链路）计为可用</div>
+          </div>
+        </div>
+        <svg id="chart-avail" class="mt-3" width="470" height="76" viewBox="0 0 470 76"></svg>
+      </div>
+
+      <div class="col-span-4 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+        <div class="text-[15px] font-semibold">单实例吞吐</div>
+        <div class="mt-2 flex items-end gap-2">
+          <span class="num text-[28px] font-semibold leading-none">62</span>
+          <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-1">张 / 分钟</span>
+          <span class="mb-1 text-[10.5px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 目标 20–100</span>
+        </div>
+        <div class="relative mt-4 h-2 rounded-full bg-surface dark:bg-[#23282F]">
+          <div class="absolute inset-y-0 rounded-full bg-success/20" style="left:20%; right:0"></div>
+          <div class="absolute inset-y-0 rounded-full bg-primary" style="left:0; width:62%"></div>
+          <div class="absolute -top-1 w-1 h-4 rounded bg-primary" style="left:62%"></div>
+        </div>
+        <div class="mt-1.5 flex justify-between text-[10.5px] text-ink-3 dark:text-gray-500 num"><span>0</span><span>20（下限）</span><span>100（上限）</span></div>
+        <div class="mt-3 text-[11.5px] text-ink-2 dark:text-gray-400 leading-relaxed">
+          混合负载口径（直读 62% + OCR 27% + 人工兜底 11%）·<br>
+          <span class="text-ink-3 dark:text-gray-500">水平扩展近线性提升；峰值月结场景按队列削峰处理，不丢弃案件（断点续跑）</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 质量指标（§9.2） -->
+    <div class="grid grid-cols-12 gap-4">
+      <div class="col-span-7 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline flex items-start justify-between gap-3">
+          <div>
+            <div class="text-[15px] font-semibold">识别质量指标 <span class="text-[12px] text-ink-3 dark:text-gray-500 font-normal ml-1">蓝图 §9.2 口径</span></div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">PoC 规划口径 · <b class="text-warning">非生产承诺值</b> · 逐字段与原件比对，样本集覆盖标准件与复杂件</div>
+          </div>
+          <span class="shrink-0 text-[11px] px-2 py-1 rounded-card bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">5 / 5 达标</span>
+        </div>
+        <table class="w-full text-[12.5px]">
+          <thead>
+            <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+              <th class="px-5 py-2 font-medium">指标</th>
+              <th class="px-3 py-2 font-medium">口径说明</th>
+              <th class="px-3 py-2 font-medium text-right">当前</th>
+              <th class="px-3 py-2 font-medium text-right">目标</th>
+              <th class="px-5 py-2 font-medium text-center">结果</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line dark:divide-dline">
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">字段级精确匹配率<br><span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">清晰标准件 · 关键字段</span></td>
+              <td class="px-3 py-2.5 text-[11.5px] text-ink-2 dark:text-gray-400 leading-snug">供应商名称 / 税号 / 发票号 / 开票日期 / 金额等关键字段逐字段比对</td>
+              <td class="px-3 py-2.5 text-right num font-semibold text-[14px]">99.2%<div class="mt-1 h-1 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:99.2%"></div></div></td>
+              <td class="px-3 py-2.5 text-right num text-[11.5px] text-ink-3 dark:text-gray-500">≥ 99%</td>
+              <td class="px-5 py-2.5 text-center"><span class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓</span></td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">字段级精确匹配率<br><span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">金额 / 税额 / 发票号</span></td>
+              <td class="px-3 py-2.5 text-[11.5px] text-ink-2 dark:text-gray-400 leading-snug">高风险字段单独统计：错一位即计为错误，不容忍近似</td>
+              <td class="px-3 py-2.5 text-right num font-semibold text-[14px]">99.6%<div class="mt-1 h-1 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:99.6%"></div></div></td>
+              <td class="px-3 py-2.5 text-right num text-[11.5px] text-ink-3 dark:text-gray-500">≥ 99.5%</td>
+              <td class="px-5 py-2.5 text-center"><span class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓</span></td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">字段级精确匹配率<br><span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">复杂件</span></td>
+              <td class="px-3 py-2.5 text-[11.5px] text-ink-2 dark:text-gray-400 leading-snug">扫描件 / 低质图像 / 多语种 / 版式非常规票面</td>
+              <td class="px-3 py-2.5 text-right num font-semibold text-[14px]">95.8%<div class="mt-1 h-1 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:95.8%"></div></div></td>
+              <td class="px-3 py-2.5 text-right num text-[11.5px] text-ink-3 dark:text-gray-500">≥ 95%</td>
+              <td class="px-5 py-2.5 text-center"><span class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓</span></td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">整票完全正确率</td>
+              <td class="px-3 py-2.5 text-[11.5px] text-ink-2 dark:text-gray-400 leading-snug">全字段无一错误的案件占比（案件级口径）</td>
+              <td class="px-3 py-2.5 text-right num font-semibold text-[14px]">98.1%<div class="mt-1 h-1 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:98.1%"></div></div></td>
+              <td class="px-3 py-2.5 text-right num text-[11.5px] text-ink-3 dark:text-gray-500">≥ 98%</td>
+              <td class="px-5 py-2.5 text-center"><span class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓</span></td>
+            </tr>
+            <tr class="bg-primary-light/40 dark:bg-[#1B2A4A]/40">
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">Touchless Rate<br><span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">自动完成率</span></td>
+              <td class="px-3 py-2.5 text-[11.5px] text-ink-2 dark:text-gray-400 leading-snug">口径：<b class="text-ink-1 dark:text-white">正确的自动完成率（STP Accuracy）</b>——无人工介入且结论正确的案件占比，<b class="text-danger">非放宽校验标准刷数</b></td>
+              <td class="px-3 py-2.5 text-right num font-semibold text-[14px] text-primary">86.2%<div class="mt-1 h-1 rounded-full bg-card dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-primary" style="width:86.2%"></div></div></td>
+              <td class="px-3 py-2.5 text-right num text-[11.5px] text-ink-3 dark:text-gray-500">试点参考 ≥ 80%</td>
+              <td class="px-5 py-2.5 text-center"><span class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 产品红线大卡 -->
+      <div class="col-span-5 rounded-card bg-danger-light dark:bg-[#3A2426] border-2 border-danger shadow-card p-5 relative overflow-hidden">
+        <span class="absolute top-0 right-0 px-2 py-0.5 rounded-bl-card bg-danger text-white text-[10px] font-medium tracking-wide">产品红线指标</span>
+        <div class="text-[15px] font-semibold text-danger">错误自动放行率</div>
+        <div class="text-[11.5px] text-ink-2 dark:text-gray-300 mt-0.5">被系统自动完成（Touchless）但事后判定为错误的案件占比</div>
+        <div class="mt-3 flex items-end gap-2">
+          <span class="num text-[36px] font-semibold leading-none text-danger">0.02%</span>
+          <span class="text-[12px] text-ink-2 dark:text-gray-300 mb-1.5 num">当前 / 上限 ≤ 0.05%</span>
+          <span class="mb-1.5 text-[10.5px] px-1.5 py-0.5 rounded bg-card dark:bg-dcard text-success border border-success/40 font-medium">✓ 未突破红线</span>
+        </div>
+        <div class="mt-3 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline p-3">
+          <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-1">近 12 周趋势（趋近 0）</div>
+          <svg id="chart-falseauto" width="300" height="96" viewBox="0 0 300 96"></svg>
+        </div>
+        <div class="mt-3 text-[12px] leading-relaxed text-ink-1 dark:text-white">
+          <b class="text-danger">产品红线：不允许通过放松校验标准提高自动化率。</b>
+          <span class="text-ink-2 dark:text-gray-300">Touchless Rate 与错误自动放行率成对呈现，任何自动化率提升须同时验证红线未被突破；连续 90 天达标。</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 成本 / 时长 / 口径 -->
+    <div class="grid grid-cols-3 gap-4">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[13px] text-ink-2 dark:text-gray-400">单张处理成本</div>
+        <div class="mt-2 flex items-end gap-2"><span class="num text-[26px] font-semibold leading-none">¥0.31</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-1">/ 张 · 试点基线</span></div>
+        <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">含 Provider 调用 + 存储 + 算力摊销；直读占比每提升 10pp，单张成本约下降 ¥0.04（不送 OCR）</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[13px] text-ink-2 dark:text-gray-400">异常解决时长（中位）</div>
+        <div class="mt-2 flex items-end gap-2"><span class="num text-[26px] font-semibold leading-none">42</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-1">分钟 · 试点基线</span></div>
+        <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">自 NEEDS_REVIEW / INVESTIGATING 起算至处置完成；高风险 BLOCKED 案件要求 30 分钟内认领</div>
+      </div>
+      <div class="rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline p-4">
+        <div class="text-[13px] font-semibold">指标口径声明</div>
+        <div class="mt-2 text-[11.5px] text-ink-2 dark:text-gray-400 leading-relaxed">
+          本页数值为 <b>PoC 规划口径</b>，用于设计与验收讨论，<b class="text-warning">非生产承诺</b>；
+          可用性 / 吞吐为试点单实例口径。
+        </div>
+        <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">
+          最终指标以客户样本基线测试校准；测量方法与样本集设计见《实施路线与任务分解》。
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 异常归因分析（建议，不自动执行） -->
+    <div class="rounded-card border-2 border-warning/40 bg-warning-light dark:bg-[#2E2417] p-4">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex items-start gap-2.5 min-w-0">
+          <span class="w-7 h-7 rounded-card bg-warning text-white flex items-center justify-center text-[13px] shrink-0">🤖</span>
+          <div class="min-w-0">
+            <div class="text-[14px] font-semibold flex items-center gap-2 flex-wrap">
+              异常归因分析（AI 建议）
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-warning text-white font-medium">AI 生成</span>
+              <span class="text-[10.5px] px-1.5 py-0.5 rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-400 num">模型 qwen-finance-v2 · 2026-10-15</span>
+              <span class="text-[10.5px] px-1.5 py-0.5 rounded bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/40 font-medium num">置信度 86%（中）</span>
+            </div>
+            <div class="mt-2 text-[12px] leading-relaxed text-ink-2 dark:text-gray-300">
+              近 7 日审计日志归因（样本 15 条重点事件）：
+              <b class="text-ink-1 dark:text-white">①</b> 重复票拦截 2 起（INV-CN-2026-0385、INV-SG-2026-0122）均来自「供应商邮箱直投」渠道，
+              建议在渠道受理层增加提交前查重提示，把拦截从「建档前」前移到「投递前」；
+              <b class="text-ink-1 dark:text-white">②</b> OCR Provider P95 6.2s 的长尾主要由倾斜 &gt; 3° 的扫描版增值税专票贡献，
+              建议在路由策略 v2026-10-20.4 基础上，将自托管 VLM 前置至该类样本；
+              <b class="text-ink-1 dark:text-white">③</b> 字段修改集中在「票面 OCR × XML 直读」冲突场景（INV-CN-2026-0381），
+              建议将「结构化原件优先」写入字段级采信规则，减少人工改值。
+            </div>
+            <div class="mt-2 text-[11.5px] text-ink-2 dark:text-gray-400">
+              ⚖️ 本建议<b class="text-danger">不自动执行</b>任何策略变更：需实施管理员在
+              <a href="provider-orchestration.html" class="text-primary hover:underline">Provider 编排配置</a>
+              人工发布新版本，变更 diff、操作人与时间记入不可篡改审计日志；采纳 / 不采纳结论同样留痕。
+            </div>
+          </div>
+        </div>
+        <div class="shrink-0 flex flex-col gap-2">
+          <button onclick="toast('已记录「采纳归因建议」意向 · 待实施管理员在 Provider 编排页人工发布新版本（AI 建议不自动执行）')" class="px-3 py-1.5 rounded-card bg-warning text-white text-[12px] font-medium hover:opacity-90 transition-opacity">采纳并转策略变更</button>
+          <button onclick="toast('已记录「不采纳」· 归因建议与结论保留在审计日志中可追溯')" class="px-3 py-1.5 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard text-[12px] text-ink-2 dark:text-gray-300 hover:border-warning hover:text-warning transition-colors">不采纳（留痕）</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-[11.5px] text-ink-3 dark:text-gray-500 px-1">
+      注：最终指标以客户样本基线测试校准；测量方法与样本集设计见《实施路线与任务分解》。本页数据为演示样例 · v1.2-candidate 蓝图口径。
+    </div>
+  </section>
+
+  <!-- ═══════════════ Tab 3：归档合规视图（§4.1-⑤ + §10） ═══════════════ -->
+  <section id="pane-arch" class="space-y-4 hidden">
+
+    <!-- 归档统计卡 -->
+    <div class="grid grid-cols-6 gap-3">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[12px] text-ink-2 dark:text-gray-400">XML 原件归档数</div>
+        <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none text-primary">79,646</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">份</span></div>
+        <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">数电票结构化原件 · <b class="text-ink-2 dark:text-gray-400">电子会计档案要求</b>以原件为归档主体</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[12px] text-ink-2 dark:text-gray-400">OFD 版式原件</div>
+        <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">12,308</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">份</span></div>
+        <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">版式文件 · 定期长期可读性校验</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[12px] text-ink-2 dark:text-gray-400">PDF 票面呈现件</div>
+        <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">34,217</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">份</span></div>
+        <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">供人工复核与审计取证查阅</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[12px] text-ink-2 dark:text-gray-400">图片 / 扫描件</div>
+        <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">2,291</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">份</span></div>
+        <div class="mt-2 text-[10.5px] text-ink-3 dark:text-gray-500 leading-snug">海外 Supplier Invoice / Credit Note 为主</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[12px] text-ink-2 dark:text-gray-400">归档耗时 P95</div>
+        <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none">0.7</span><span class="text-[11px] text-ink-3 dark:text-gray-500 mb-0.5">s</span></div>
+        <div class="mt-2 text-[10.5px] text-success leading-snug">✓ 目标 &lt; 1s · 含 SHA-256 摘要登记</div>
+      </div>
+      <div class="rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30 shadow-card p-4">
+        <div class="text-[12px] text-ink-2 dark:text-gray-300">完整性校验（SHA-256）</div>
+        <div class="mt-2 flex items-end gap-1"><span class="num text-[24px] font-semibold leading-none text-success">100%</span><span class="text-[11px] text-ink-3 dark:text-gray-400 mb-0.5">抽检通过率</span></div>
+        <div class="mt-2 text-[10.5px] text-ink-2 dark:text-gray-400 leading-snug">近 3 批次 1,300 份抽检 · 0 异常 · 摘要不一致即告警</div>
+      </div>
+    </div>
+
+    <!-- 归档策略表 + 构成 donut -->
+    <div class="grid grid-cols-12 gap-4">
+      <div class="col-span-8 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline flex items-start justify-between gap-3">
+          <div>
+            <div class="text-[15px] font-semibold">归档策略 · 原件类型 × 保留期限 × 存储 × 区域</div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">蓝图 §10 原件归档：结构化原件为归档主体，识别中间结果短期保留，审计链只追加</div>
+          </div>
+          <span class="shrink-0 text-[11px] px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">生命周期策略由对象存储执行</span>
+        </div>
+        <table class="w-full text-[12px]">
+          <thead>
+            <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+              <th class="px-5 py-2 font-medium">原件 / 数据类型</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">保留期限</th>
+              <th class="px-3 py-2 font-medium">存储与保护</th>
+              <th class="px-3 py-2 font-medium">区域与数据驻留</th>
+              <th class="px-5 py-2 font-medium">备注</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line dark:divide-dline align-top">
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">XML 原件<br><span class="text-[10.5px] text-ink-3 dark:text-gray-500 font-normal">数电票结构化原件</span></td>
+              <td class="px-3 py-2.5 num whitespace-nowrap font-medium">10 年 · 随案</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">企业级对象存储 · 版本控制 + 生命周期策略 · 受理即登记 SHA-256</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">中国实例：<b class="text-ink-1 dark:text-white">境内存储</b> · 数据驻留细则<span class="text-warning">待 H39 确认（推断）</span></td>
+              <td class="px-5 py-2.5 text-ink-3 dark:text-gray-500 leading-snug">电子会计档案要求：以 XML 原件为准，PDF 为呈现件</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">OFD 版式原件</td>
+              <td class="px-3 py-2.5 num whitespace-nowrap font-medium">10 年 · 随案</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">同上 + 长期可读性（版式渲染）定期校验</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">中国实例：境内存储</td>
+              <td class="px-5 py-2.5 text-ink-3 dark:text-gray-500 leading-snug">XML 与 OFD 双原件并存时以 XML 为归档主体</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">PDF 票面呈现件</td>
+              <td class="px-3 py-2.5 num whitespace-nowrap font-medium">7 年</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">企业级对象存储 · 版本控制 + 生命周期策略</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">中国实例：境内 / 海外实例：新加坡区域</td>
+              <td class="px-5 py-2.5 text-ink-3 dark:text-gray-500 leading-snug">复核与审计取证查阅入口（案件详情页原件预览）</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">图片 / 扫描件<br><span class="text-[10.5px] text-ink-3 dark:text-gray-500 font-normal">海外 Supplier Invoice</span></td>
+              <td class="px-3 py-2.5 num whitespace-nowrap font-medium">7 年</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">同上 · 附字段坐标与原文片段证据</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">海外实例：<b class="text-ink-1 dark:text-white">新加坡区域（ap-southeast-1）</b></td>
+              <td class="px-5 py-2.5 text-ink-3 dark:text-gray-500 leading-snug">多币种 / 多语种原件；无 XML 原件时以 PDF 或图片为准</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">识别中间结果<br><span class="text-[10.5px] text-ink-3 dark:text-gray-500 font-normal">OCR 原始输出 / 坐标 / 置信度 / Provider 版本</span></td>
+              <td class="px-3 py-2.5 num whitespace-nowrap font-medium text-warning">2 年</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">同上 · 到期由生命周期策略自动清理</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">跟随案件所属实例区域</td>
+              <td class="px-5 py-2.5 text-ink-3 dark:text-gray-500 leading-snug">用于可解释审计复盘与 Provider 效果评估，非会计档案主体</td>
+            </tr>
+            <tr class="bg-surface dark:bg-[#23282F]">
+              <td class="px-5 py-2.5 font-medium whitespace-nowrap">审计日志 + 案件证据链<br><span class="text-[10.5px] text-ink-3 dark:text-gray-500 font-normal">哈希链记录</span></td>
+              <td class="px-3 py-2.5 num whitespace-nowrap font-medium">10 年 · 只追加</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">只追加存储（WORM 语义）+ 链式 SHA-256 · <b class="text-ink-1 dark:text-white">导出行为亦入链</b></td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400 leading-snug">双实例各自区域内独立成链</td>
+              <td class="px-5 py-2.5 text-ink-3 dark:text-gray-500 leading-snug">trace ID 贯穿受理→解析→查验→匹配→处置→归档全链路</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="col-span-4 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-[15px] font-semibold">归档构成</div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">与总览仪表盘本月总量同口径</div>
+          </div>
+          <span class="text-[11px] px-2 py-1 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium">双实例合计</span>
+        </div>
+        <div class="mt-3 flex items-center gap-5">
+          <div class="relative shrink-0">
+            <svg id="chart-archive" width="168" height="168" viewBox="0 0 168 168"></svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span class="num text-[20px] font-semibold">128,462</span>
+              <span class="text-[11px] text-ink-3 dark:text-gray-500">原件归档总量（份）</span>
+            </div>
+          </div>
+          <div id="archive-legend" class="flex-1 space-y-2.5 text-[12.5px] min-w-0"></div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed">
+          结构化原件（XML + OFD）占比 <b class="text-ink-2 dark:text-gray-400 num">71.6%</b>：能直读的不送 OCR，既降成本也减少外发面。
+        </div>
+      </div>
+    </div>
+
+    <!-- 抽检记录 + 合规说明 -->
+    <div class="grid grid-cols-12 gap-4">
+      <div class="col-span-7 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
+          <div class="text-[15px] font-semibold">归档完整性抽检记录</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">平台自动执行 SHA-256 全量摘要比对，财务侧复核签核 · 每周 1 批</div>
+        </div>
+        <table class="w-full text-[12.5px]">
+          <thead>
+            <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+              <th class="px-5 py-2 font-medium whitespace-nowrap">日期</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">抽检批次</th>
+              <th class="px-3 py-2 font-medium">抽检范围 / 样本量</th>
+              <th class="px-3 py-2 font-medium whitespace-nowrap">结果</th>
+              <th class="px-5 py-2 font-medium whitespace-nowrap">校验人</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line dark:divide-dline">
+            <tr class="log-row transition-colors">
+              <td class="px-5 py-2.5 num whitespace-nowrap">2026-10-20</td>
+              <td class="px-3 py-2.5 num whitespace-nowrap text-primary">QA-2026-W42-03</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">中国实例 XML 原件 500 份（SHA-256 全量比对 + 版本一致性）</td>
+              <td class="px-3 py-2.5 whitespace-nowrap"><span class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 通过 · 0 异常</span></td>
+              <td class="px-5 py-2.5 whitespace-nowrap">王莉 · 财务经理</td>
+            </tr>
+            <tr class="log-row transition-colors">
+              <td class="px-5 py-2.5 num whitespace-nowrap">2026-10-13</td>
+              <td class="px-3 py-2.5 num whitespace-nowrap text-primary">QA-2026-W41-02</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">海外实例 PDF / 图片 300 份（新加坡区域 · 摘要 + 可读性）</td>
+              <td class="px-3 py-2.5 whitespace-nowrap"><span class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 通过 · 0 异常</span></td>
+              <td class="px-5 py-2.5 whitespace-nowrap">陈铮 · 实施管理员</td>
+            </tr>
+            <tr class="log-row transition-colors">
+              <td class="px-5 py-2.5 num whitespace-nowrap">2026-10-06</td>
+              <td class="px-3 py-2.5 num whitespace-nowrap text-primary">QA-2026-W40-01</td>
+              <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">识别中间结果 500 份 + 审计链完整性（块高 <span class="num">#9860–#10120</span>）</td>
+              <td class="px-3 py-2.5 whitespace-nowrap"><span class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">✓ 通过 · 链校验一致</span></td>
+              <td class="px-5 py-2.5 whitespace-nowrap">系统自动 + 王莉 复核</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="px-5 py-2.5 text-[11px] text-ink-3 dark:text-gray-500 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+          抽检记录本身写入审计日志（哈希链），不可事后修改；异常将触发高风险告警并冻结相关案件的自动放行。
+        </div>
+      </div>
+
+      <div class="col-span-5 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+        <div class="text-[15px] font-semibold">数据合规与外发边界</div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">蓝图 §10 · 最小外发 + 合同约束 + 完整性可验证</div>
+        <ul class="mt-3 space-y-2.5 text-[12px] leading-relaxed text-ink-2 dark:text-gray-400">
+          <li class="flex gap-2">
+            <span class="shrink-0 w-4 h-4 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary text-[10px] flex items-center justify-center mt-0.5">🛡</span>
+            <span><b class="text-ink-1 dark:text-white">数据最小外发</b>：能本地处理的不出客户控制域——数电票 XML / OFD 直读、勾稽校验、查重、PO 匹配全部在平台内完成；仅在必要时（扫描版 OCR、授权查验）按路由策略最小化外发，并记录外发对象与回执。</span>
+          </li>
+          <li class="flex gap-2">
+            <span class="shrink-0 w-4 h-4 rounded bg-purple-light dark:bg-[#2B1F3D] text-purple text-[10px] flex items-center justify-center mt-0.5">📝</span>
+            <span><b class="text-ink-1 dark:text-white">第三方 Provider 合同约束「不留存、不训练」</b>：票据数据不得用于 Provider 模型训练，处理完成后不留存副本；凭证由 KMS / Vault 管理，界面不回显（详见 <a href="provider-orchestration.html" class="text-primary hover:underline">Provider 编排配置</a>）。</span>
+          </li>
+          <li class="flex gap-2">
+            <span class="shrink-0 w-4 h-4 rounded bg-success-light dark:bg-[#1C2E22] text-success text-[10px] flex items-center justify-center mt-0.5">✓</span>
+            <span><b class="text-ink-1 dark:text-white">原件完整性可验证</b>：受理即登记 SHA-256 摘要，归档后定期抽检比对，任何替换 / 篡改可被检测——如 <a href="case-detail.html?case=INV-CN-2026-0379" class="text-primary hover:underline num">INV-CN-2026-0379</a> SM2 验签失败案，失败回执随案归档可用于追责与司法取证。</span>
+          </li>
+          <li class="flex gap-2">
+            <span class="shrink-0 w-4 h-4 rounded bg-warning-light dark:bg-[#2E2417] text-warning text-[10px] flex items-center justify-center mt-0.5">⚠</span>
+            <span><b class="text-ink-1 dark:text-white">待确认（推断）</b>：中国实例的数据驻留 / 跨境传输细则以 <b class="num">H39</b> 结论为准；本页区域标注为 v1.2-candidate 蓝图口径演示，不构成合规承诺。</span>
+          </li>
+        </ul>
+        <div class="mt-3 pt-3 border-t border-line dark:border-dline flex items-center justify-between gap-2">
+          <span class="text-[11px] text-ink-3 dark:text-gray-500">仅供应商采购发票范围 · 不含其他票据类型</span>
+          <button onclick="toast('归档合规说明已导出为 PDF（演示）· 导出行为已记入审计日志')" class="shrink-0 px-2.5 py-1.5 rounded-card border border-line dark:border-dline text-[11.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">导出合规说明</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
+    Invoice Intelligence &amp; Compliance Hub · L2 可演示（产品化 PoC）· 数据为演示样例 · v1.2-candidate 蓝图口径
+  </footer>
+</main>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[720px] text-center"></div>
+
+<script>
+/* ════════════════ 徽章体系（与其他页面同一套标记结构） ════════════════ */
+const ACTOR = {
+  system:  {label:'系统',     cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary', dot:'bg-primary'},
+  provider:{label:'Provider', cls:'bg-purple-light dark:bg-[#2B1F3D] text-purple',   dot:'bg-purple'},
+  human:   {label:'人工',     cls:'bg-success-light dark:bg-[#1C2E22] text-success', dot:'bg-success'},
+  ai:      {label:'AI 建议',  cls:'bg-warning-light dark:bg-[#2E2417] text-warning', dot:'bg-warning'}
+};
+const CAT = { parse:'识别解析', verify:'验签查验', dedup:'查重', match:'匹配', status:'状态变更',
+              field:'字段修改', action:'受控 Action', policy:'策略发布', export:'导出' };
+/* 案件详情页已实现的演示案件 → 深链；其余案件跳复核工作台列表 */
+const DEMO_CASES = ['INV-CN-2026-0387','INV-CN-2026-0379','INV-SG-2026-0125'];
+
+/* ════════════════ 审计日志样例数据集（跨页面一致事件） ════════════════ */
+const LOGS = [
+  { ts:'2026-10-21 09:42:19', tr:'tr-8f3a21c9', a:'system', code:'STATUS_CHANGE', cat:'status', cs:'INV-CN-2026-0387',
+    from:'NEEDS_REVIEW', to:'RESOLVED',
+    note:'放行后推送 SAP Ariba cXML InvoiceDetailRequest（回执 rcpt-ariba-7741）· 案件证据链与原件摘要随案归档',
+    op:'case-machine v2.2', blk:10343, hash:'c07d…' },
+  { ts:'2026-10-21 09:42:18', tr:'tr-8f3a21c9', a:'human', code:'ACTION_RELEASE', cat:'action', cs:'INV-CN-2026-0387',
+    from:'挂起复核（NEEDS_REVIEW）', to:'放行（RELEASE）',
+    note:'采纳「含税 / 不含税口径差异」解释 · 受控写操作：权限校验 + 二次确认 + 处置意见留痕 · AI 建议未被自动执行',
+    op:'王莉 · 复核员（财务经理）', blk:10342, hash:'9c41…' },
+  { ts:'2026-10-21 08:55:03', tr:'tr-2b6e4417', a:'ai', code:'LLM_ADVICE', cat:'match', cs:'INV-CN-2026-0387',
+    from:'差异 ¥13,000.00 待解释', to:'建议：口径差异（非金额错误）',
+    note:'AI 生成 · 模型 qwen-finance-v2 · 置信度 88%（中）· 仅供分析参考，不自动执行；采纳 / 不采纳均入链留痕',
+    op:'qwen-finance-v2 · 2026-10-15', blk:10339, hash:'5f21…' },
+  { ts:'2026-10-21 08:12:47', tr:'tr-90cd1e63', a:'system', code:'DEDUP_BLOCKED', cat:'dedup', cs:'INV-CN-2026-0385',
+    from:'VERIFYING', to:'BLOCKED（重复票拦截）',
+    note:'发票号 24442000000385 + 价税合计 ¥232,860.00 与历史案件 INV-CN-2026-0291 相似度 100% · 未推送 Ariba 建档 · 解除拦截需复核员权限并留痕',
+    op:'dedup-rule v2.3 · case-machine v2.2', blk:10336, hash:'118b…' },
+  { ts:'2026-10-20 17:04:31', tr:'tr-5f7a90b2', a:'human', code:'POLICY_PUBLISHED', cat:'policy', cs:'',
+    from:'路由策略 v2026-10-20.3', to:'路由策略 v2026-10-20.4',
+    note:'数电票「能直读的不送 OCR」优先级提升 · 扫描版专票降级链新增自托管 VLM · 变更 diff 与回滚点已留存',
+    op:'陈铮 · 实施管理员', blk:10331, hash:'77b0…' },
+  { ts:'2026-10-20 16:38:09', tr:'tr-c31d88ef', a:'human', code:'PROVIDER_DISABLED', cat:'policy', cs:'',
+    from:'Provider「诺诺」：启用', to:'Provider「诺诺」：停用',
+    note:'引用该节点的路由链自动跳过并降级至下一个 Provider · 凭证已回收（KMS / Vault，界面不回显）· 合同「不留存不训练」条款复核通过',
+    op:'陈铮 · 实施管理员', blk:10328, hash:'0d5c…' },
+  { ts:'2026-10-20 14:36:50', tr:'tr-4e0b7a12', a:'human', code:'REVIEW_OPENED', cat:'action', cs:'INV-CN-2026-0387',
+    from:'未认领', to:'王莉 认领（复核中）',
+    note:'人工认领并开始复核 · 认领动作绑定用户身份与时间戳 · 此时尚未修改任何字段',
+    op:'王莉 · 复核员（财务经理）', blk:10322, hash:'b93f…' },
+  { ts:'2026-10-20 11:22:14', tr:'tr-6aa2f3d1', a:'human', code:'FIELD_EDITED', cat:'field', cs:'INV-CN-2026-0381',
+    from:'total.gross_amount ¥5,650.00（OCR 票面）', to:'¥5,680.00（XML 直读）',
+    note:'修改原因：票面模糊，以结构化原件为准 · 来源标记「人工」· 原识别值、坐标与 Provider 版本保留可追溯',
+    op:'王莉 · 复核员（财务经理）', blk:10314, hash:'4c8e…' },
+  { ts:'2026-10-20 11:18:40', tr:'tr-6aa2f3d1', a:'system', code:'STATUS_CHANGE', cat:'status', cs:'INV-CN-2026-0381',
+    from:'RECOGNIZED', to:'NEEDS_REVIEW',
+    note:'触发条件：amount_tax_sum_check 未通过 · 字段置信度 96% → 82% · 路由至亚太共享中心复核队列',
+    op:'case-machine v2.2', blk:10313, hash:'3e60…' },
+  { ts:'2026-10-20 11:18:36', tr:'tr-6aa2f3d1', a:'provider', code:'OCR_CROSS_CHECK_CONFLICT', cat:'parse', cs:'INV-CN-2026-0381',
+    from:'票面 OCR 价税合计 ¥5,650.00', to:'XML 直读 ¥5,680.00（冲突）',
+    note:'多源证据交叉验证不一致 · 差额 ¥30.00 超容差 ±0.06 · 双方原文片段、坐标与模型版本均已留存',
+    op:'百望云 ocr-vlm-2026-10 × cn-xml-parser v3.2', blk:10312, hash:'a71d…' },
+  { ts:'2026-10-19 16:22:09', tr:'tr-b7e4c920', a:'system', code:'STATUS_CHANGE', cat:'status', cs:'INV-CN-2026-0379',
+    from:'RECOGNIZED', to:'BLOCKED',
+    note:'产品红线：验真失败票不得进入建档与付款 · cXML 建档挂起 · 高风险队列 30 分钟内认领 · 解除需双人审批',
+    op:'case-machine v2.2', blk:10289, hash:'08ab…' },
+  { ts:'2026-10-19 16:22:09', tr:'tr-b7e4c920', a:'provider', code:'SM2_VERIFY_FAILED', cat:'verify', cs:'INV-CN-2026-0379',
+    from:'SM2 国密验签：待验', to:'FAILED · 证书链无法验证',
+    note:'疑似 XML 原件被篡改（数值勾稽一致 ≠ 原件可信）· 失败回执 gm-rcpt-1042 随案归档，可用于对供应商追责与司法取证',
+    op:'国密验签 gm-verify v1.4', blk:10288, hash:'d2f5…' },
+  { ts:'2026-10-19 08:48:10', tr:'tr-1d5f83ac', a:'system', code:'PO_MATCH_VARIANCE', cat:'match', cs:'INV-SG-2026-0125',
+    from:'poMatch PASSED', to:'AMOUNT_VARIANCE · 状态 → INVESTIGATING',
+    note:'Gross S$84,200.00 vs PO Net S$78,600.00 · 差 S$5,600.00 超容差 ±S$50 · 差异超阈值自动进入主动调查（只读取证：PO 行 ×2 + GRN ×3 + GST 映射）',
+    op:'match-engine v1.9 · btp-check v1.3', blk:10272, hash:'6b19…' },
+  { ts:'2026-10-18 15:07:52', tr:'tr-e82a60d4', a:'system', code:'DEDUP_BLOCKED', cat:'dedup', cs:'INV-SG-2026-0122',
+    from:'VERIFYING', to:'BLOCKED（重复票拦截）',
+    note:'Invoice No. SCH-SG-77410 + US$128,900.00 与 INV-SG-2026-0098 完全一致 · 未生成 cXML InvoiceDetailRequest · 供应商 Schaeffler Singapore 侧待沟通',
+    op:'dedup-rule v2.3', blk:10241, hash:'a3f9…' },
+  { ts:'2026-10-13 09:15:22', tr:'tr-f40b7c95', a:'human', code:'AUDIT_EXPORT', cat:'export', cs:'',
+    from:'检索条件：近 7 日 · 全主体 · 全动作', to:'导出 1,284 行 CSV',
+    note:'文件 audit-export-20261013-0915.csv · 导出行为本身入链（操作人 / 时间 / 条件 / 行数）· 下载链接 24 小时后失效',
+    op:'王莉 · 复核员（财务经理）', blk:10188, hash:'8d3b…' }
+];
+
+/* 演示用「当前时间」基准（与样例数据同一时间轴） */
+let demoNow = new Date('2026-10-21T10:12:00');
+let headBlk = 10343;
+
+/* ════════════════ Tab 切换 ════════════════ */
+function switchTab(key){
+  const on  = '-mb-px px-4 py-3 text-[14px] font-medium border-b-2 border-primary text-primary';
+  const off = '-mb-px px-4 py-3 text-[14px] font-medium border-b-2 border-transparent text-ink-2 dark:text-gray-400 hover:text-ink-1';
+  ['log','sla','arch'].forEach(k=>{
+    document.getElementById('tab-'+k).className = (k===key) ? on : off;
+    document.getElementById('pane-'+k).classList.toggle('hidden', k!==key);
+  });
+}
+
+/* ════════════════ Tab 1：筛选 + 渲染 ════════════════ */
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmt(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+function parseTs(s){ return new Date(s.replace(' ','T')); }
+
+function inRange(ts, range){
+  const d = parseTs(ts);
+  if (range === 'today') return d.toDateString() === demoNow.toDateString();
+  const days = range === '7d' ? 7 : 30;
+  return d.getTime() >= demoNow.getTime() - days*86400000 && d.getTime() <= demoNow.getTime();
+}
+
+function filtered(){
+  const range = document.getElementById('f-range').value;
+  const actor = document.getElementById('f-actor').value;
+  const act   = document.getElementById('f-action').value;
+  const kw    = document.getElementById('f-kw').value.trim().toUpperCase();
+  return LOGS.filter(r =>
+    inRange(r.ts, range) &&
+    (!actor || r.a === actor) &&
+    (!act   || r.cat === act) &&
+    (!kw    || (r.cs && r.cs.toUpperCase().includes(kw)) || r.tr.toUpperCase().includes(kw) || r.code.toUpperCase().includes(kw))
+  );
+}
+
+function caseCell(id){
+  if (!id) return '<span class="text-ink-3 dark:text-gray-500">—（平台级）</span>';
+  const href = DEMO_CASES.includes(id) ? `case-detail.html?case=${id}` : 'agent-workbench.html';
+  const tip  = DEMO_CASES.includes(id) ? '打开案件详情：完整证据链 + 案件时间线' : '在复核工作台案件列表中查看该案件';
+  return `<a href="${href}" title="${tip}" class="num text-primary hover:underline whitespace-nowrap">${id}</a>`;
+}
+
+function renderLogs(){
+  const rows = filtered();
+  document.getElementById('log-tbody').innerHTML = rows.map(r=>{
+    const A = ACTOR[r.a];
+    return `<tr class="log-row transition-colors">
+      <td class="px-4 py-2.5 num whitespace-nowrap text-ink-2 dark:text-gray-400">${r.ts}</td>
+      <td class="px-3 py-2.5 num whitespace-nowrap text-[11.5px] text-primary">${r.tr}</td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-medium ${A.cls}"><i class="w-1.5 h-1.5 rounded-full ${A.dot} inline-block"></i>${A.label}</span>
+      </td>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <code class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400 num">${r.code}</code>
+        <span class="block text-[10.5px] text-ink-3 dark:text-gray-500 mt-0.5">${CAT[r.cat]}</span>
+      </td>
+      <td class="px-3 py-2.5">${caseCell(r.cs)}</td>
+      <td class="px-3 py-2.5 min-w-[320px]">
+        <div class="text-[12px] leading-snug"><span class="text-ink-3 dark:text-gray-500">${r.from}</span> <span class="text-ink-4 mx-0.5">→</span> <b class="text-ink-1 dark:text-white">${r.to}</b></div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed mt-0.5">${r.note}</div>
+      </td>
+      <td class="px-3 py-2.5 whitespace-nowrap text-[11.5px] text-ink-2 dark:text-gray-400">${r.op}</td>
+      <td class="px-4 py-2.5 whitespace-nowrap">
+        <span class="num text-[11px] text-ink-2 dark:text-gray-400" title="prev blk#${r.blk-1} → this SHA-256 ${r.hash}（链式哈希，只追加）">blk#${r.blk}·${r.hash}</span>
+        <span class="ml-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">✓ 链校验通过</span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('log-empty').classList.toggle('hidden', rows.length > 0);
+  document.getElementById('stat-count').textContent = rows.length;
+  document.getElementById('stat-total').textContent = LOGS.length;
+  document.getElementById('stat-action').textContent = rows.filter(r=>r.cat==='action').length;
+  document.getElementById('stat-field').textContent  = rows.filter(r=>r.cat==='field').length;
+  document.getElementById('stat-block').textContent  = rows.filter(r=>/BLOCKED/.test(r.to) || /BLOCKED/.test(r.code)).length;
+}
+
+function resetFilters(){
+  document.getElementById('f-range').value = '7d';
+  document.getElementById('f-actor').value = '';
+  document.getElementById('f-action').value = '';
+  document.getElementById('f-kw').value = '';
+  renderLogs();
+  toast('筛选条件已重置为「近 7 日 · 全主体 · 全动作」');
+}
+
+/* 导出：行为本身写入审计日志（新增一条链上记录） */
+function exportCsv(){
+  const rows = filtered();
+  if (rows.length === 0){ toast('当前筛选结果为 0 条，无可导出内容'); return; }
+  const rangeTxt = {today:'今日','7d':'近 7 日','30d':'近 30 日'}[document.getElementById('f-range').value] || '近 7 日';
+  const actorTxt = document.getElementById('f-actor').selectedOptions[0].textContent;
+  const actTxt   = document.getElementById('f-action').selectedOptions[0].textContent;
+  const kw       = document.getElementById('f-kw').value.trim();
+  demoNow = new Date(demoNow.getTime() + 63000);
+  headBlk += 1;
+  const stamp = `${demoNow.getFullYear()}${pad(demoNow.getMonth()+1)}${pad(demoNow.getDate())}-${pad(demoNow.getHours())}${pad(demoNow.getMinutes())}`;
+  const hex = () => Math.floor(Math.random()*65536).toString(16).padStart(4,'0');
+  LOGS.unshift({
+    ts: fmt(demoNow), tr:`tr-${hex()}${hex()}`.slice(0,11), a:'human', code:'AUDIT_EXPORT', cat:'export', cs:'',
+    from:`检索条件：${rangeTxt} · 主体 ${actorTxt} · 动作 ${actTxt}${kw?` · 关键字 ${kw}`:''}`,
+    to:`导出 ${rows.length} 行 CSV`,
+    note:`文件 audit-export-${stamp}.csv · 导出行为本身入链（操作人 / 时间 / 条件 / 行数）· 下载链接 24 小时后失效`,
+    op:'王莉 · 复核员（财务经理）', blk: headBlk, hash:`${hex()}…`
+  });
+  document.getElementById('head-blk').textContent = headBlk;
+  renderLogs();
+  toast(`导出已执行并记入审计日志（操作人：王莉 · 时间：${fmt(demoNow)} · 条件：${rangeTxt}/${actorTxt}/${actTxt} · 行数：${rows.length}）`);
+}
+
+/* 哈希链完整性校验 */
+function verifyChain(){
+  const rows = filtered();
+  demoNow = new Date(demoNow.getTime() + 60000);
+  document.getElementById('chain-checked').textContent = `最近校验：${fmt(demoNow)} · 王莉`;
+  toast(`哈希链校验完成：${rows.length}/${rows.length} 条记录前向哈希一致 · 链头 blk#${headBlk} · 未发现篡改`);
+}
+
+/* ════════════════ 深色模式 / toast ════════════════ */
+function toggleDark(){ document.documentElement.classList.toggle('dark'); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3200);
+}
+
+/* ════════════════ 手写内联 SVG 图表 ════════════════ */
+/* 近 12 周「错误自动放行率」趋势（产品红线，趋近 0） */
+function renderFalseAutoTrend(){
+  const svg = document.getElementById('chart-falseauto');
+  if (!svg) return;
+  const W=300, H=96, P={l:30,r:6,t:8,b:18};
+  const data=[0.09,0.08,0.07,0.08,0.06,0.05,0.04,0.05,0.03,0.03,0.02,0.02];
+  const max=0.10;
+  const x=i=>P.l+i*(W-P.l-P.r)/(data.length-1);
+  const y=v=>H-P.b-v*(H-P.t-P.b)/max;
+  let html='';
+  for(let g=0; g<=2; g++){
+    const v=max*g/2, gy=y(v);
+    html+=`<line x1="${P.l}" y1="${gy}" x2="${W-P.r}" y2="${gy}" stroke="#E5E6EB" stroke-opacity=".55" stroke-dasharray="${g===0?'':'3 3'}"/>
+           <text x="${P.l-5}" y="${gy+3.5}" text-anchor="end" font-size="9" fill="#86909C" class="num">${v.toFixed(2)}%</text>`;
+  }
+  const ly=y(0.05);
+  html+=`<line x1="${P.l}" y1="${ly}" x2="${W-P.r}" y2="${ly}" stroke="#F53F3F" stroke-width="1" stroke-dasharray="4 3" opacity=".8"/>
+         <text x="${W-P.r}" y="${ly-4}" text-anchor="end" font-size="9" fill="#F53F3F">上限 0.05%</text>`;
+  html+=`<polyline points="${data.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="#F53F3F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
+  data.forEach((v,i)=>{ html+=`<circle cx="${x(i)}" cy="${y(v)}" r="2" fill="#fff" stroke="#F53F3F" stroke-width="1.4"/>`; });
+  html+=`<text x="${P.l}" y="${H-5}" font-size="9" fill="#86909C">12 周前</text>
+         <text x="${x(6)}" y="${H-5}" text-anchor="middle" font-size="9" fill="#86909C">6 周前</text>
+         <text x="${W-P.r}" y="${H-5}" text-anchor="end" font-size="9" fill="#86909C">本周 0.02%</text>`;
+  svg.innerHTML=html;
+}
+
+/* 近 30 日可用性 sparkline（试点口径目标 99.5%） */
+function renderAvailSpark(){
+  const svg = document.getElementById('chart-avail');
+  if (!svg) return;
+  const W=470, H=76, P={l:34,r:8,t:8,b:16};
+  const data=[99.58,99.61,99.55,99.70,99.66,99.48,99.52,99.63,99.71,99.68,99.59,99.62,99.74,99.66,99.51,99.47,99.55,99.64,99.69,99.72,99.60,99.58,99.66,99.75,99.68,99.54,99.49,99.57,99.63,99.62];
+  const min=99.3, max=99.9;
+  const x=i=>P.l+i*(W-P.l-P.r)/(data.length-1);
+  const y=v=>H-P.b-(v-min)*(H-P.t-P.b)/(max-min);
+  let html='';
+  [99.3,99.5,99.7,99.9].forEach(v=>{
+    html+=`<line x1="${P.l}" y1="${y(v)}" x2="${W-P.r}" y2="${y(v)}" stroke="#E5E6EB" stroke-opacity=".5" stroke-dasharray="3 3"/>
+           <text x="${P.l-5}" y="${y(v)+3.5}" text-anchor="end" font-size="9" fill="#86909C" class="num">${v.toFixed(1)}</text>`;
+  });
+  html+=`<line x1="${P.l}" y1="${y(99.5)}" x2="${W-P.r}" y2="${y(99.5)}" stroke="#00B42A" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>
+         <text x="${W-P.r}" y="${y(99.5)-4}" text-anchor="end" font-size="9" fill="#00B42A">目标 99.5%</text>`;
+  html+=`<polyline points="${data.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" fill="none" stroke="#165DFF" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
+  html+=`<circle cx="${x(data.length-1)}" cy="${y(data[data.length-1])}" r="2.6" fill="#fff" stroke="#165DFF" stroke-width="1.6"/>`;
+  html+=`<text x="${P.l}" y="${H-4}" font-size="9" fill="#86909C">09-22</text>
+         <text x="${W-P.r}" y="${H-4}" text-anchor="end" font-size="9" fill="#86909C">10-21（近 30 日）</text>`;
+  svg.innerHTML=html;
+}
+
+/* 归档构成 donut（与总览仪表盘「本月总量 128,462 张」同口径） */
+function renderArchiveDonut(){
+  const svg = document.getElementById('chart-archive');
+  if (!svg) return;
+  const segs=[
+    {name:'XML 原件（数电票）', value:62.0, color:'#165DFF', note:'79,646 份 · 电子会计档案主体'},
+    {name:'PDF 票面呈现件',     value:26.6, color:'#00B42A', note:'34,217 份 · 复核与取证查阅'},
+    {name:'OFD 版式原件',       value:9.6,  color:'#722ED1', note:'12,308 份 · 长期可读性校验'},
+    {name:'图片 / 扫描件',      value:1.8,  color:'#FF7D00', note:'2,291 份 · 海外 Supplier Invoice'}
+  ];
+  const r=62, cx=84, cy=84, sw=22, C=2*Math.PI*r;
+  let acc=0, html=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E5E6EB" stroke-width="${sw}" opacity=".25"/>`;
+  segs.forEach(s=>{
+    const len=C*s.value/100;
+    html+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="${sw}"
+      stroke-dasharray="${len-2} ${C-len+2}" stroke-dashoffset="${-acc}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="butt"/>`;
+    acc+=len;
+  });
+  svg.innerHTML=html;
+  const lg=document.getElementById('archive-legend');
+  if (lg) lg.innerHTML = segs.map(s=>`
+    <div class="flex items-center justify-between gap-2">
+      <span class="flex items-center gap-2 min-w-0"><i class="w-2.5 h-2.5 rounded-sm shrink-0 inline-block" style="background:${s.color}"></i><span class="truncate">${s.name}</span></span>
+      <span class="num font-semibold shrink-0">${s.value}%</span>
+    </div>
+    <div class="text-[11px] text-ink-3 dark:text-gray-500 pl-[18px] -mt-1.5">${s.note}</div>`).join('');
+}
+
+/* ════════════════ 初始化 ════════════════ */
+renderLogs();
+renderFalseAutoTrend();
+renderAvailSpark();
+renderArchiveDonut();
+/* 支持 ?tab=log|sla|arch 深链（如从仪表盘快捷入口直达某一 Tab） */
+switchTab(['log','sla','arch'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'log');
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='audit';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

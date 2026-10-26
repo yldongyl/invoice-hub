@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 对话工作台 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF'},
+      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
+      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
+      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
+      purple:{DEFAULT:'#722ED1',light:'#F5E8FF'},
+      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
+      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
+    },
+    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
+    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',cardhover:'0 4px 16px rgba(29,33,41,.10)'},
+    borderRadius:{card:'8px'}
+  } }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .toast{transition:opacity .3s,transform .3s;}
+  @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+  .dot-anim span{animation:blink 1s infinite;margin-right:2px} .dot-anim span:nth-child(2){animation-delay:.15s} .dot-anim span:nth-child(3){animation-delay:.3s}
+  .row-sel{background:#F0F5FF !important;} .dark .row-sel{background:#23282F !important;}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased h-screen flex flex-col overflow-hidden">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header ═══════════════ -->
+<header class="shrink-0 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between z-40">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <b class="text-ink-1 dark:text-white">复核工作台</b>
+      <span class="ml-2 text-[11px] px-2 py-0.5 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium">§1.6 交互范式：Agent 对话 + 传统菜单 双模式</span>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <span class="text-[11px] text-ink-3 dark:text-gray-500 hidden lg:block">队列：亚太采购共享中心 · 待复核 <b class="text-warning num">9</b></span>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="深色模式">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">王莉</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">王莉 · 复核员</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">复核 / 处置权限</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════ 左右分栏 30% / 70% ═══════════════ -->
+<main class="flex-1 flex gap-4 px-4 py-4 overflow-hidden">
+
+  <!-- ═════ 左栏：Agent 对话面板（30%） ═════ -->
+  <aside class="w-[30%] shrink-0 flex flex-col rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+    <!-- 系统提示置顶 -->
+    <div class="shrink-0 px-4 py-3 border-b border-line dark:border-dline bg-warning-light dark:bg-[#2E2417]">
+      <div class="flex items-start gap-2">
+        <span class="w-7 h-7 rounded-card bg-primary flex items-center justify-center text-white text-[13px] shrink-0">🤖</span>
+        <div class="min-w-0">
+          <div class="text-[13px] font-semibold">票据智能 Agent <span class="text-[10px] font-medium px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-3 dark:text-gray-400 ml-1">qwen-finance-v2</span></div>
+          <div class="text-[11.5px] text-ink-2 dark:text-gray-300 mt-0.5 leading-snug"><b class="text-warning">仅做查询、线索建议</b>；修改、放行等业务动作需要<b>人工确认</b>后在受控工作台执行。</div>
+        </div>
+      </div>
+    </div>
+    <!-- 消息区 -->
+    <div id="chat" class="flex-1 overflow-y-auto px-4 py-4 space-y-4"></div>
+    <!-- 推荐问题 -->
+    <div class="shrink-0 px-4 pt-2.5 border-t border-line dark:border-dline">
+      <div class="text-[10.5px] text-ink-3 dark:text-gray-500 mb-1.5">试试自然语言发起工作流：</div>
+      <div class="flex flex-wrap gap-1.5" id="chips"></div>
+    </div>
+    <!-- 输入区 -->
+    <div class="shrink-0 p-3">
+      <div class="flex items-end gap-2">
+        <textarea id="chat-input" rows="2" placeholder="用自然语言查询案件、发起筛查…（Enter 发送）"
+          class="flex-1 resize-none rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[13px] focus:outline-none focus:border-primary"
+          onkeydown="if(event.key==='Enter'&&!event.shiftNow){event.preventDefault();send()}"></textarea>
+        <button onclick="send()" class="shrink-0 h-[38px] px-4 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF]">发送</button>
+      </div>
+      <div class="mt-2 text-[10px] text-ink-3 dark:text-gray-600 leading-relaxed">
+        Ⓜ 本 Agent 能力基于 <b>MCP Server</b> 对外暴露（识别 / 案件查询 / 证据读取），SAP Joule 与第三方 Agent 可调用同一套受控接口 · LLM 仅承担意图理解与不确定性推理；税额计算、容差判定、状态转换等确定性判断由<b>规则引擎</b>执行 · 对话与动作全量审计留痕
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═════ 右栏：传统复核工作台（70%） ═════ -->
+  <section class="flex-1 min-w-0 flex flex-col gap-3 overflow-hidden">
+    <!-- 双模式声明条 -->
+    <div class="shrink-0 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card px-4 py-2.5 flex items-center justify-between gap-4">
+      <div class="text-[12px] text-ink-2 dark:text-gray-400">
+        🗂 <b>传统菜单工作台可独立完成全部复核工作</b>（筛选 → 复核 → 受控处置 → 留痕），Agent 对话只是增强入口，<b class="text-primary">不是强制路径</b>；两种模式操作同一套案件状态机与审计日志。
+      </div>
+      <span class="shrink-0 text-[11px] px-2 py-1 rounded bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium">菜单模式 · 当前生效</span>
+    </div>
+
+    <div class="flex-1 flex gap-3 min-h-0">
+      <!-- 案件列表 -->
+      <div class="flex-1 min-w-0 flex flex-col rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <!-- 筛选工具栏 -->
+        <div class="shrink-0 px-4 py-3 border-b border-line dark:border-dline flex items-center gap-2 flex-wrap">
+          <input id="f-kw" oninput="renderTable()" placeholder="搜索案件号 / 供应商…" class="w-48 rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+          <select id="f-status" onchange="renderTable()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+            <option value="">全部状态</option><option>RECOGNIZED</option><option>VERIFYING</option><option selected>NEEDS_REVIEW</option><option>INVESTIGATING</option><option>BLOCKED</option><option>RESOLVED</option></select>
+          <select id="f-region" onchange="renderTable()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+            <option value="">全部地区</option><option>CN 中国</option><option>APAC 新加坡</option></select>
+          <select id="f-risk" onchange="renderTable()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+            <option value="">全部风险</option><option value="risk">仅看有风险标记</option><option value="none">无风险</option></select>
+          <button onclick="resetFilters()" class="text-[12px] text-ink-3 dark:text-gray-500 hover:text-primary px-2">重置</button>
+          <div class="ml-auto text-[11.5px] text-ink-3 dark:text-gray-500 num" id="f-count"></div>
+        </div>
+        <!-- 批量操作条 -->
+        <div id="batch-bar" class="shrink-0 hidden px-4 py-2 bg-primary-light dark:bg-[#1B2A4A] border-b border-primary-mid dark:border-[#2A3F6B] items-center gap-3 text-[12.5px]">
+          <span class="text-primary font-medium num">已选 <b id="batch-n">0</b> 个案件</span>
+          <button onclick="batchAct('认领')" class="px-2.5 py-1 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard hover:border-primary hover:text-primary">批量认领</button>
+          <button onclick="batchAct('放行')" class="px-2.5 py-1 rounded-card border border-primary text-primary bg-card dark:bg-dcard hover:bg-primary hover:text-white">批量放行（受控 · 二次确认）</button>
+          <button onclick="batchAct('导出')" class="px-2.5 py-1 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard hover:border-primary hover:text-primary">导出清单（CSV · 留痕）</button>
+          <button onclick="clearSel()" class="ml-auto text-ink-3 dark:text-gray-500 hover:text-ink-1">取消选择</button>
+        </div>
+        <!-- 表格 -->
+        <div class="flex-1 overflow-y-auto">
+          <table class="w-full text-[12.5px]">
+            <thead class="sticky top-0 z-10">
+              <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+                <th class="px-3 py-2.5 w-8"><input type="checkbox" id="chk-all" onchange="toggleAll(this)" class="accent-[#165DFF]"></th>
+                <th class="px-2 py-2.5 font-medium">案件 ID</th>
+                <th class="px-2 py-2.5 font-medium">供应商</th>
+                <th class="px-2 py-2.5 font-medium text-right">金额</th>
+                <th class="px-2 py-2.5 font-medium">地区</th>
+                <th class="px-2 py-2.5 font-medium">风险标签</th>
+                <th class="px-2 py-2.5 font-medium">状态</th>
+                <th class="px-2 py-2.5 font-medium text-right pr-3">操作</th>
+              </tr>
+            </thead>
+            <tbody id="wb-tbody" class="divide-y divide-line dark:divide-dline"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 案件详情卡片 -->
+      <div id="detail-panel" class="w-[360px] shrink-0 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-y-auto">
+        <div id="detail-body" class="p-5 text-[12.5px] text-ink-3 dark:text-gray-500 leading-relaxed">
+          <div class="text-center mt-16">
+            <div class="text-[32px] mb-2">🗂</div>
+            <div class="text-[13px] font-medium text-ink-2 dark:text-gray-400">未选择案件</div>
+            <div class="mt-1 text-[12px]">从左侧列表点击「复核」，<br>或在 Agent 对话中点击「查看案件详情」唤起本视图。<br><br><span class="text-[11px]">Agent 唤起 = 只读定位，<b class="text-ink-2 dark:text-gray-400">不会直接修改数据</b>；<br>处置动作始终由人在此确认后执行。</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ═══════════════ 受控操作确认弹窗 ═══════════════ -->
+<div id="act-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 p-6" onclick="if(event.target===this)closeAct()">
+  <div class="w-[460px] max-w-full rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-3.5 border-b border-line dark:border-dline text-[14px] font-semibold" id="act-title"></div>
+    <div class="px-5 py-4 space-y-3">
+      <div class="text-[12px] leading-relaxed rounded-card border border-primary-mid dark:border-[#2A3F6B] bg-primary-light dark:bg-[#1B2A4A] p-3" id="act-warn"></div>
+      <div class="text-[12px] text-ink-2 dark:text-gray-400">操作人：<b class="text-success">✓ 王莉（复核员）</b> · 权限校验通过 · 将绑定身份与时间戳写入案件时间线</div>
+      <label class="flex items-start gap-2 text-[12px] text-ink-2 dark:text-gray-400 cursor-pointer">
+        <input id="act-chk" type="checkbox" class="mt-0.5 accent-[#165DFF]" onchange="document.getElementById('act-ok').disabled=!this.checked;document.getElementById('act-ok').className='px-3.5 py-1.5 rounded-card text-[13px] font-medium text-white '+(this.checked?'bg-primary hover:bg-[#4080FF]':'bg-ink-4 cursor-not-allowed')">
+        <span>我已核对案件证据，确认由<b>本人</b>执行（Agent / LLM 建议不自动执行任何业务写操作）</span>
+      </label>
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline flex justify-end gap-2 bg-surface dark:bg-[#23282F]">
+      <button onclick="closeAct()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[13px] text-ink-2 dark:text-gray-300">取消</button>
+      <button id="act-ok" onclick="confirmAct()" disabled class="px-3.5 py-1.5 rounded-card text-[13px] font-medium text-white bg-ink-4 cursor-not-allowed">确认执行</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[640px]"></div>
+
+<script>
+/* ═══════════════ 案件数据（复核队列） ═══════════════ */
+const STATUS = {
+  RECOGNIZED:   {label:'RECOGNIZED',   cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]'},
+  VERIFYING:    {label:'VERIFYING',    cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]'},
+  NEEDS_REVIEW: {label:'NEEDS_REVIEW', cls:'bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30'},
+  INVESTIGATING:{label:'INVESTIGATING',cls:'bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30'},
+  RESOLVED:     {label:'RESOLVED',     cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30'},
+  BLOCKED:      {label:'BLOCKED',      cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30'}
+};
+const WB = [
+  {id:'INV-CN-2026-0387', sup:'北京中科华创科技有限公司', amt:'¥113,000.00', region:'CN 中国', risk:{t:'PO 金额差异',c:'warning'}, status:'NEEDS_REVIEW', conf:92, provider:'百望云', type:'数电票',
+   summary:'含税 ¥113,000.00 vs PO-2026-0881 净额 ¥100,000.00，差异恰为 13% 税额；SM2 验签通过，授权查验重试中。'},
+  {id:'INV-CN-2026-0385', sup:'深圳广合精密组件有限公司', amt:'¥232,860.00', region:'CN 中国', risk:{t:'重复票',c:'danger'}, status:'BLOCKED', conf:99, provider:'诺诺', type:'增值税专票',
+   summary:'发票号 + 价税合计与 INV-CN-2026-0291 完全一致，付款前拦截；解除需复核员权限并留痕。'},
+  {id:'INV-CN-2026-0384', sup:'广州粤海物流服务有限公司', amt:'¥-8,420.00', region:'CN 中国', risk:{t:'红字票待关联原票',c:'warning'}, status:'NEEDS_REVIEW', conf:88, provider:'自托管 OCR', type:'红字票',
+   summary:'候选原票 INV-CN-2026-0310（供应商 + 金额匹配 92%），确认冲减 Link 后可进入建档。'},
+  {id:'INV-CN-2026-0381', sup:'苏州恒信电子材料有限公司', amt:'¥5,680.00', region:'CN 中国', risk:{t:'价税合计口径冲突',c:'warning'}, status:'NEEDS_REVIEW', conf:82, provider:'百望云', type:'数电票',
+   summary:'票面 OCR ¥5,650.00 vs XML ¥5,680.00，差额 ¥30 超尾差容差 ±0.06；规则 amount_tax_sum_check 命中。'},
+  {id:'INV-CN-2026-0379', sup:'成都天府新材料股份公司', amt:'¥47,200.00', region:'CN 中国', risk:{t:'SM2 验签失败',c:'danger'}, status:'BLOCKED', conf:94, provider:'百望云', type:'数电票',
+   summary:'XML 原件验签不通过（证书链无法验证），疑似篡改；AI 建议阻断并要求供应商重开（置信度 94%，须人工确认）。'},
+  {id:'INV-SG-2026-0125', sup:'Siemens Energy Pte. Ltd.', amt:'S$84,200.00', region:'APAC 新加坡', risk:{t:'含税 vs PO 净额差异',c:'warning'}, status:'INVESTIGATING', conf:91, provider:'海外 e-invoicing', type:'Supplier Invoice',
+   summary:'差异 S$5,600 = GST S$4,100 + 运费 S$1,500（PO 无对应收货行）；系统已自动收集 PO/GRN/合同条款证据。'},
+  {id:'INV-SG-2026-0123', sup:'AWS Asia Pacific (Singapore)', amt:'US$-2,450.00', region:'APAC 新加坡', risk:{t:'Credit Note 未关联原票',c:'warning'}, status:'NEEDS_REVIEW', conf:89, provider:'海外 e-invoicing', type:'Credit Note',
+   summary:'候选原票 INV-SG-2026-0101（匹配度 92%），Link 确认后方可建档。'},
+  {id:'INV-SG-2026-0122', sup:'Schaeffler Singapore Pte. Ltd.', amt:'US$128,900.00', region:'APAC 新加坡', risk:{t:'重复票',c:'danger'}, status:'BLOCKED', conf:97, provider:'自托管 OCR', type:'Supplier Invoice',
+   summary:'Invoice No. SCH-SG-77410 与 INV-SG-2026-0098 重复，cXML 建档前拦截。'},
+  {id:'INV-CN-2026-0386', sup:'上海临港智造装备股份有限公司', amt:'¥56,500.00', region:'CN 中国', risk:null, status:'RECOGNIZED', conf:98, provider:'XML 直读', type:'数电票',
+   summary:'XML 直读 + SM2 验签通过，全部 Checks PASSED，等待匹配就绪化后自动建档。'},
+  {id:'INV-SG-2026-0124', sup:'Dell Asia Pacific Pte. Ltd.', amt:'US$56,300.00', region:'APAC 新加坡', risk:null, status:'VERIFYING', conf:98, provider:'自托管 VLM', type:'Supplier Invoice',
+   summary:'Tax ID 名录校验进行中，其余 Checks 已 PASSED。'}
+];
+let selected = new Set(), curCase = null;
+
+/* ═══════════════ 右栏：表格 / 筛选 / 详情卡 ═══════════════ */
+function riskTag(r){
+  if(!r) return '<span class="text-[11.5px] text-ink-3 dark:text-gray-500">— 无风险</span>';
+  return `<span class="inline-flex items-center gap-1 text-[11.5px] font-medium ${r.c==='danger'?'text-danger':'text-warning'}">⚠ ${r.t}</span>`;
+}
+function filtered(){
+  const kw=document.getElementById('f-kw').value.trim().toLowerCase();
+  const st=document.getElementById('f-status').value, rg=document.getElementById('f-region').value, rk=document.getElementById('f-risk').value;
+  return WB.filter(c=>
+    (!kw || c.id.toLowerCase().includes(kw) || c.sup.toLowerCase().includes(kw)) &&
+    (!st || c.status===st) && (!rg || c.region===rg) &&
+    (rk==='risk' ? c.risk : rk==='none' ? !c.risk : true));
+}
+function renderTable(){
+  const rows = filtered();
+  document.getElementById('f-count').textContent = `${rows.length} / ${WB.length} 个案件`;
+  document.getElementById('wb-tbody').innerHTML = rows.map(c=>`
+    <tr id="row-${c.id}" class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors ${curCase===c.id?'row-sel':''}">
+      <td class="px-3 py-2.5"><input type="checkbox" ${selected.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" class="accent-[#165DFF]"></td>
+      <td class="px-2 py-2.5 num font-medium text-primary whitespace-nowrap">${c.id}</td>
+      <td class="px-2 py-2.5 max-w-[160px] truncate" title="${c.sup}">${c.sup}</td>
+      <td class="px-2 py-2.5 text-right num font-medium whitespace-nowrap ${c.amt.includes('-')?'text-danger':''}">${c.amt}</td>
+      <td class="px-2 py-2.5 whitespace-nowrap text-ink-2 dark:text-gray-400">${c.region}</td>
+      <td class="px-2 py-2.5 whitespace-nowrap">${riskTag(c.risk)}</td>
+      <td class="px-2 py-2.5 whitespace-nowrap"><span class="inline-block px-1.5 py-0.5 rounded text-[10.5px] font-semibold num ${STATUS[c.status].cls}">${STATUS[c.status].label}</span></td>
+      <td class="px-2 py-2.5 pr-3 text-right whitespace-nowrap">
+        <button onclick="openCase('${c.id}','menu')" class="text-primary text-[12px] hover:underline">复核</button>
+        <a href="case-detail.html?case=${c.id}" class="text-ink-3 dark:text-gray-500 hover:text-primary text-[12px] ml-2">完整案件 ↗</a>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="8" class="px-4 py-10 text-center text-[12.5px] text-ink-3 dark:text-gray-500">无匹配案件 · 调整筛选条件</td></tr>`;
+  updateBatchBar();
+}
+function resetFilters(){ ['f-kw'].forEach(id=>document.getElementById(id).value=''); document.getElementById('f-status').value=''; document.getElementById('f-region').value=''; document.getElementById('f-risk').value=''; renderTable(); }
+function toggleSel(id,on){ on?selected.add(id):selected.delete(id); updateBatchBar(); }
+function toggleAll(el){ filtered().forEach(c=> el.checked?selected.add(c.id):selected.delete(c.id)); renderTable(); }
+function clearSel(){ selected.clear(); document.getElementById('chk-all').checked=false; renderTable(); }
+function updateBatchBar(){
+  const bar=document.getElementById('batch-bar');
+  document.getElementById('batch-n').textContent=selected.size;
+  bar.classList.toggle('hidden', selected.size===0);
+  bar.classList.toggle('flex', selected.size>0);
+}
+
+function openCase(id, from){
+  curCase = id;
+  const c = WB.find(x=>x.id===id);
+  renderTable();
+  document.getElementById('row-'+id)?.scrollIntoView({block:'nearest'});
+  document.getElementById('detail-body').innerHTML = `
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <div class="num text-[14px] font-semibold text-primary">${c.id}</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">${c.type} · ${c.region} · 🔌 ${c.provider}</div>
+      </div>
+      <span class="shrink-0 inline-block px-2 py-0.5 rounded text-[10.5px] font-semibold num ${STATUS[c.status].cls}">${STATUS[c.status].label}</span>
+    </div>
+    ${from==='agent'?`<div class="mt-2 text-[10.5px] px-2 py-1 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">🤖 由 Agent 对话唤起 · 只读定位，未修改任何数据</div>`:''}
+    <dl class="mt-3 space-y-1.5 text-[12px]">
+      <div class="flex gap-2"><dt class="w-14 shrink-0 text-ink-3 dark:text-gray-500">供应商</dt><dd class="flex-1">${c.sup}</dd></div>
+      <div class="flex gap-2"><dt class="w-14 shrink-0 text-ink-3 dark:text-gray-500">金额</dt><dd class="flex-1 num font-semibold text-[14px] ${c.amt.includes('-')?'text-danger':''}">${c.amt}</dd></div>
+      <div class="flex gap-2"><dt class="w-14 shrink-0 text-ink-3 dark:text-gray-500">风险</dt><dd class="flex-1">${riskTag(c.risk)}</dd></div>
+      <div class="flex gap-2 items-center"><dt class="w-14 shrink-0 text-ink-3 dark:text-gray-500">置信度</dt><dd class="flex-1 num font-medium ${c.conf>=95?'text-success':c.conf>=80?'text-warning':'text-danger'}">${c.conf}%</dd></div>
+    </dl>
+    <div class="mt-3 p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11.5px] leading-relaxed text-ink-2 dark:text-gray-400">
+      <b class="text-ink-1 dark:text-gray-300">案件摘要（规则引擎结论）：</b>${c.summary}
+    </div>
+    <div class="mt-4 space-y-2">
+      <a href="case-detail.html?case=${c.id}" class="block w-full text-center px-3 py-2 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">进入完整案件详情（证据链 / 时间线 / Link）→</a>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="openActModal('放行','${c.id}')" class="px-3 py-2 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-success hover:text-success">✓ 放行（受控）</button>
+        <button onclick="openActModal('认领','${c.id}')" class="px-3 py-2 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">🙋 认领复核</button>
+      </div>
+      <div class="text-[10.5px] text-ink-3 dark:text-gray-500 text-center pt-1">所有处置均需二次确认并写入案件时间线 · AI 建议不自动执行</div>
+    </div>`;
+  if(from==='agent') toast(`已在工作台唤起案件 ${c.id}（只读视图）· Agent 未修改任何数据`);
+}
+
+/* ═══════════════ 受控操作确认 ═══════════════ */
+let pendingAct = null;
+function openActModal(act, scope){
+  pendingAct = {act, scope};
+  document.getElementById('act-title').textContent = `${act==='放行'?'✓ 放行':'🙋 认领'}确认 · 受控写操作`;
+  document.getElementById('act-warn').innerHTML = act==='放行'
+    ? `放行后案件进入目标系统建档流程（如 Ariba cXML InvoiceDetailRequest）。范围：<b class="num">${typeof scope==='string'?scope:scope.join('、')}</b> · 请确认差异已有处置结论。`
+    : `认领后案件锁定至当前复核员（王莉），处理时长计入 SLA。范围：<b class="num">${typeof scope==='string'?scope:scope.join('、')}</b>`;
+  document.getElementById('act-chk').checked = false;
+  document.getElementById('act-ok').disabled = true;
+  document.getElementById('act-ok').className = 'px-3.5 py-1.5 rounded-card text-[13px] font-medium text-white bg-ink-4 cursor-not-allowed';
+  const m = document.getElementById('act-modal'); m.classList.remove('hidden'); m.classList.add('flex');
+}
+function closeAct(){ const m=document.getElementById('act-modal'); m.classList.add('hidden'); m.classList.remove('flex'); pendingAct=null; }
+function confirmAct(){
+  const {act, scope} = pendingAct;
+  const n = typeof scope==='string' ? 1 : scope.length;
+  if(act==='放行' && typeof scope==='string'){ const c=WB.find(x=>x.id===scope); if(c){ c.status='RESOLVED'; c.risk=null; } if(curCase===scope) openCase(scope,'menu'); }
+  if(act==='放行' && Array.isArray(scope)){ scope.forEach(id=>{ const c=WB.find(x=>x.id===id); if(c&&c.status!=='BLOCKED'){c.status='RESOLVED';c.risk=null;} }); }
+  renderTable(); clearSel(); closeAct();
+  toast(`✓ 已执行「${act}」× ${n} · 操作人王莉 · 已写入不可篡改案件时间线${act==='放行'?'（BLOCKED 案件不可批量放行，需单独解除拦截）':''}`);
+}
+function batchAct(act){
+  const ids=[...selected];
+  if(act==='导出'){ toast(`已导出 ${ids.length} 个案件清单（CSV）· 导出行为记入审计日志`); return; }
+  if(act==='放行'){ const blocked=ids.filter(id=>WB.find(c=>c.id===id).status==='BLOCKED'); openActModal('放行', ids); if(blocked.length) setTimeout(()=>toast(`⚠ ${blocked.length} 个 BLOCKED 案件将被跳过：解除拦截须单独走受控流程`),400); return; }
+  openActModal('认领', ids);
+}
+
+/* ═══════════════ 左栏：Agent 对话（脚本化演示） ═══════════════ */
+const DISCLAIMER = `<div class="mt-2 px-2.5 py-2 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-[11px] leading-relaxed text-ink-2 dark:text-gray-300">
+  ⚠️ <b class="text-warning">【本建议由大模型生成，不自动执行业务操作，请人工确认后操作】</b>确定性判断（税额 / 容差 / 状态转换）以规则引擎结论为准。</div>`;
+const AI_TAG = `<span class="inline-block text-[10px] px-1.5 py-px rounded bg-warning text-white font-medium mr-1.5">AI 生成</span>`;
+const SYS_TAG = `<span class="inline-block text-[10px] px-1.5 py-px rounded bg-primary text-white font-medium mr-1.5">系统查询结果</span>`;
+
+const CHIPS = [
+  '展示所有金额差异大于5000的案件',
+  '查询案件 INV-CN-2026-0387 全部证据链',
+  '帮我筛查本月重复风险的海外供应商发票'
+];
+
+function bubble(role, html){
+  const chat = document.getElementById('chat');
+  const el = document.createElement('div');
+  if(role==='user'){
+    el.className = 'flex justify-end';
+    el.innerHTML = `<div class="max-w-[85%] px-3 py-2 rounded-card rounded-br-sm bg-primary text-white text-[12.5px] leading-relaxed">${html}</div>`;
+  } else {
+    el.className = 'flex gap-2 items-start';
+    el.innerHTML = `<span class="w-6 h-6 rounded-card bg-primary flex items-center justify-center text-white text-[11px] shrink-0 mt-0.5">🤖</span>
+      <div class="min-w-0 flex-1 max-w-[92%] px-3 py-2.5 rounded-card rounded-tl-sm bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[12.5px] leading-relaxed">${html}</div>`;
+  }
+  chat.appendChild(el); chat.scrollTop = chat.scrollHeight;
+  return el;
+}
+function typing(){
+  const chat = document.getElementById('chat');
+  const el = document.createElement('div');
+  el.className='flex gap-2 items-start'; el.id='typing';
+  el.innerHTML=`<span class="w-6 h-6 rounded-card bg-primary flex items-center justify-center text-white text-[11px] shrink-0">🤖</span>
+    <div class="px-3 py-2.5 rounded-card rounded-tl-sm bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 text-[12px] dot-anim"><span>●</span><span>●</span><span>●</span> 意图理解中 · 调用 MCP: case.search</div>`;
+  chat.appendChild(el); chat.scrollTop=chat.scrollHeight;
+}
+function untyping(){ document.getElementById('typing')?.remove(); }
+
+function caseBtn(id,label){ return `<button onclick="openCase('${id}','agent')" class="inline-block mt-1.5 mr-1.5 px-2.5 py-1 rounded-card border border-primary text-primary text-[11.5px] font-medium hover:bg-primary hover:text-white transition-colors">${label||'📂 查看案件详情'} · ${id}</button>`; }
+
+const ANSWERS = [
+  { match:['差异','5000','金额'], reply(){
+    const rows = WB.filter(c=>c.risk && /差异|冲突/.test(c.risk.t));
+    return `${SYS_TAG}意图解析：<b>查询 金额差异 &gt; 5,000 的案件</b>（MCP 工具 case.search · 只读）
+      <div class="mt-2 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard overflow-hidden">
+        <table class="w-full text-[11.5px]"><tbody class="divide-y divide-line dark:divide-dline">
+        ${rows.map(c=>`<tr><td class="px-2.5 py-1.5 num text-primary font-medium whitespace-nowrap">${c.id}</td><td class="px-2 py-1.5 truncate max-w-[110px]">${c.sup}</td><td class="px-2 py-1.5 num text-right whitespace-nowrap font-medium">${c.amt}</td><td class="px-2 py-1.5 whitespace-nowrap"><span class="${c.risk.c==='danger'?'text-danger':'text-warning'}">⚠ ${c.risk.t}</span></td></tr>`).join('')}
+        </tbody></table>
+      </div>
+      <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1 num">共 ${rows.length} 件 · 数据来源：案件库实时查询（规则引擎口径），非模型生成</div>
+      <div class="mt-2.5 pt-2 border-t border-line dark:border-dline">${AI_TAG}<b>调查线索（LLM 归纳）：</b>INV-CN-2026-0387 差异恰等于 13% 税额，疑似含税/不含税口径差异；INV-SG-2026-0125 差异 = GST + PO 外运费，系统已自动收集 GRN 证据。两案均建议按「口径差异」路径处置而非退回。${DISCLAIMER}</div>
+      ${rows.map(c=>caseBtn(c.id)).join('')}`;
+  }},
+  { match:['证据链','INV-CN-2026-0387','0387','证据'], reply(){
+    return `${SYS_TAG}意图解析：<b>读取案件 INV-CN-2026-0387 证据链</b>（MCP 工具 case.get_evidence · 只读）
+      <div class="mt-2 space-y-1.5">
+        <div class="p-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-[11.5px]"><b class="num">total.gross_amount = ¥113,000.00</b> · source: <span class="text-primary">xml_direct</span> · conf <b class="text-success num">0.98</b><br><span class="text-ink-3 dark:text-gray-500">bbox[120,300,260,330] · "价税合计（小写）¥113,000.00" · cn-xml-parser v3.2</span></div>
+        <div class="p-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-[11.5px]"><b>交叉验证</b> · source: <span class="text-purple">ocr（百望云）</span> · conf <b class="text-success num">0.96</b> · 与 XML 互证一致<br><span class="text-ink-3 dark:text-gray-500">ocr-vlm-2026-10 · rule: amount_tax_sum_check ✓</span></div>
+        <div class="p-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-[11.5px]"><b>SM2 验签</b> · <span class="text-success">PASS</span> · 回执 gm-rcpt-0931 已归档<br><b>授权查验</b> · <span class="text-ink-3">NOT_VERIFIED（渠道超时，重试排定中）</span></div>
+      </div>
+      <div class="mt-2.5 pt-2 border-t border-line dark:border-dline">${AI_TAG}<b>差异解释：</b>价税合计与 PO 净额的 ¥13,000 差异恰为税额，PO 以不含税口径登记。规则引擎已复核勾稽关系全部通过，倾向「口径差异」而非金额错误。${DISCLAIMER}</div>
+      ${caseBtn('INV-CN-2026-0387','📂 在工作台唤起该案件')}
+      <a href="case-detail.html?case=INV-CN-2026-0387" class="inline-block mt-1.5 px-2.5 py-1 rounded-card bg-primary text-white text-[11.5px] font-medium hover:bg-[#4080FF]">进入完整案件详情（时间线 / Link / 受控处置）→</a>`;
+  }},
+  { match:['重复','海外','筛查'], reply(){
+    const rows = WB.filter(c=>c.region.startsWith('APAC'));
+    return `${SYS_TAG}意图解析：<b>筛查本月海外供应商发票的重复风险</b>（MCP 工具 case.search + dedup.report · 只读）
+      <div class="mt-2 p-2.5 rounded-card bg-danger-light dark:bg-[#3A2426] border border-danger/30 text-[11.5px]">
+        <b class="text-danger">命中 1 件重复票（规则引擎查重，非模型判断）：</b><br>
+        INV-SG-2026-0122 · Schaeffler Singapore · US$128,900.00 · Invoice No. SCH-SG-77410 与 INV-SG-2026-0098 完全一致 → 已 <b class="num">BLOCKED</b>（cXML 建档前拦截）
+      </div>
+      <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 num">本月海外实例共处理 ${rows.length*412} 张 · 查重拦截 4 张 · 查重 P95 &lt; 200ms</div>
+      <div class="mt-2.5 pt-2 border-t border-line dark:border-dline">${AI_TAG}<b>线索建议：</b>该供应商近 90 天有 2 次发票号连号重投记录，建议关注其开票流程；如需退回供应商，请在工作台走受控 Action（将生成退回通知并留痕）。${DISCLAIMER}</div>
+      ${caseBtn('INV-SG-2026-0122','📂 在工作台唤起该案件')}`;
+  }}
+];
+const FALLBACK = `未匹配到演示脚本中的意图（本页为脚本化演示）。当前支持的示例工作流：
+  <div class="mt-1.5 space-y-1 text-[11.5px] text-primary">${CHIPS.map(c=>`<div>· ${c}</div>`).join('')}</div>
+  <div class="mt-2 text-[11px] text-ink-3 dark:text-gray-500">真实环境中：意图理解 → 归入相应工作流（识别 / 查询 / 复核 / 调查）→ 业务动作一律走受控 API 或唤起界面由人操作。</div>`;
+
+function send(text){
+  const input = document.getElementById('chat-input');
+  const q = (text ?? input.value).trim();
+  if(!q) return;
+  input.value = '';
+  bubble('user', q.replace(/</g,'&lt;'));
+  typing();
+  const hit = ANSWERS.find(a=>a.match.some(m=>q.includes(m)));
+  setTimeout(()=>{ untyping(); bubble('agent', hit ? hit.reply() : FALLBACK); }, 900);
+}
+
+/* 欢迎语 */
+bubble('agent', `<b>你好，王莉。</b>我是票据智能 Agent，可以帮你：查询案件与证据链、筛查风险、解释金额差异、发起识别工作流。<br>
+  <span class="text-[11px] text-ink-3 dark:text-gray-500 mt-1 block">我的输出仅为查询结果与线索建议；<b class="text-warning">修改字段、放行、退回等业务动作必须由你在右侧工作台确认执行</b>，全部留痕。</span>`);
+
+document.getElementById('chips').innerHTML = CHIPS.map(c=>
+  `<button onclick="send('${c}')" class="text-[11px] px-2.5 py-1.5 rounded-card border border-line dark:border-dline text-ink-2 dark:text-gray-400 hover:border-primary hover:text-primary transition-colors text-left">${c}</button>`).join('');
+
+/* ═══════════════ 通用 ═══════════════ */
+function toast(msg){
+  const t=document.getElementById('toast'); t.innerHTML=msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3800);
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAct(); });
+
+renderTable();
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='workbench';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

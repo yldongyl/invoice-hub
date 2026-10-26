@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>总览仪表盘 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        primary: { DEFAULT: '#165DFF', light: '#F0F5FF', mid: '#BEDAFF' },
+        success: { DEFAULT: '#00B42A', light: '#E8FFEA' },
+        warning: { DEFAULT: '#FF7D00', light: '#FFF7E8' },
+        danger:  { DEFAULT: '#F53F3F', light: '#FFECE8' },
+        ink:  { 1: '#1D2129', 2: '#4E5969', 3: '#86909C', 4: '#C9CDD4' },
+        line: '#E5E6EB',
+        surface: '#F7F8FA',
+        card: '#FFFFFF',
+        dcard: '#1D2129',
+        dline: '#333A45'
+      },
+      fontFamily: { sans: ['Inter', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'sans-serif'] },
+      boxShadow: { card: '0 2px 8px rgba(29,33,41,.06)', cardhover: '0 4px 16px rgba(29,33,41,.10)' },
+      borderRadius: { card: '8px' }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: Inter, 'Noto Sans SC', 'Source Han Sans SC', sans-serif; }
+  .num { font-variant-numeric: tabular-nums; }
+  .row-click { cursor: pointer; }
+  .row-click:hover { background: #F0F5FF; }
+  .dark .row-click:hover { background: #23282F; }
+  .seg-active { background: #165DFF; color: #fff; box-shadow: 0 1px 4px rgba(22,93,255,.35); }
+  .alert-body { display: none; }
+  .alert-open .alert-body { display: block; }
+  .alert-open .alert-chevron { transform: rotate(180deg); }
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ ① 顶部全局 Header ═══════════════ -->
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <!-- 左：品牌 -->
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="leading-tight min-w-0">
+      <div class="text-[15px] font-semibold truncate">全球采购平台票据智能与合规中台</div>
+      <div class="text-[11px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence &amp; Compliance Hub · 不替代 ERP，做票据可信化适配</div>
+    </div>
+  </div>
+
+  <!-- 中：中国实例 / 海外实例 切换（双实例亮点） -->
+  <div class="flex flex-col items-center">
+    <div class="flex items-center bg-surface dark:bg-[#23282F] border border-line dark:border-dline rounded-card p-[3px]">
+      <button id="btn-cn" onclick="switchInstance('cn')"
+        class="seg-active px-4 py-1 rounded-[6px] text-[13px] font-medium transition-colors">🇨🇳 中国实例</button>
+      <button id="btn-os" onclick="switchInstance('os')"
+        class="px-4 py-1 rounded-[6px] text-[13px] font-medium text-ink-2 dark:text-gray-400 transition-colors">🌏 海外实例</button>
+    </div>
+    <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-[2px]">同一内核 · 同一 Schema · 同一接口面（架构先行，双实例）</div>
+  </div>
+
+  <!-- 右：深色模式 / 消息 / 用户 -->
+  <div class="flex items-center gap-4">
+    <button onclick="toggleDark()" title="深色模式切换"
+      class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
+      <svg id="icon-theme" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <button class="relative w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="消息">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9z"/><path d="M10 18a2 2 0 0 0 4 0" stroke-linecap="round"/></svg>
+      <span class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-danger text-white text-[10px] leading-4 text-center num">5</span>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">王莉</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">王莉 · 财务经理</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">亚太采购共享中心</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-4">
+
+  <!-- ═══════════════ ② 价值 Banner（对外演示重点） ═══════════════ -->
+  <section class="rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-6 py-4 flex items-center justify-between gap-6">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-card bg-primary flex items-center justify-center shrink-0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <div class="text-[15px] font-semibold text-ink-1 dark:text-white">采购发票能力中台 —— 让每张供应商发票可信、可审计、可匹配、可适配</div>
+        <div class="text-[12px] text-ink-2 dark:text-gray-300 mt-0.5">把不同国家、格式、渠道、Provider 输出的采购票据，统一转成采购平台 / ERP 可用的数据</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 shrink-0 text-[12px]">
+      <span class="px-3 py-1.5 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">🔗 不替换 <b class="text-ink-1 dark:text-white">SAP Ariba / Oracle / Coupa</b>，做票据可信化适配</span>
+      <span class="px-3 py-1.5 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">🔌 可插拔第三方票税服务商（<b class="text-ink-1 dark:text-white">百望云 / 诺诺 / 自有 OCR</b>）</span>
+      <span class="px-3 py-1.5 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">🔍 字段级证据链，<b class="text-ink-1 dark:text-white">可解释审计</b>，拒绝黑盒 AI</span>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ③ 核心 KPI 指标卡片组（4 列） ═══════════════ -->
+  <section class="grid grid-cols-4 gap-4">
+    <!-- 总处理票据量 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[13px] text-ink-2 dark:text-gray-400">总处理票据量 <span class="text-ink-3 dark:text-gray-500 text-[11px]">（本月）</span></div>
+      <div class="mt-2 flex items-end gap-2">
+        <span id="kpi-total" class="num text-[28px] font-semibold leading-none">128,462</span>
+        <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">张</span>
+      </div>
+      <div id="kpi-total-sub" class="mt-2 text-[12px] text-success">▲ 12.4% 环比上月 · 直读/OCR/人工兜底全渠道</div>
+    </div>
+    <!-- Touchless 比率 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[13px] text-ink-2 dark:text-gray-400">自动处理 Touchless 比率</div>
+      <div class="mt-2 flex items-end gap-2">
+        <span id="kpi-touchless" class="num text-[28px] font-semibold leading-none text-primary">86.2%</span>
+      </div>
+      <div class="mt-2 w-full h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden">
+        <div id="kpi-touchless-bar" class="h-full rounded-full bg-primary" style="width:86.2%"></div>
+      </div>
+      <div id="kpi-touchless-sub" class="mt-1.5 text-[12px] text-ink-3 dark:text-gray-500">▲ 3.1pp 环比 · 口径：正确的自动完成率（STP Accuracy）</div>
+    </div>
+    <!-- 错误自动放行率（产品红线，高亮） -->
+    <div class="rounded-card bg-danger-light dark:bg-[#3A2426] border-2 border-danger shadow-card p-4 relative overflow-hidden">
+      <span class="absolute top-0 right-0 px-2 py-0.5 rounded-bl-card bg-danger text-white text-[10px] font-medium tracking-wide">产品红线指标</span>
+      <div class="text-[13px] text-danger font-medium">错误自动放行率</div>
+      <div class="mt-2 flex items-end gap-2">
+        <span id="kpi-falseauto" class="num text-[28px] font-semibold leading-none text-danger">0.02%</span>
+        <span id="kpi-falseauto-target" class="text-[12px] text-ink-2 dark:text-gray-400 mb-0.5">/ 上限 ≤ 0.05%</span>
+      </div>
+      <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">✔ 未突破红线 · 连续 90 天达标 · 不允许以放松校验换取自动化率</div>
+    </div>
+    <!-- 待人工复核案件 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[13px] text-ink-2 dark:text-gray-400">待人工复核案件</div>
+      <div class="mt-2 flex items-end gap-2">
+        <span id="kpi-review" class="num text-[28px] font-semibold leading-none text-warning">37</span>
+        <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">个 InvoiceCase</span>
+      </div>
+      <div id="kpi-review-sub" class="mt-2 text-[12px] text-ink-2 dark:text-gray-400"><span class="text-danger font-medium">6 个高风险</span>（BLOCKED）· 平均等待 24 分钟 · SLA 内</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ④ 双图表并排 ═══════════════ -->
+  <section class="grid grid-cols-2 gap-4">
+    <!-- 左：地区/票种分布 饼图 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-[15px] font-semibold">票据地区 / 票种分布</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">跨地区治理：统一核心 Schema + 地区扩展包</div>
+        </div>
+        <span id="donut-scope" class="text-[11px] px-2 py-1 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium">CN Extension · 中国</span>
+      </div>
+      <div class="mt-3 flex items-center gap-8">
+        <div class="relative shrink-0">
+          <svg id="donut" width="168" height="168" viewBox="0 0 168 168"></svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span id="donut-center-num" class="num text-[20px] font-semibold">128,462</span>
+            <span class="text-[11px] text-ink-3 dark:text-gray-500">本月总量（张）</span>
+          </div>
+        </div>
+        <div id="donut-legend" class="flex-1 space-y-2.5 text-[13px]"></div>
+      </div>
+    </div>
+    <!-- 右：风险趋势折线图 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-[15px] font-semibold">风险事件趋势（近 7 日）</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">风险前置：在进入审批与付款流程前拦截</div>
+        </div>
+        <div class="flex items-center gap-3 text-[12px] text-ink-2 dark:text-gray-400">
+          <span class="flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm bg-danger inline-block"></i>查重拦截</span>
+          <span class="flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm bg-warning inline-block"></i>验真异常</span>
+          <span class="flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm bg-primary inline-block"></i>字段冲突</span>
+        </div>
+      </div>
+      <svg id="linechart" class="mt-3 w-full" height="212" viewBox="0 0 600 212" preserveAspectRatio="none"></svg>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ⑤ 左右分栏：案件列表 + 快捷入口/风险告警 ═══════════════ -->
+  <section class="grid grid-cols-12 gap-4">
+    <!-- 左：待处理 InvoiceCase 列表 -->
+    <div class="col-span-8 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+        <div>
+          <div class="text-[15px] font-semibold">待处理 InvoiceCase 票据案件</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">每张票据 = 一个案件：状态机 + 证据链 + Action 审计留痕，支持断点续跑</div>
+        </div>
+        <a href="agent-workbench.html" class="text-[13px] text-primary hover:underline shrink-0">查看全部案件 →</a>
+      </div>
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-5 py-2.5 font-medium">案件编号</th>
+            <th class="px-3 py-2.5 font-medium">地区 / 票种</th>
+            <th class="px-3 py-2.5 font-medium">供应商</th>
+            <th class="px-3 py-2.5 font-medium text-right">总金额</th>
+            <th class="px-3 py-2.5 font-medium">案件状态</th>
+            <th class="px-3 py-2.5 font-medium">置信度</th>
+            <th class="px-3 py-2.5 font-medium">风险标记</th>
+            <th class="px-3 py-2.5 font-medium">Provider 来源</th>
+            <th class="px-3 py-2.5 font-medium text-right pr-5">操作</th>
+          </tr>
+        </thead>
+        <tbody id="case-tbody" class="divide-y divide-line dark:divide-dline"></tbody>
+      </table>
+      <div class="px-5 py-2.5 text-[12px] text-ink-3 dark:text-gray-500 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+        显示高优先级前 5 条 · 点击任意行进入【票据案件详情页】查看完整证据链与案件时间线
+      </div>
+    </div>
+
+    <!-- 右：快捷入口 + 风险告警 -->
+    <div class="col-span-4 space-y-4">
+      <!-- 快捷入口瓷贴组 -->
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[14px] font-semibold mb-3">快捷入口</div>
+        <div class="grid grid-cols-2 gap-3">
+          <a href="invoice-intake.html" class="flex items-start gap-2.5 p-3 rounded-card border border-line dark:border-dline hover:border-primary hover:shadow-cardhover transition-all group">
+            <span class="w-8 h-8 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-primary shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4m0 0l-4 4m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke-linecap="round"/></svg>
+            </span>
+            <span>
+              <span class="block text-[13px] font-medium group-hover:text-primary">票据上传识别</span>
+              <span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">POST /v1/invoices:recognize</span>
+            </span>
+          </a>
+          <a href="provider-orchestration.html" class="flex items-start gap-2.5 p-3 rounded-card border border-line dark:border-dline hover:border-primary hover:shadow-cardhover transition-all group">
+            <span class="w-8 h-8 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-primary shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7.5L11 16M16 7.5L13 16M8.5 6h7" stroke-linecap="round"/></svg>
+            </span>
+            <span>
+              <span class="block text-[13px] font-medium group-hover:text-primary">Provider 编排配置</span>
+              <span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">路由策略 · 降级 · 成本</span>
+            </span>
+          </a>
+          <a href="adapter-management.html" class="flex items-start gap-2.5 p-3 rounded-card border border-line dark:border-dline hover:border-primary hover:shadow-cardhover transition-all group">
+            <span class="w-8 h-8 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-primary shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7" stroke-linecap="round"/></svg>
+            </span>
+            <span>
+              <span class="block text-[13px] font-medium group-hover:text-primary">适配器管理</span>
+              <span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">Ariba / Oracle / Coupa</span>
+            </span>
+          </a>
+          <a href="audit-reports.html" class="flex items-start gap-2.5 p-3 rounded-card border border-line dark:border-dline hover:border-primary hover:shadow-cardhover transition-all group">
+            <span class="w-8 h-8 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-primary shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 8h8M8 12h8M8 16h5" stroke-linecap="round"/></svg>
+            </span>
+            <span>
+              <span class="block text-[13px] font-medium group-hover:text-primary">审计日志</span>
+              <span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">不可篡改 · 全链路 trace</span>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 近期风险告警 -->
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+          <div class="text-[14px] font-semibold flex items-center gap-2">
+            近期风险告警
+            <span class="px-1.5 py-0.5 rounded text-[11px] font-medium bg-danger-light dark:bg-[#3A2426] text-danger num">3</span>
+          </div>
+          <span class="text-[11px] text-ink-3 dark:text-gray-500">点击展开证据摘要</span>
+        </div>
+        <div id="alert-list" class="divide-y divide-line dark:divide-dline"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ⑥ 底部：已对接目标采购平台 ═══════════════ -->
+  <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card px-5 py-4">
+    <div class="flex items-center justify-between">
+      <div class="text-[14px] font-semibold">目标采购平台适配状态 <span class="text-[12px] text-ink-3 dark:text-gray-500 font-normal ml-2">中台定位：补充票据输入 / 合规 / 字段治理 / 跨地区适配能力，不替代采购流程平台</span></div>
+      <span class="text-[12px] text-primary"><a href="api-portal.html" class="hover:underline">Adapter API 契约文档 →</a></span>
+    </div>
+    <div class="mt-3 grid grid-cols-5 gap-3 text-[13px]">
+      <div class="flex items-center gap-2.5 p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
+        <span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
+        <span><b class="block">SAP Ariba</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">cXML InvoiceDetailRequest · 已实联</span></span>
+      </div>
+      <div class="flex items-center gap-2.5 p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
+        <span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
+        <span><b class="block">Oracle Payables</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">AP Invoice Import · 已实联</span></span>
+      </div>
+      <div class="flex items-center gap-2.5 p-3 rounded-card border border-line dark:border-dline">
+        <span class="w-5 h-5 rounded-full bg-warning-light dark:bg-[#3A2E1C] text-warning flex items-center justify-center text-[12px] shrink-0 border border-warning">◐</span>
+        <span><b class="block">Coupa Invoicing</b><span class="block text-[11px] text-ink-3 dark:text-gray-500">Invoice API · 适配中</span></span>
+      </div>
+      <div class="flex items-center gap-2.5 p-3 rounded-card border border-line dark:border-dline">
+        <span class="w-5 h-5 rounded-full bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-500 flex items-center justify-center text-[12px] shrink-0 border border-line dark:border-dline">○</span>
+        <span><b class="block">S/4HANA Supplier Invoice</b><span class="block text-[11px] text-ink-3 dark:text-gray-500">Supplier Invoice API · 规划中</span></span>
+      </div>
+      <div class="flex items-center gap-2.5 p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
+        <span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
+        <span><b class="block">自研应付系统</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">REST / JSON / MQ · 已对接</span></span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
+    Invoice Intelligence &amp; Compliance Hub · L2 可演示（产品化 PoC）· 数据为演示样例 · v1.2-candidate 蓝图口径
+  </footer>
+</main>
+
+<!-- M2 WP2.3 接线：REST 消费 + demo-mode 回退（ui-design 原型脚本保留为 fallback 数据源） -->
+<script src="js/api-client.js"></script>
+<script src="js/demo-mode.js"></script>
+<script>
+/* ════════════════ 双实例数据集 ════════════════ */
+const STATUS = {
+  RECOGNIZED:    { label:'RECOGNIZED 已识别',   cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
+  VERIFYING:     { label:'VERIFYING 查验中',    cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
+  NEEDS_REVIEW:  { label:'NEEDS_REVIEW 待复核', cls:'bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30' },
+  INVESTIGATING: { label:'INVESTIGATING 调查中',cls:'bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30' },
+  RESOLVED:      { label:'RESOLVED 已解决',     cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30' },
+  BLOCKED:       { label:'BLOCKED 已拦截',      cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30' }
+};
+function confBadge(c){
+  if (c >= 95) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success num">${c}%<i class="w-1.5 h-1.5 rounded-full bg-success inline-block"></i></span>`;
+  if (c >= 80) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-warning-light dark:bg-[#3A2E1C] text-warning num">${c}%<i class="w-1.5 h-1.5 rounded-full bg-warning inline-block"></i></span>`;
+  return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-danger-light dark:bg-[#3A2426] text-danger num">${c}%<i class="w-1.5 h-1.5 rounded-full bg-danger inline-block"></i></span>`;
+}
+
+const DATA = {
+  cn: {
+    donutScope: 'CN Extension · 中国',
+    kpi: { total:'128,462', totalSub:'▲ 12.4% 环比上月 · 数电票 XML 直读占比 62%',
+           touchless:'86.2', touchlessSub:'▲ 3.1pp 环比 · 口径：正确的自动完成率（STP Accuracy）',
+           falseAuto:'0.02%', review:'37', reviewRisk:'6 个高风险' },
+    donut: [
+      { name:'数电票（XML 直读）', value:62, color:'#165DFF', note:'结构化原件 + SM2 验签' },
+      { name:'增值税专票 / 普票',  value:27, color:'#00B42A', note:'OCR Provider + 授权查验' },
+      { name:'红字票（冲减）',     value:11, color:'#FF7D00', note:'自动关联原票，防付款风险' }
+    ],
+    line: { labels:['10-14','10-15','10-16','10-17','10-18','10-19','10-20'],
+            series:[ { name:'查重拦截', color:'#F53F3F', data:[3,5,4,7,5,9,6] },
+                     { name:'验真异常', color:'#FF7D00', data:[2,1,3,2,4,3,5] },
+                     { name:'字段冲突', color:'#165DFF', data:[6,8,7,9,11,8,10] } ] },
+    cases: [
+      { id:'INV-CN-2026-0387', region:'中国 · 数电票', supplier:'北京中科华创科技有限公司', amount:'¥113,000.00', status:'NEEDS_REVIEW', conf:92, risk:{ t:'PO 金额差异', c:'warning' }, provider:'百望云' },
+      { id:'INV-CN-2026-0386', region:'中国 · 数电票', supplier:'上海临港智造装备股份有限公司', amount:'¥56,500.00', status:'RECOGNIZED', conf:98, risk:null, provider:'XML 直读（免 Provider）' },
+      { id:'INV-CN-2026-0385', region:'中国 · 增值税专票', supplier:'深圳广合精密组件有限公司', amount:'¥232,860.00', status:'BLOCKED', conf:99, risk:{ t:'重复票 · 付款前拦截', c:'danger' }, provider:'诺诺' },
+      { id:'INV-CN-2026-0384', region:'中国 · 红字票', supplier:'广州粤海物流服务有限公司', amount:'¥-8,420.00', status:'NEEDS_REVIEW', conf:88, risk:{ t:'待关联原票', c:'warning' }, provider:'自托管 OCR' },
+      { id:'INV-CN-2026-0383', region:'中国 · 数电票', supplier:'杭州云栖信息技术有限公司', amount:'¥9,990.00', status:'VERIFYING', conf:97, risk:null, provider:'百望云' }
+    ],
+    alerts: [
+      { level:'danger', title:'重复票阻断', meta:'INV-CN-2026-0385 · 深圳广合精密组件 · 3 分钟前',
+        evidence:'<b>规则查重命中</b>：发票号 24442000000385 + 价税合计 ¥232,860.00 与历史案件 INV-CN-2026-0291 完全一致（相似度 100%）。<br>来源：platform-dedup-rule v2.3（规则引擎判定，非模型推断）<br><b>处置</b>：案件已置为 BLOCKED，未推送 Ariba 建档；解除拦截需复核员权限并留痕。' },
+      { level:'danger', title:'SM2 验签失败', meta:'数电票 · 成都天府新材料股份公司 · 26 分钟前',
+        evidence:'<b>验签结果</b>：XML 原件 SM2 签名校验不通过（证书链无法验证）。<br>来源：查验 Provider「百望云」· 授权查验渠道 · 结果已留存可验证回执<br><b>AI 建议（仅供参考）</b>：疑似篡改票，建议阻断并要求供应商重开 —— 置信度 94%，<u>须人工确认后执行，系统不自动写回</u>。' },
+      { level:'warning', title:'价税合计口径冲突', meta:'INV-CN-2026-0381 · 2 小时前',
+        evidence:'<b>冲突详情</b>：票面 OCR「价税合计 ¥5,650.00」 vs XML 直读「¥5,680.00」，差额 ¥30.00。<br>命中规则：amount_tax_sum_check · 冲突解释：不含税金额 + 税额 ≠ 价税合计（尾差超容差 ±0.06）<br>置信度已降至 82%，路由至人工复核。' }
+    ]
+  },
+  os: {
+    donutScope: 'Core + Regional Ext · 海外',
+    kpi: { total:'46,208', totalSub:'▲ 8.7% 环比上月 · PDF 文本层直读占比 41%',
+           touchless:'81.7', touchlessSub:'▲ 2.2pp 环比 · 口径：正确的自动完成率（STP Accuracy）',
+           falseAuto:'0.03%', review:'22', reviewRisk:'4 个高风险' },
+    donut: [
+      { name:'Supplier Invoice（VAT/GST）', value:71, color:'#165DFF', note:'新加坡 Ariba 案例链路已验证' },
+      { name:'Credit Note',                 value:19, color:'#00B42A', note:'冲减原票，生命周期管理' },
+      { name:'Debit Note / 其他',           value:10, color:'#FF7D00', note:'多币种 · 多语种识别' }
+    ],
+    line: { labels:['10-14','10-15','10-16','10-17','10-18','10-19','10-20'],
+            series:[ { name:'查重拦截', color:'#F53F3F', data:[1,2,1,3,2,4,2] },
+                     { name:'验真异常', color:'#FF7D00', data:[1,1,2,1,2,2,3] },
+                     { name:'字段冲突', color:'#165DFF', data:[3,4,3,5,4,6,4] } ] },
+    cases: [
+      { id:'INV-SG-2026-0125', region:'新加坡 · Supplier Invoice', supplier:'Siemens Energy Pte. Ltd.', amount:'S$84,200.00', status:'INVESTIGATING', conf:91, risk:{ t:'含税总额 vs PO 净额差异', c:'warning' }, provider:'海外 e-invoicing' },
+      { id:'INV-SG-2026-0124', region:'新加坡 · Supplier Invoice', supplier:'Dell Asia Pacific Pte. Ltd.', amount:'US$56,300.00', status:'RECOGNIZED', conf:98, risk:null, provider:'自托管 VLM' },
+      { id:'INV-SG-2026-0123', region:'新加坡 · Credit Note', supplier:'AWS Asia Pacific (Singapore)', amount:'US$-2,450.00', status:'NEEDS_REVIEW', conf:89, risk:{ t:'待关联原票', c:'warning' }, provider:'海外 e-invoicing' },
+      { id:'INV-SG-2026-0122', region:'新加坡 · Supplier Invoice', supplier:'Schaeffler Singapore Pte. Ltd.', amount:'US$128,900.00', status:'BLOCKED', conf:97, risk:{ t:'重复票 · 建档前拦截', c:'danger' }, provider:'自托管 OCR' },
+      { id:'INV-SG-2026-0121', region:'新加坡 · Supplier Invoice', supplier:'Johnson Controls Asia Pte. Ltd.', amount:'US$33,750.00', status:'VERIFYING', conf:96, risk:null, provider:'客户已有 OCR' }
+    ],
+    alerts: [
+      { level:'danger', title:'重复票阻断（Duplicate Blocked）', meta:'INV-SG-2026-0122 · Schaeffler Singapore · 8 分钟前',
+        evidence:'<b>规则查重命中</b>：Invoice No. SCH-SG-77410 + Amount US$128,900.00 与 INV-SG-2026-0098 完全一致。<br>来源：platform-dedup-rule v2.3（规则引擎判定，非模型推断）<br><b>处置</b>：BLOCKED，未生成 cXML InvoiceDetailRequest；解除需复核员权限并留痕。' },
+      { level:'warning', title:'含税总额 vs PO 净额差异 · 主动调查中', meta:'INV-SG-2026-0125 · Siemens Energy · 41 分钟前',
+        evidence:'<b>案件调查（INVESTIGATING）</b>：Invoice Gross S$84,200.00 vs PO Net S$78,600.00，差异 S$5,600.00。<br>系统已自动收集证据：PO 行项目 + 收货单（GRN）3 条 + GST 9% 税率映射；初步线索：差异 = GST 税额 + 运费行。<br><b>AI 建议（仅供参考）</b>：疑似口径差异而非错误 —— 置信度 88%，结论须人工确认后受控处置。' },
+      { level:'warning', title:'Credit Note 未关联原票', meta:'INV-SG-2026-0123 · AWS Singapore · 1 小时前',
+        evidence:'<b>Link 缺失</b>：Credit Note 未找到「冲减 → 原票」关系；候选原票 INV-SG-2026-0101（供应商 + 金额匹配度 92%）。<br>来源：对象模型 Link 校验规则 v1.4<br>待复核员确认关联后，方可进入 Ariba 建档。' }
+    ]
+  }
+};
+
+let current = 'cn';
+
+/* ════════════════ 渲染函数 ════════════════ */
+function renderKPI(d){
+  document.getElementById('kpi-total').textContent = d.kpi.total;
+  document.getElementById('kpi-total-sub').textContent = d.kpi.totalSub;
+  document.getElementById('kpi-total-sub').className = 'mt-2 text-[12px] text-success';
+  document.getElementById('kpi-touchless').textContent = d.kpi.touchless + '%';
+  document.getElementById('kpi-touchless-bar').style.width = d.kpi.touchless + '%';
+  document.getElementById('kpi-touchless-sub').textContent = d.kpi.touchlessSub;
+  document.getElementById('kpi-falseauto').textContent = d.kpi.falseAuto;
+  document.getElementById('kpi-review').textContent = d.kpi.review;
+  document.getElementById('kpi-review-sub').innerHTML =
+    `<span class="text-danger font-medium">${d.kpi.reviewRisk}</span>（BLOCKED）· 平均等待 24 分钟 · SLA 内`;
+}
+
+function renderDonut(d){
+  document.getElementById('donut-scope').textContent = d.donutScope;
+  document.getElementById('donut-center-num').textContent = d.kpi.total;
+  const svg = document.getElementById('donut');
+  const r = 62, cx = 84, cy = 84, sw = 22, C = 2 * Math.PI * r;
+  let acc = 0, html = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#E5E6EB" stroke-width="${sw}" opacity=".25"/>`;
+  d.donut.forEach(seg => {
+    const len = C * seg.value / 100;
+    html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${sw}"
+      stroke-dasharray="${len - 2} ${C - len + 2}" stroke-dashoffset="${-acc}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="butt"/>`;
+    acc += len;
+  });
+  svg.innerHTML = html;
+  document.getElementById('donut-legend').innerHTML = d.donut.map(s => `
+    <div class="flex items-center justify-between gap-2">
+      <span class="flex items-center gap-2 min-w-0">
+        <i class="w-2.5 h-2.5 rounded-sm shrink-0 inline-block" style="background:${s.color}"></i>
+        <span class="truncate">${s.name}</span>
+      </span>
+      <span class="num font-semibold shrink-0">${s.value}%</span>
+    </div>
+    <div class="text-[11px] text-ink-3 dark:text-gray-500 pl-[18px] -mt-1.5">${s.note}</div>`).join('');
+}
+
+function renderLine(d){
+  const svg = document.getElementById('linechart');
+  const W = 600, H = 212, P = { l: 34, r: 10, t: 10, b: 26 };
+  const max = Math.ceil(Math.max(...d.line.series.flatMap(s => s.data)) * 1.25);
+  const x = i => P.l + i * (W - P.l - P.r) / (d.line.labels.length - 1);
+  const y = v => H - P.b - v * (H - P.t - P.b) / max;
+  let html = '';
+  for (let g = 0; g <= 4; g++) {
+    const gy = P.t + g * (H - P.t - P.b) / 4, val = Math.round(max * (1 - g / 4));
+    html += `<line x1="${P.l}" y1="${gy}" x2="${W - P.r}" y2="${gy}" stroke="#E5E6EB" stroke-opacity=".5" stroke-dasharray="${g === 4 ? '' : '3 3'}"/>
+             <text x="${P.l - 6}" y="${gy + 4}" text-anchor="end" font-size="10" fill="#86909C">${val}</text>`;
+  }
+  d.line.labels.forEach((lb, i) => {
+    html += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#86909C">${lb}</text>`;
+  });
+  d.line.series.forEach(s => {
+    const pts = s.data.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+    html += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s.data.forEach((v, i) => { html += `<circle cx="${x(i)}" cy="${y(v)}" r="2.5" fill="#fff" stroke="${s.color}" stroke-width="1.5"/>`; });
+  });
+  svg.innerHTML = html;
+}
+
+function renderCases(d){
+  document.getElementById('case-tbody').innerHTML = d.cases.map(c => `
+    <tr class="row-click transition-colors" onclick="location.href='case-detail.html?case=${c.id}'" title="点击进入案件详情：${c.id}">
+      <td class="px-5 py-3 num font-medium text-primary whitespace-nowrap">${c.id}</td>
+      <td class="px-3 py-3 text-ink-2 dark:text-gray-400 whitespace-nowrap">${c.region}</td>
+      <td class="px-3 py-3 max-w-[180px] truncate" title="${c.supplier}">${c.supplier}</td>
+      <td class="px-3 py-3 text-right num font-medium whitespace-nowrap ${c.amount.startsWith('¥-') || c.amount.startsWith('US$-') ? 'text-danger' : ''}">${c.amount}</td>
+      <td class="px-3 py-3 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[c.status].cls}">${STATUS[c.status].label}</span></td>
+      <td class="px-3 py-3 whitespace-nowrap">${confBadge(c.conf)}</td>
+      <td class="px-3 py-3 whitespace-nowrap">${c.risk
+        ? `<span class="inline-flex items-center gap-1 text-[12px] ${c.risk.c === 'danger' ? 'text-danger' : 'text-warning'} font-medium">⚠ ${c.risk.t}</span>`
+        : '<span class="text-[12px] text-ink-3 dark:text-gray-500">— 无风险</span>'}</td>
+      <td class="px-3 py-3 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11px] text-ink-2 dark:text-gray-400">🔌 ${c.provider}</span></td>
+      <td class="px-3 py-3 pr-5 text-right whitespace-nowrap"><a href="case-detail.html?case=${c.id}" onclick="event.stopPropagation()" class="text-primary text-[12px] hover:underline">查看案件详情 →</a></td>
+    </tr>`).join('');
+}
+
+function renderAlerts(d){
+  const levelCls = { danger:'border-l-danger', warning:'border-l-warning' };
+  const levelIcon = { danger:'🛑', warning:'⚠️' };
+  document.getElementById('alert-list').innerHTML = d.alerts.map((a, i) => `
+    <div class="alert border-l-[3px] ${levelCls[a.level]} px-4 py-3 cursor-pointer hover:bg-surface dark:hover:bg-[#23282F] transition-colors" onclick="this.classList.toggle('alert-open')">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <div class="text-[13px] font-medium flex items-center gap-1.5">${levelIcon[a.level]} ${a.title}</div>
+          <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 truncate">${a.meta}</div>
+        </div>
+        <svg class="alert-chevron w-4 h-4 text-ink-3 dark:text-gray-500 shrink-0 mt-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="alert-body mt-2 p-2.5 rounded-card bg-surface dark:bg-[#17171A] border border-line dark:border-dline text-[12px] leading-relaxed text-ink-2 dark:text-gray-400">
+        <div class="text-[11px] font-medium text-ink-3 dark:text-gray-500 mb-1">证据摘要 · Evidence（可审计留痕）</div>
+        ${a.evidence}
+      </div>
+    </div>`).join('');
+}
+
+/* ════════════════ 实例切换 / 深色模式 ════════════════ */
+/* M2 WP2.3 接线：后台可达时数据入口 = GET /v1/dashboard?instance=（KPI/环形/趋势/Top5/告警/
+ * 适配条一次返回，全量联动换数据 FN-8-11/FN-0-11）；失败回退页内 DATA 常量（demo-mode，P03 §4 验收②）。
+ * 渲染函数与交互（行点击深链/瓷贴/告警展开/适配状态条）保持原型口径不变。 */
+function mapApiToPage(api){
+  const k = api.kpi;
+  return {
+    donutScope: api.donut_scope,
+    kpi: { total: k.total, totalSub: k.total_sub, touchless: k.touchless, touchlessSub: k.touchless_sub,
+           falseAuto: k.false_auto.rate, review: k.pending.display, reviewRisk: k.pending.risk_display },
+    donut: api.donut,
+    line: api.trend_7d,
+    cases: api.top_cases.map(c => ({ id: c.caseId, region: c.region, supplier: c.supplier,
+                                     amount: c.amount, status: c.status, conf: c.conf,
+                                     risk: c.risk, provider: c.provider })),
+    alerts: api.alerts.map(a => ({ level: a.level, title: a.title, meta: a.meta, evidence: a.evidence }))
+  };
+}
+async function loadData(key){
+  if (!IHUB_DEMO.isLive()) return false;
+  try {
+    DATA[key] = mapApiToPage(await IHUB_API.getJSON('/v1/dashboard', { instance: key }));
+    return true;
+  } catch (e) {
+    console.warn('dashboard 取数失败，本实例回退内嵌 mock：', e.message || e);
+    return false;
+  }
+}
+async function switchInstance(key){
+  current = key;
+  await loadData(key);
+  const d = DATA[key];
+  const cn = document.getElementById('btn-cn'), os = document.getElementById('btn-os');
+  const active = 'seg-active px-4 py-1 rounded-[6px] text-[13px] font-medium transition-colors';
+  const idle = 'px-4 py-1 rounded-[6px] text-[13px] font-medium text-ink-2 dark:text-gray-400 transition-colors';
+  cn.className = key === 'cn' ? active : idle;
+  os.className = key === 'os' ? active : idle;
+  renderKPI(d); renderDonut(d); renderLine(d); renderCases(d); renderAlerts(d);
+}
+
+function toggleDark(){
+  document.documentElement.classList.toggle('dark');
+}
+
+/* 初始化：探测后台 → 实例联动取数（默认中国实例）→ 不可达时以 DATA 常量演示 */
+(async function boot(){
+  await IHUB_DEMO.probe();
+  await switchInstance('cn');
+})();
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='dashboard';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

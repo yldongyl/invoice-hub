@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>接口契约与 MCP Server 门户 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        primary: { DEFAULT: '#165DFF', light: '#F0F5FF', mid: '#BEDAFF' },
+        success: { DEFAULT: '#00B42A', light: '#E8FFEA' },
+        warning: { DEFAULT: '#FF7D00', light: '#FFF7E8' },
+        danger:  { DEFAULT: '#F53F3F', light: '#FFECE8' },
+        ink:  { 1: '#1D2129', 2: '#4E5969', 3: '#86909C', 4: '#C9CDD4' },
+        line: '#E5E6EB',
+        surface: '#F7F8FA',
+        card: '#FFFFFF',
+        dcard: '#1D2129',
+        dline: '#333A45'
+      },
+      fontFamily: { sans: ['Inter', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'sans-serif'] },
+      boxShadow: { card: '0 2px 8px rgba(29,33,41,.06)', cardhover: '0 4px 16px rgba(29,33,41,.10)' },
+      borderRadius: { card: '8px' }
+    }
+  }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .toast{transition:opacity .3s,transform .3s;}
+  html{scroll-behavior:smooth;}
+  /* 代码块：与 case-detail.html 右栏 XML Tab 一致（深底等宽） */
+  .codeblock{background:#141618;border-radius:8px;overflow-x:auto;}
+  .codeblock pre{color:#D4D8DE;font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:12px;line-height:1.7;white-space:pre;padding:16px 18px;}
+  .code-cap{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;border-bottom:1px solid #26292E;color:#86909C;font-size:11px;}
+  /* 目录树 */
+  .toc-link{display:block;padding:5px 10px;border-radius:6px;font-size:12.5px;color:#4E5969;border-left:2px solid transparent;}
+  .dark .toc-link{color:#9CA3AF;}
+  .toc-link:hover{color:#165DFF;background:#F0F5FF;}
+  .dark .toc-link:hover{background:#1B2A4A;}
+  .toc-link.active{color:#165DFF;background:#F0F5FF;border-left-color:#165DFF;font-weight:500;}
+  .dark .toc-link.active{background:#1B2A4A;color:#7EA6FF;border-left-color:#165DFF;}
+  .toc-sub{padding-left:14px;}
+  .toc-sub .toc-link{font-size:12px;padding:4px 10px;}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header：面包屑 + 深色切换 + 用户 ═══════════════ -->
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5 min-w-0">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary shrink-0">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <span class="text-ink-3 dark:text-gray-500 shrink-0">开发者</span>
+      <span class="text-ink-4">›</span>
+      <b class="text-ink-1 dark:text-white truncate">接口与MCP门户</b>
+      <span class="ml-2 shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">开发者文档</span>
+    </nav>
+  </div>
+  <div class="flex items-center gap-4 shrink-0">
+    <button onclick="toggleDark()" title="深色模式切换"
+      class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">陈铮 · 实施管理员</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">接口契约 Owner · 平台集成组</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5">
+
+  <!-- ═══════════════ 顶部横幅 ═══════════════ -->
+  <section class="rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-6 py-4 flex items-center justify-between gap-6">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-card bg-primary flex items-center justify-center shrink-0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6M13.5 4l-3 16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="min-w-0">
+        <div class="text-[15px] font-semibold text-ink-1 dark:text-white">三类稳定接口契约 + MCP 服务形态 · v1 已随蓝图评审冻结 · 能支撑第三方不看源码独立接入</div>
+        <div class="text-[12px] text-ink-2 dark:text-gray-300 mt-0.5">这是可对外卖的接口成熟度底线（L2 判定口径）· 契约资产：<code class="num text-[11px] px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline">invoice-platform/contracts/</code> · <code class="num text-[11px] px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline">ariba-mock/contracts/</code></div>
+      </div>
+    </div>
+    <button onclick="toast('Mock调试沙箱：基于 ariba-mock + invoice-platform 演示资产（L2 Demo闭环）')"
+      class="shrink-0 px-4 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#0E4BD6] shadow-card">在线调试（Mock）</button>
+  </section>
+
+  <!-- ═══════════════ 契约治理原则 ═══════════════ -->
+  <section class="mt-4 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card px-5 py-4">
+    <div class="text-[14px] font-semibold">契约治理原则 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal ml-1">蓝图 §4.6 接口面与插拔契约</span></div>
+    <div class="mt-2.5 grid grid-cols-4 gap-3 text-[12px]">
+      <div class="p-3 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+        <div class="font-medium text-ink-1 dark:text-white">① v1 接口面冻结</div>
+        <div class="mt-1 text-ink-2 dark:text-gray-400 leading-relaxed">v1 契约随蓝图评审一次性冻结，作为对外集成与 L2 演示的稳定基线。</div>
+      </div>
+      <div class="p-3 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+        <div class="font-medium text-ink-1 dark:text-white">② 破坏性变更走 /v2</div>
+        <div class="mt-1 text-ink-2 dark:text-gray-400 leading-relaxed">任何破坏性变更必须新开 /v2 版本面，<b class="text-danger">不允许静默变更</b>已发布契约。</div>
+      </div>
+      <div class="p-3 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+        <div class="font-medium text-ink-1 dark:text-white">③ 契约文档与 Demo 同步</div>
+        <div class="mt-1 text-ink-2 dark:text-gray-400 leading-relaxed">contracts/ 目录中的契约文件与本门户文档、Mock 演示资产保持同一口径。</div>
+      </div>
+      <div class="p-3 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+        <div class="font-medium text-ink-1 dark:text-white">④ 第三方独立接入</div>
+        <div class="mt-1 text-ink-2 dark:text-gray-400 leading-relaxed">仅凭契约文档即可完成 Provider / Adapter / Agent 接入，无需阅读平台源码。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ 主体：左侧目录树 + 右侧内容区 ═══════════════ -->
+  <div class="mt-4 flex gap-5 items-start">
+
+    <!-- ──── 左侧目录树 ──── -->
+    <aside class="w-[248px] shrink-0 sticky top-[76px] max-h-[calc(100vh-96px)] overflow-y-auto rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-3">
+      <div class="text-[11px] font-medium text-ink-3 dark:text-gray-500 tracking-wide px-2.5 pb-2">接口契约目录 · v1（frozen）</div>
+
+      <div class="mb-1">
+        <a href="#sec-api" class="toc-link font-medium text-[13px]" data-sec="sec-api">① 集成 API（北向）</a>
+        <div class="toc-sub">
+          <a href="#api-recognize" class="toc-link" data-sec="api-recognize">POST /v1/invoices:recognize</a>
+          <a href="#api-cases" class="toc-link" data-sec="api-cases">案件状态与证据查询</a>
+          <a href="#api-webhook" class="toc-link" data-sec="api-webhook">Webhook 回调事件</a>
+          <a href="#api-version" class="toc-link" data-sec="api-version">版本治理</a>
+        </div>
+      </div>
+
+      <div class="mb-1">
+        <a href="#sec-mcp" class="toc-link font-medium text-[13px]" data-sec="sec-mcp">② MCP Server（北向·Agent生态）</a>
+        <div class="toc-sub">
+          <a href="#mcp-tools" class="toc-link" data-sec="mcp-tools">工具清单（6 Tools）</a>
+          <a href="#mcp-endpoint" class="toc-link" data-sec="mcp-endpoint">Endpoint 配置样例</a>
+        </div>
+      </div>
+
+      <div class="mb-1">
+        <a href="#sec-spi" class="toc-link font-medium text-[13px]" data-sec="sec-spi">③ Provider SPI（南向）</a>
+        <div class="toc-sub">
+          <a href="#spi-contract" class="toc-link" data-sec="spi-contract">最小实现契约（3 方法）</a>
+          <a href="#spi-normalize" class="toc-link" data-sec="spi-normalize">结果归一化格式</a>
+          <a href="#spi-routing" class="toc-link" data-sec="spi-routing">路由 / 降级配置</a>
+        </div>
+      </div>
+
+      <div>
+        <a href="#sec-adapter" class="toc-link font-medium text-[13px]" data-sec="sec-adapter">④ Adapter API（东向）</a>
+        <div class="toc-sub">
+          <a href="#adapter-cxml" class="toc-link" data-sec="adapter-cxml">cXML 建档契约示例</a>
+          <a href="#adapter-flow" class="toc-link" data-sec="adapter-flow">Adapter 开发流程</a>
+        </div>
+      </div>
+
+      <div class="mt-3 pt-3 border-t border-line dark:border-dline px-2.5 text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed">
+        契约范围红线：仅覆盖<b class="text-ink-2 dark:text-gray-400">供应商采购发票</b>识别、查验、建档与案件治理接口。
+      </div>
+    </aside>
+
+    <!-- ──── 右侧内容区 ──── -->
+    <div class="flex-1 min-w-0 space-y-5">
+
+      <!-- ════════ Section 1 集成 API（北向） ════════ -->
+      <section id="sec-api" class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-6 scroll-mt-[76px]">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-[16px] font-semibold flex items-center gap-2">① 集成 API（北向）
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">REST / JSON · v1 frozen</span>
+            </div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1">面向采购平台 / ERP / 上游业务系统的标准集成面：票据识别、案件查询、证据追溯、事件回调。</div>
+          </div>
+        </div>
+
+        <!-- POST /v1/invoices:recognize -->
+        <div id="api-recognize" class="mt-5 scroll-mt-[76px]">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">POST</span>
+            <code class="num text-[14px] font-semibold text-primary">/v1/invoices:recognize</code>
+          </div>
+          <p class="mt-2 text-[13px] text-ink-2 dark:text-gray-400 leading-relaxed">
+            提交供应商采购发票进行识别与案件化处理。<b class="text-ink-1 dark:text-white">同步模式</b>：仅走直读快速路径（数电票 XML 直读 / PDF 文本层直读），P95 &lt; 3s 内返回完整 InvoiceCase；
+            其余情况自动转<b class="text-ink-1 dark:text-white">异步模式</b>：立即返回 <code class="num text-[12px] px-1.5 py-px rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline">caseId</code>，处理完成后通过 <code class="num text-[12px] px-1.5 py-px rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline">callback_url</code> Webhook 回调。
+            支持 multipart/form-data（文件直传）或 application/json（file 引用）两种请求体。
+          </p>
+
+          <div class="mt-3 grid grid-cols-2 gap-4">
+            <!-- 请求示例 -->
+            <div class="codeblock border border-line dark:border-dline">
+              <div class="code-cap"><span>Request · application/json</span><span class="num">v1</span></div>
+<pre>{
+  "file": {
+    "ref": "oss://intake/2026/10/21/INV-CN-0387.xml",
+    "mime_type": "application/xml",
+    "sha256": "9f2c…e41a"
+  },
+  "instance": "CN",            // "CN" | "OS" 双实例路由
+  "doc_type_hint": "e_invoice", // 可选：数电票 / VAT Invoice / Credit Note
+  "po_ref": "PO-2026-00871",   // 可选：关联采购订单，触发 PO 三单匹配
+  "callback_url": "https://erp.customer.com/hooks/invoice-case",
+  "options": {
+    "sync_fast_path_only": true, // 超时未直读即转异步
+    "verify_authenticity": true  // 是否触发授权查验（Provider SPI）
+  }
+}</pre>
+            </div>
+            <!-- 响应示例 -->
+            <div class="codeblock border border-line dark:border-dline">
+              <div class="code-cap"><span>Response 200 · InvoiceCase（蓝图统一结构）</span><span class="num">v1</span></div>
+<pre>{
+  "caseId": "INV-2026-00125",
+  "status": "NEEDS_REVIEW",
+  // 枚举：RECOGNIZED | VERIFYING | NEEDS_REVIEW
+  //     | INVESTIGATING | RESOLVED | BLOCKED
+  "facts": {
+    "invoiceAmount": 113000.00,
+    "poAmount": 100000.00,
+    "taxAmount": 13000.00,
+    "currency": "CNY"
+  },
+  "checks": {
+    "supplierMatch": "PASSED",
+    "authenticity": "NOT_VERIFIED",
+    "poMatch": "AMOUNT_VARIANCE",
+    "duplicate": "PASSED"
+  },
+  "evidence": [
+    {
+      "field": "total.gross_amount",
+      "value": 113000.00,
+      "source": "xml_direct",
+      "confidence": 0.98,
+      "evidence": {
+        "page": 1,
+        "bbox": "—（XML 节点）",
+        "raw_text": "&lt;TotalWithTax currencyID=\"CNY\"&gt;113000.00&lt;/TotalWithTax&gt;",
+        "rule": "amount_tax_sum_check v2.1",
+        "model_version": "cn-xml-parser v3.2",
+        "provider": "XML 直读（免 Provider）"
+      }
+    }
+  ],
+  "nextAction": {
+    "type": "HUMAN_REVIEW",
+    "reason": "poMatch=AMOUNT_VARIANCE（差异 13,000.00，疑似税额口径）",
+    "assign_to": "复核组 · 亚太共享中心"
+  }
+}</pre>
+            </div>
+          </div>
+
+          <!-- 状态枚举徽章 -->
+          <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+            <span class="text-ink-3 dark:text-gray-500">status 状态机六值（与蓝图 §4.7 一致）：</span>
+            <span class="px-2 py-0.5 rounded font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B] num">RECOGNIZED</span>
+            <span class="px-2 py-0.5 rounded font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B] num">VERIFYING</span>
+            <span class="px-2 py-0.5 rounded font-medium bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30 num">NEEDS_REVIEW</span>
+            <span class="px-2 py-0.5 rounded font-medium bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30 num">INVESTIGATING</span>
+            <span class="px-2 py-0.5 rounded font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 num">RESOLVED</span>
+            <span class="px-2 py-0.5 rounded font-medium bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30 num">BLOCKED</span>
+          </div>
+        </div>
+
+        <!-- 案件查询接口 -->
+        <div id="api-cases" class="mt-6 pt-5 border-t border-line dark:border-dline scroll-mt-[76px]">
+          <div class="space-y-3">
+            <div class="flex items-start gap-3">
+              <span class="mt-0.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B] shrink-0">GET</span>
+              <div class="min-w-0">
+                <code class="num text-[13px] font-semibold text-primary">/v1/cases/{caseId}</code>
+                <div class="text-[12px] text-ink-2 dark:text-gray-400 mt-0.5 leading-relaxed">案件状态查询：返回完整 InvoiceCase 快照（status / facts / checks / nextAction / 时间线摘要），用于上游系统轮询异步识别结果与案件生命周期跟踪。支持 <code class="num text-[11px] px-1 py-px rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline">?view=summary|full</code>。</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="mt-0.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B] shrink-0">GET</span>
+              <div class="min-w-0">
+                <code class="num text-[13px] font-semibold text-primary">/v1/cases/{caseId}/evidence</code>
+                <div class="text-[12px] text-ink-2 dark:text-gray-400 mt-0.5 leading-relaxed">字段级证据链查询：逐字段返回 value / source / confidence / page / bbox / raw_text / rule / model_version / provider，支撑「可解释识别、拒绝黑盒 AI」的审计要求。支持 <code class="num text-[11px] px-1 py-px rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline">?field=total.gross_amount</code> 精确过滤。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Webhook -->
+        <div id="api-webhook" class="mt-6 pt-5 border-t border-line dark:border-dline scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">Webhook 回调事件</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1">异步案件在状态跃迁时向 <code class="num text-[11px] px-1 py-px rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline">callback_url</code> 推送事件；消费方须返回 2xx，否则按指数退避重试（最多 8 次）。</div>
+          <table class="mt-3 w-full text-[12.5px] border border-line dark:border-dline rounded-card overflow-hidden">
+            <thead>
+              <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+                <th class="px-4 py-2.5 font-medium">事件类型</th>
+                <th class="px-4 py-2.5 font-medium">触发时机</th>
+                <th class="px-4 py-2.5 font-medium">Payload 关键字段</th>
+                <th class="px-4 py-2.5 font-medium">典型消费动作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line dark:divide-dline">
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-primary font-medium">case.recognized</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">识别完成，案件进入 RECOGNIZED / NEEDS_REVIEW</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">caseId, status, facts, checks</td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">拉取案件详情，驱动上游流转</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-danger font-medium">case.blocked</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">命中红线规则（重复票 / 验签失败等），案件 BLOCKED</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">caseId, blockReason, ruleId, evidenceRef</td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">冻结下游建档 / 付款前置流程</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-success font-medium">case.resolved</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">人工复核或自动路径完成，案件 RESOLVED</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">caseId, resolution, operator, actionTrailRef</td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">触发目标系统建档（Adapter API）</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-warning font-medium">check.failed</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">单项校验失败（不一定整案拦截）</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">caseId, checkName, result, variance</td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">提示业务侧关注差异明细</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="mt-3 flex items-start gap-2.5 p-3 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">
+            <span class="shrink-0">🔐</span>
+            <div><b class="text-ink-1 dark:text-white">签名校验（X-Signature）</b>：每个回调请求携带 <code class="num text-[11px] px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline">X-Signature: sha256=&lt;hex&gt;</code> 头，值为 HMAC-SHA256（密钥 = 订阅时下发的 webhook secret，消息体 = 原始 JSON 字节）。消费方必须验签后再处理；另附 <code class="num text-[11px] px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline">X-Event-Id</code> 用于幂等去重。</div>
+          </div>
+        </div>
+
+        <!-- 版本治理 -->
+        <div id="api-version" class="mt-6 pt-5 border-t border-line dark:border-dline scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">版本治理</div>
+          <div class="mt-3 flex items-center gap-3 flex-wrap">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30 text-success text-[12.5px] font-medium num">v1 · FROZEN ❄ 已随蓝图评审冻结（2026-10）</span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-surface dark:bg-[#23282F] border border-dashed border-line dark:border-dline text-ink-3 dark:text-gray-500 text-[12.5px] num">/v2 · 破坏性变更预告位（尚未开放，不静默变更 v1）</span>
+          </div>
+          <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500 leading-relaxed">新增非破坏性字段（可选字段 / 新枚举值）在 v1 内以向后兼容方式发布，并在 contracts/ 变更记录中登记；仅当出现字段语义变更、必填项调整、枚举删除时启用 /v2。</div>
+        </div>
+      </section>
+
+      <!-- ════════ Section 2 MCP Server（北向·Agent生态） ════════ -->
+      <section id="sec-mcp" class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-6 scroll-mt-[76px]">
+        <div class="text-[16px] font-semibold flex items-center gap-2">② MCP Server（北向 · Agent 生态）
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">MCP Protocol · v1 frozen</span>
+        </div>
+        <p class="mt-2 text-[13px] text-ink-2 dark:text-gray-400 leading-relaxed">
+          在集成 API 之上的 <b class="text-ink-1 dark:text-white">MCP（Model Context Protocol）协议封装</b>：SAP Joule 与第三方 Agent 可作为 MCP Client 直接调用平台工具，无需理解内部 REST 细节。
+        </p>
+        <div class="mt-3 p-3 rounded-card bg-warning-light dark:bg-[#3A2E1C] border border-warning/30 text-[12px] text-ink-2 dark:text-gray-300 leading-relaxed flex items-start gap-2.5">
+          <span class="shrink-0">⚠️</span>
+          <div><b class="text-warning">受控边界（与蓝图 §10 一致）</b>：<b>只读工具</b>任意调用、无副作用；<b>写工具</b>（识别提交 / 案件处置）必须携带人工确认 token，AI 禁止静默执行业务写操作 —— 放行 / 挂起 / 退回全部走人工确认 + 全量审计留痕。</div>
+        </div>
+
+        <!-- 工具清单 -->
+        <div id="mcp-tools" class="mt-5 scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">工具清单 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">6 Tools · tools/list 可枚举</span></div>
+          <table class="mt-3 w-full text-[12.5px] border border-line dark:border-dline rounded-card overflow-hidden">
+            <thead>
+              <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+                <th class="px-4 py-2.5 font-medium">工具名称</th>
+                <th class="px-4 py-2.5 font-medium">方向</th>
+                <th class="px-4 py-2.5 font-medium">参数摘要</th>
+                <th class="px-4 py-2.5 font-medium">权限级别</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line dark:divide-dline">
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-primary font-medium">invoices.recognize</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">北向 · 提交</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">file_ref, instance, po_ref?, callback?</td>
+                <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30">写 · 受控</span><span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">需人工确认 token</span></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-primary font-medium">case.search</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">北向 · 查询</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">supplier?, status?, date_range?, keyword?</td>
+                <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">只读</span></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-primary font-medium">case.get_evidence</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">北向 · 查询</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">caseId, field?</td>
+                <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">只读</span></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-primary font-medium">dedup.report</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">北向 · 查询</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">invoice_no?, supplier?, amount?</td>
+                <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">只读</span></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-primary font-medium">provider.list</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">北向 · 查询</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">capability?, instance?</td>
+                <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">只读</span></td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2.5"><code class="num text-primary font-medium">case.action</code></td>
+                <td class="px-4 py-2.5 text-ink-2 dark:text-gray-400">北向 · 处置</td>
+                <td class="px-4 py-2.5 num text-ink-2 dark:text-gray-400">caseId, action(RELEASE|HOLD|REJECT), confirm_token, operator</td>
+                <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded text-[11px] font-medium bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30">写 · 受控</span><span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">携带操作人身份与确认凭据 · 全量审计</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="mt-2.5 text-[12px] text-ink-3 dark:text-gray-500">💡 Agent 工作台对话底层调用的正是这套工具 —— 参见 <a href="agent-workbench.html" class="text-primary hover:underline">Agent 工作台 →</a></div>
+        </div>
+
+        <!-- MCP endpoint 配置 -->
+        <div id="mcp-endpoint" class="mt-6 pt-5 border-t border-line dark:border-dline scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">MCP Endpoint 配置样例</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1">第三方 Agent（含 SAP Joule）在 MCP Client 侧的注册配置：</div>
+          <div class="mt-3 codeblock border border-line dark:border-dline max-w-[720px]">
+            <div class="code-cap"><span>mcp-client.config.json</span><span class="num">OAuth2 · client credentials</span></div>
+<pre>{
+  "mcpServers": {
+    "invoice-hub": {
+      "server_name": "invoice-intelligence-compliance-hub",
+      "transport": {
+        "type": "streamable-http",
+        "endpoint": "https://api.invoice-hub.example.com/mcp/v1"
+      },
+      "auth": {
+        "type": "oauth2",
+        "grant": "client_credentials",
+        "token_url": "https://auth.invoice-hub.example.com/oauth/token",
+        "client_id": "${INVOICE_HUB_CLIENT_ID}",
+        "client_secret": "${INVOICE_HUB_CLIENT_SECRET}",
+        "scopes": ["invoice.read", "invoice.write.controlled"]
+      },
+      "policy": {
+        "write_tools_require_human_confirm_token": true
+      }
+    }
+  }
+}</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════ Section 3 Provider SPI（南向） ════════ -->
+      <section id="sec-spi" class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-6 scroll-mt-[76px]">
+        <div class="text-[16px] font-semibold flex items-center gap-2">③ Provider SPI（南向）
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">插拔契约 · v1 frozen</span>
+        </div>
+        <p class="mt-2 text-[13px] text-ink-2 dark:text-gray-400 leading-relaxed">
+          新增 OCR / 查验 Provider（百望云、诺诺、客户自有 OCR、私有化 VLM、海外 e-invoicing 等）<b class="text-ink-1 dark:text-white">只需实现 SPI 并注册路由，不改平台内核</b>。这是「可插拔 Provider 编排」定位的契约基础。
+        </p>
+
+        <!-- 最小实现契约 -->
+        <div id="spi-contract" class="mt-5 scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">最小实现契约 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">3 个方法 · verify 仅查验类 Provider 必需</span></div>
+          <div class="mt-3 grid grid-cols-3 gap-3 text-[12px]">
+            <div class="p-3 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+              <code class="num text-[12.5px] font-semibold text-primary">capabilities()</code>
+              <div class="mt-1.5 text-ink-2 dark:text-gray-400 leading-relaxed">声明能力集：支持的票种 / 地区 / 文件格式、识别或查验类型、并发与 SLA，供路由引擎调度。</div>
+            </div>
+            <div class="p-3 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+              <code class="num text-[12.5px] font-semibold text-primary">recognize(payload)</code>
+              <div class="mt-1.5 text-ink-2 dark:text-gray-400 leading-relaxed">接收文件引用与实例上下文，返回<b class="text-ink-1 dark:text-white">归一化格式</b>的字段识别结果（含证据）。</div>
+            </div>
+            <div class="p-3 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+              <code class="num text-[12.5px] font-semibold text-primary">verify(payload)</code>
+              <div class="mt-1.5 text-ink-2 dark:text-gray-400 leading-relaxed">查验类可选：授权渠道验真（数电票验签 / 税局查验 / 海外 e-invoicing 核验），返回可留存回执。</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 归一化格式 -->
+        <div id="spi-normalize" class="mt-6 pt-5 border-t border-line dark:border-dline scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">结果归一化格式 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">所有 Provider 输出统一转为该结构后进入平台内核</span></div>
+          <div class="mt-3 codeblock border border-line dark:border-dline max-w-[720px]">
+            <div class="code-cap"><span>ProviderResult · normalized JSON</span><span class="num">SPI v1</span></div>
+<pre>{
+  "fields": [
+    {
+      "name": "total.gross_amount",
+      "value": 113000.00,
+      "confidence": 0.98,
+      "source": "ocr",             // ocr | xml_direct | pdf_text | vlm | verify_api
+      "bbox": [1240, 862, 1580, 906],
+      "raw_text": "价税合计（大写）壹拾壹万叁仟圆整  ¥113000.00",
+      "model_version": "bwyun-ocr v4.1.2"
+    }
+  ],
+  "meta": {
+    "provider_id": "bwyun-cn",
+    "latency_ms": 1840,
+    "cost": { "currency": "CNY", "amount": 0.12 }
+  }
+}</pre>
+          </div>
+        </div>
+
+        <!-- 路由/降级配置 -->
+        <div id="spi-routing" class="mt-6 pt-5 border-t border-line dark:border-dline scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">路由 / 降级配置片段 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">YAML · 与 Provider 编排页同一口径</span></div>
+          <div class="mt-3 codeblock border border-line dark:border-dline max-w-[720px]">
+            <div class="code-cap"><span>routing/cn-e-invoice.yaml</span><span class="num">SPI v1</span></div>
+<pre>route: cn_e_invoice_recognize
+strategies:
+  - provider: xml_direct            # 数电票结构化原件优先直读（免 Provider）
+    priority: 10
+    condition: mime_type == "application/xml"
+  - provider: bwyun-cn
+    priority: 20
+    threshold: 0.85                 # 字段平均置信度低于阈值 → 降级
+    fallback: next
+  - provider: nuonuo-cn
+    priority: 30
+    threshold: 0.85
+    fallback: human_review          # 双 Provider 均不达标 → 强制人工
+cross_check:
+  enabled: true
+  require_different_source: true    # 异源交叉核验：金额类字段须由不同来源 Provider 复核
+  fields: [total.gross_amount, total.tax_amount]</pre>
+          </div>
+          <div class="mt-2.5 text-[12px] text-ink-3 dark:text-gray-500">🔌 已注册 Provider 的路由策略、降级链与成本视图 → <a href="provider-orchestration.html" class="text-primary hover:underline">Provider 编排配置页 →</a></div>
+        </div>
+      </section>
+
+      <!-- ════════ Section 4 Adapter API（东向） ════════ -->
+      <section id="sec-adapter" class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-6 scroll-mt-[76px]">
+        <div class="text-[16px] font-semibold flex items-center gap-2">④ Adapter API（东向）
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30">建档契约 · v1 frozen</span>
+        </div>
+        <p class="mt-2 text-[13px] text-ink-2 dark:text-gray-400 leading-relaxed">
+          新目标系统（SAP Ariba / Oracle Payables / Coupa / S4 HANA / 自研应付）按 <b class="text-ink-1 dark:text-white">Adapter 模板</b>开发，复用平台统一 Schema 出口 —— 内核只产出标准 InvoiceCase，字段映射差异全部收敛在 Adapter 层。
+          建档契约以 <b class="text-ink-1 dark:text-white">Ariba cXML InvoiceDetailRequest</b> 为例（字段级映射细则
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30 align-middle">⏳ 待确认 · H24</span>）。
+        </p>
+
+        <!-- cXML 示例 -->
+        <div id="adapter-cxml" class="mt-5 scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">cXML InvoiceDetailRequest 骨架示例 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">统一 Schema → Ariba 建档出口</span></div>
+          <div class="mt-3 codeblock border border-line dark:border-dline max-w-[820px]">
+            <div class="code-cap"><span>adapters/ariba/outbound/InvoiceDetailRequest.xml</span><span class="num">cXML 1.2.040</span></div>
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.040/InvoiceDetailRequest.dtd"&gt;
+&lt;cXML payloadID="invoice-hub-INV-2026-00125@ariba" timestamp="2026-10-21T09:32:10+08:00"&gt;
+  &lt;Header&gt;
+    &lt;From&gt;&lt;Credential domain="NetworkID"&gt;&lt;Identity&gt;invoice-hub-cn&lt;/Identity&gt;&lt;/Credential&gt;&lt;/From&gt;
+    &lt;To&gt;&lt;Credential domain="NetworkID"&gt;&lt;Identity&gt;ariba-buyer-an12345&lt;/Identity&gt;&lt;/Credential&gt;&lt;/To&gt;
+    &lt;Sender&gt;&lt;Credential domain="NetworkID"&gt;&lt;Identity&gt;invoice-hub-cn&lt;/Identity&gt;
+      &lt;SharedSecret&gt;${ARIBA_SHARED_SECRET}&lt;/SharedSecret&gt;&lt;/Credential&gt;&lt;/Sender&gt;
+  &lt;/Header&gt;
+  &lt;Request deploymentMode="production"&gt;
+    &lt;InvoiceDetailRequest&gt;
+      &lt;Contact addressID="supplier-8871" role="supplier"&gt;
+        &lt;Name xml:lang="zh-CN"&gt;北京中科华创科技有限公司&lt;/Name&gt;
+      &lt;/Contact&gt;
+      &lt;!-- 映射①：InvoiceCase.facts.invoiceAmount → InvoiceDetailRequest 头金额 --&gt;
+      &lt;InvoiceDetailHeader invoiceDate="2026-10-18" invoiceID="24442000000387"&gt;
+        &lt;Total&gt;&lt;Money currency="CNY"&gt;113000.00&lt;/Money&gt;&lt;/Total&gt;
+        &lt;!-- 映射②：facts.taxAmount + evidence(rule=tax_code_mapping) → Tax 节点 --&gt;
+        &lt;Tax&gt;&lt;Money currency="CNY"&gt;13000.00&lt;/Money&gt;
+          &lt;Description xml:lang="zh-CN"&gt;增值税 13%&lt;/Description&gt;&lt;/Tax&gt;
+        &lt;!-- 映射③：po_ref → OrderReference（三单匹配依据，缺省走 non-PO 流程） --&gt;
+        &lt;OrderReference orderID="PO-2026-00871"/&gt;
+      &lt;/InvoiceDetailHeader&gt;
+    &lt;/InvoiceDetailRequest&gt;
+  &lt;/Request&gt;
+&lt;/cXML&gt;</pre>
+          </div>
+          <div class="mt-2.5 text-[12px] text-ink-3 dark:text-gray-500">🧩 字段映射模板机制（映射规则维护 / 多目标系统模板库 / 映射版本管理）→ <a href="adapter-management.html" class="text-primary hover:underline">适配器管理页 →</a></div>
+        </div>
+
+        <!-- Adapter 开发流程 -->
+        <div id="adapter-flow" class="mt-6 pt-5 border-t border-line dark:border-dline scroll-mt-[76px]">
+          <div class="text-[14px] font-semibold">Adapter 开发流程 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">4 步 · 第三方凭契约文档可独立完成（L2 判定口径）</span></div>
+          <div class="mt-3 grid grid-cols-4 gap-3">
+            <div class="p-3.5 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+              <div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-primary text-white text-[11px] font-semibold flex items-center justify-center num shrink-0">1</span><span class="text-[13px] font-medium">模板 fork</span></div>
+              <div class="mt-1.5 text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">从 adapters/ 模板库 fork 目标系统 Adapter 骨架，继承统一 Schema 出口与鉴权、重试、审计基座。</div>
+            </div>
+            <div class="p-3.5 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+              <div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-primary text-white text-[11px] font-semibold flex items-center justify-center num shrink-0">2</span><span class="text-[13px] font-medium">字段映射</span></div>
+              <div class="mt-1.5 text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">按映射模板配置 InvoiceCase → 目标报文字段（含税额口径、币种、供应商主数据对照），声明必填与容差。</div>
+            </div>
+            <div class="p-3.5 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+              <div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-primary text-white text-[11px] font-semibold flex items-center justify-center num shrink-0">3</span><span class="text-[13px] font-medium">沙箱联调</span></div>
+              <div class="mt-1.5 text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">基于 ariba-mock 演示资产在沙箱回放真实案件样例，验证报文结构、异常回执与幂等重发。</div>
+            </div>
+            <div class="p-3.5 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+              <div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-success text-white text-[11px] font-semibold flex items-center justify-center num shrink-0">4</span><span class="text-[13px] font-medium">契约测试</span></div>
+              <div class="mt-1.5 text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">运行 contracts/ 契约测试套件（结构 / 语义 / 版本兼容三层），全部通过后方可注册上线。</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <footer class="mt-6 pb-3 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
+    Invoice Intelligence &amp; Compliance Hub · 接口契约与 MCP Server 门户 · 数据为演示样例 · v1.2-candidate 蓝图口径
+  </footer>
+</main>
+
+<!-- Toast -->
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[720px] text-center"></div>
+
+<script>
+/* ════════ 深色模式 ════════ */
+function toggleDark(){
+  document.documentElement.classList.toggle('dark');
+}
+
+/* ════════ Toast ════════ */
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('opacity-0','pointer-events-none','translate-y-2');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    t.classList.add('opacity-0','pointer-events-none','translate-y-2');
+  }, 2600);
+}
+
+/* ════════ 目录树：平滑滚动 + 点击高亮 ════════ */
+const tocLinks = Array.from(document.querySelectorAll('.toc-link'));
+const sections = tocLinks
+  .map(a => document.getElementById(a.dataset.sec))
+  .filter(Boolean);
+
+tocLinks.forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.getElementById(a.dataset.sec);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveToc(a.dataset.sec);
+  });
+});
+
+function setActiveToc(secId){
+  tocLinks.forEach(l => l.classList.toggle('active', l.dataset.sec === secId));
+}
+
+/* 滚动监听（scroll-spy）：目录随内容位置高亮 */
+function onScroll(){
+  const probe = 90; /* header 高度 + 余量 */
+  let currentId = sections.length ? sections[0].id : null;
+  for (const sec of sections) {
+    if (sec.getBoundingClientRect().top <= probe) currentId = sec.id;
+  }
+  if (currentId) setActiveToc(currentId);
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+
+/* 初始化 */
+onScroll();
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='api';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

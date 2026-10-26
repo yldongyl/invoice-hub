@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>票据案件详情 · InvoiceCase · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      primary: { DEFAULT:'#165DFF', light:'#F0F5FF', mid:'#BEDAFF' },
+      success: { DEFAULT:'#00B42A', light:'#E8FFEA' },
+      warning: { DEFAULT:'#FF7D00', light:'#FFF7E8' },
+      danger:  { DEFAULT:'#F53F3F', light:'#FFECE8' },
+      purple:  { DEFAULT:'#722ED1', light:'#F5E8FF' },
+      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
+      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
+    },
+    fontFamily:{ sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif'] },
+    boxShadow:{ card:'0 2px 8px rgba(29,33,41,.06)', cardhover:'0 4px 16px rgba(29,33,41,.10)' },
+    borderRadius:{ card:'8px' }
+  } }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  @keyframes hlpulse{0%{box-shadow:0 0 0 0 rgba(245,63,63,.45);}70%{box-shadow:0 0 0 8px rgba(245,63,63,0);}100%{box-shadow:0 0 0 0 rgba(245,63,63,0);}}
+  #hl{animation:hlpulse 1.2s ease-out 2;}
+  .paper{background:#fff;color:#1D2129;}
+  .toast{transition:opacity .3s,transform .3s;}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased h-screen flex flex-col overflow-hidden">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header：面包屑 + 演示案件切换 ═══════════════ -->
+<header class="shrink-0 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between z-40">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5 min-w-0">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary shrink-0">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <span class="text-ink-3 dark:text-gray-500 shrink-0">InvoiceCase 案件详情</span>
+      <span class="text-ink-4">›</span>
+      <b id="bc-case" class="num text-ink-1 dark:text-white truncate">INV-CN-2026-0387</b>
+      <span id="bc-status" class="ml-1 shrink-0"></span>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3 shrink-0">
+    <label class="text-[12px] text-ink-3 dark:text-gray-500">演示案件</label>
+    <select id="case-switch" onchange="loadCaseAsync(this.value)" class="text-[13px] border border-line dark:border-dline rounded-card bg-card dark:bg-[#23282F] px-2.5 py-1.5 focus:outline-none focus:border-primary">
+      <option value="INV-CN-2026-0387">🇨🇳 INV-CN-2026-0387 · 数电票 · NEEDS_REVIEW</option>
+      <option value="INV-CN-2026-0379">🇨🇳 INV-CN-2026-0379 · 数电票 · BLOCKED（疑似篡改）</option>
+      <option value="INV-SG-2026-0125">🌏 INV-SG-2026-0125 · Supplier Invoice · INVESTIGATING</option>
+    </select>
+    <button onclick="document.documentElement.classList.toggle('dark')" title="深色模式" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">王莉</div>
+  </div>
+</header>
+
+<!-- ═══════════════ 三栏主体 25% / 50% / 25% ═══════════════ -->
+<main class="flex-1 flex gap-4 px-4 py-4 overflow-hidden">
+
+  <!-- ═════ 左栏：案件元信息 + Checks + 时间线 ═════ -->
+  <aside class="w-1/4 shrink-0 overflow-y-auto space-y-4 pr-1">
+    <!-- 案件基础信息 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="flex items-center justify-between">
+        <span id="m-id" class="num text-[15px] font-semibold"></span>
+        <span id="m-status"></span>
+      </div>
+      <div id="m-region" class="mt-1.5"></div>
+      <dl id="m-list" class="mt-3 space-y-2 text-[12px]"></dl>
+      <div id="m-sm2" class="mt-3"></div>
+    </div>
+    <!-- Checks 校验结果 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="text-[14px] font-semibold mb-1">Checks 校验结果 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">规则引擎判定 · 非模型推断</span></div>
+      <div id="checks" class="mt-2.5 space-y-2"></div>
+    </div>
+    <!-- 案件时间线（审计留痕核心） -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[14px] font-semibold">案件时间线</span>
+        <span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">🔒 不可篡改 · 全量留痕</span>
+      </div>
+      <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-3">每次 Provider 调用、每条结论、每次人工修改均挂在案件上，支持断点续跑</div>
+      <ol id="timeline" class="relative ml-1.5 border-l-2 border-line dark:border-dline space-y-4 pb-1"></ol>
+    </div>
+  </aside>
+
+  <!-- ═════ 中栏：结构化解析结果（可解释证据） + 对象关系 + 受控 Action ═════ -->
+  <section class="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pr-1">
+    <!-- 字段分组 -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+      <div class="flex items-center justify-between">
+        <div class="text-[15px] font-semibold">结构化解析结果 <span id="schema-tag" class="ml-1 text-[11px] px-1.5 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium align-middle"></span></div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 flex items-center gap-2">
+          <span>置信度：</span>
+          <span class="text-success">● ≥95% 高</span><span class="text-warning">● 80–95% 中</span><span class="text-danger">● &lt;80% 低→强制人工</span>
+        </div>
+      </div>
+      <div id="fields" class="mt-3 space-y-4"></div>
+      <!-- 行项目明细 -->
+      <div class="mt-5">
+        <div class="text-[13px] font-semibold text-ink-2 dark:text-gray-300 mb-2">行项目明细 <span id="items-src" class="text-[11px] text-ink-3 dark:text-gray-500 font-normal"></span></div>
+        <table class="w-full text-[12px] border border-line dark:border-dline rounded-card overflow-hidden">
+          <thead><tr id="items-head" class="bg-surface dark:bg-[#23282F] text-left text-ink-3 dark:text-gray-500"></tr></thead>
+          <tbody id="items-body" class="divide-y divide-line dark:divide-dline bg-card dark:bg-dcard"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI 差异建议卡片（仅建议，人工确认后才生成 Action） -->
+    <div id="ai-card" class="rounded-card border-2 border-warning/40 bg-warning-light dark:bg-[#2E2417] p-4"></div>
+
+    <!-- 对象-关系可视化（§4.7 轻量对象模型） -->
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+      <div class="flex items-center justify-between">
+        <div class="text-[14px] font-semibold">对象 · 关系（Link）视图 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal ml-1">InvoiceCase 轻量对象模型：看数据与做决策在同一模型中</span></div>
+        <span class="text-[11px] text-ink-3 dark:text-gray-500">Link 可查询 · 可校验</span>
+      </div>
+      <div id="link-graph" class="mt-2"></div>
+    </div>
+
+    <!-- 受控 Action 操作区（sticky 底部） -->
+    <div class="sticky bottom-0 z-20 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover px-5 py-3.5 mt-auto">
+      <div class="flex items-center justify-between gap-3">
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 leading-snug">
+          ⚖️ <b class="text-ink-2 dark:text-gray-400">受控写操作</b>：所有 Action 需复核员权限 + 二次确认，写入时间线并留痕；<br>LLM / AI 建议<b class="text-danger">不会自动执行</b>任何业务动作（付款、审批、银行信息修改属高风险，保留企业授权）。
+        </div>
+        <div class="flex items-center gap-2.5 shrink-0">
+          <button onclick="openEdit()" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">✎ 人工修正字段</button>
+          <button onclick="openAction('return')" class="px-3.5 py-2 rounded-card border border-warning text-warning text-[13px] font-medium hover:bg-warning-light dark:hover:bg-[#2E2417] transition-colors">退回供应商</button>
+          <button onclick="openAction('hold')" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-warning hover:text-warning transition-colors">挂起调查</button>
+          <button onclick="openAction('release')" class="px-3.5 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF] shadow-card transition-colors">✓ 放行案件</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════ 右栏：原件预览 ═════ -->
+  <aside class="w-1/4 shrink-0 overflow-y-auto pl-1">
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden sticky top-0">
+      <div class="px-4 pt-3.5 pb-0 flex items-center justify-between">
+        <div class="text-[14px] font-semibold">原件预览</div>
+        <span id="pv-file" class="text-[11px] text-ink-3 dark:text-gray-500 num"></span>
+      </div>
+      <div class="px-4 pt-2.5 flex items-center gap-1">
+        <button id="tab-pdf" onclick="switchTab('pdf')" class="px-3 py-1.5 text-[12px] font-medium rounded-t-card border-b-2 border-primary text-primary">票面原件</button>
+        <button id="tab-xml" onclick="switchTab('xml')" class="px-3 py-1.5 text-[12px] font-medium rounded-t-card border-b-2 border-transparent text-ink-3 dark:text-gray-500 hover:text-ink-2">结构化源文件</button>
+        <span class="ml-auto text-[10px] text-ink-3 dark:text-gray-500 pb-1">点击字段「定位」→ 自动跳转坐标</span>
+      </div>
+      <div class="border-t border-line dark:border-dline">
+        <!-- 票面 mock -->
+        <div id="pv-pdf" class="p-3 bg-[#52585F] dark:bg-[#101013]">
+          <div id="paper-wrap" class="paper relative rounded shadow-cardhover mx-auto overflow-hidden"></div>
+          <div id="hl" class="absolute border-2 border-danger rounded-[3px] bg-danger/10 pointer-events-none hidden" style="z-index:5"></div>
+        </div>
+        <!-- XML 源 -->
+        <div id="pv-xml" class="hidden p-3 bg-[#141618] overflow-x-auto">
+          <pre id="xml-code" class="text-[10.5px] leading-[1.65] text-[#D4D8DE] font-mono whitespace-pre"></pre>
+        </div>
+      </div>
+      <div class="px-4 py-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed" id="pv-note"></div>
+    </div>
+  </aside>
+</main>
+
+<!-- ═══════════════ 证据弹窗 ═══════════════ -->
+<div id="ev-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 p-6" onclick="if(event.target===this)closeEv()">
+  <div class="w-[560px] max-w-full rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-3.5 border-b border-line dark:border-dline flex items-center justify-between bg-surface dark:bg-[#23282F]">
+      <div class="text-[14px] font-semibold flex items-center gap-2">🔍 字段证据 · Evidence <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">可解释识别：值 + 来源 + 置信度 + 坐标 + 版本，可审计</span></div>
+      <button onclick="closeEv()" class="text-ink-3 hover:text-ink-1 dark:hover:text-white text-lg leading-none px-1">✕</button>
+    </div>
+    <div id="ev-body" class="px-5 py-4"></div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline flex items-center justify-between bg-surface dark:bg-[#23282F]">
+      <span class="text-[11px] text-ink-3 dark:text-gray-500">证据随案件归档，满足电子会计档案与审计追溯要求</span>
+      <div class="flex gap-2">
+        <button onclick="closeEv()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[13px] text-ink-2 dark:text-gray-300 hover:border-ink-3">关闭</button>
+        <button id="ev-locate" class="px-3.5 py-1.5 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF]">📍 在原件中定位</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ Action 二次确认弹窗 ═══════════════ -->
+<div id="act-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 p-6" onclick="if(event.target===this)closeAct()">
+  <div class="w-[480px] max-w-full rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div id="act-head" class="px-5 py-3.5 border-b border-line dark:border-dline text-[14px] font-semibold"></div>
+    <div class="px-5 py-4 space-y-3">
+      <div id="act-warn" class="text-[12px] leading-relaxed rounded-card border p-3"></div>
+      <div class="text-[12px] text-ink-2 dark:text-gray-400 space-y-1">
+        <div>权限校验：<b class="text-success">✓ 复核员（王莉）</b> · 操作将绑定用户身份与时间戳</div>
+        <div>案件：<b id="act-case" class="num"></b> · 当前状态 <b id="act-status"></b></div>
+      </div>
+      <textarea id="act-note" rows="2" placeholder="处置意见（选填，将写入案件时间线）" class="w-full text-[13px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 focus:outline-none focus:border-primary resize-none"></textarea>
+      <label class="flex items-start gap-2 text-[12px] text-ink-2 dark:text-gray-400 cursor-pointer">
+        <input id="act-confirm-chk" type="checkbox" class="mt-0.5 accent-[#165DFF]">
+        <span>我已核对字段证据与校验结果，确认由<b>本人</b>执行该操作（AI 建议不自动执行）</span>
+      </label>
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline flex justify-end gap-2 bg-surface dark:bg-[#23282F]">
+      <button onclick="closeAct()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[13px] text-ink-2 dark:text-gray-300">取消</button>
+      <button id="act-ok" onclick="doAction()" disabled class="px-3.5 py-1.5 rounded-card text-[13px] font-medium text-white bg-ink-4 cursor-not-allowed">确认执行</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 人工修正字段弹窗 ═══════════════ -->
+<div id="edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 p-6" onclick="if(event.target===this)closeEdit()">
+  <div class="w-[480px] max-w-full rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-3.5 border-b border-line dark:border-dline text-[14px] font-semibold">✎ 人工修正字段 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">修改将标记「人工」来源并留痕（原识别值保留可追溯）</span></div>
+    <div class="px-5 py-4 space-y-3">
+      <div>
+        <label class="block text-[12px] text-ink-2 dark:text-gray-400 mb-1">选择字段</label>
+        <select id="ed-field" class="w-full text-[13px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 focus:outline-none focus:border-primary"></select>
+      </div>
+      <div>
+        <label class="block text-[12px] text-ink-2 dark:text-gray-400 mb-1">新值</label>
+        <input id="ed-value" class="w-full text-[13px] num rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 focus:outline-none focus:border-primary">
+      </div>
+      <div>
+        <label class="block text-[12px] text-ink-2 dark:text-gray-400 mb-1">修改原因 <span class="text-danger">*</span></label>
+        <input id="ed-reason" placeholder="如：票面模糊，经与供应商邮件确认含税总额" class="w-full text-[13px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 focus:outline-none focus:border-primary">
+      </div>
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline flex justify-end gap-2 bg-surface dark:bg-[#23282F]">
+      <button onclick="closeEdit()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[13px] text-ink-2 dark:text-gray-300">取消</button>
+      <button onclick="doEdit()" class="px-3.5 py-1.5 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF]">确认修改并留痕</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2"></div>
+
+<!-- M2 WP2.3 接线：REST 消费 + demo-mode 回退（ui-design 原型脚本保留为 fallback 数据源） -->
+<script src="js/api-client.js"></script>
+<script src="js/demo-mode.js"></script>
+<script>
+/* ═══════════════════════ 状态 / 徽章 ═══════════════════════ */
+const STATUS = {
+  RECOGNIZED:   {label:'RECOGNIZED 已识别',   cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]'},
+  VERIFYING:    {label:'VERIFYING 查验中',    cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]'},
+  NEEDS_REVIEW: {label:'NEEDS_REVIEW 待复核', cls:'bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30'},
+  INVESTIGATING:{label:'INVESTIGATING 调查中',cls:'bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30'},
+  RESOLVED:     {label:'RESOLVED 已解决',     cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30'},
+  BLOCKED:      {label:'BLOCKED 已拦截',      cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30'}
+};
+const CHECK = {
+  PASSED:        {cls:'bg-success-light dark:bg-[#1C2E22] text-success border-success/30'},
+  NOT_VERIFIED:  {cls:'bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-400 border-line dark:border-dline'},
+  AMOUNT_VARIANCE:{cls:'bg-warning-light dark:bg-[#2E2417] text-warning border-warning/30'},
+  FAILED:        {cls:'bg-danger-light dark:bg-[#3A2426] text-danger border-danger/30'}
+};
+function confBadge(c){
+  if(c>=95) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success num shrink-0">${c}%<i class="w-1.5 h-1.5 rounded-full bg-success inline-block"></i></span>`;
+  if(c>=80) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-warning-light dark:bg-[#2E2417] text-warning num shrink-0">${c}%<i class="w-1.5 h-1.5 rounded-full bg-warning inline-block"></i></span>`;
+  return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-danger-light dark:bg-[#3A2426] text-danger num shrink-0">${c}%<i class="w-1.5 h-1.5 rounded-full bg-danger inline-block"></i></span>`;
+}
+const SRC = {
+  xml_direct:{label:'XML 直读', cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary'},
+  ocr:       {label:'OCR',      cls:'bg-purple-light dark:bg-[#2B1F3D] text-purple'},
+  qr_code:   {label:'二维码解码',cls:'bg-success-light dark:bg-[#1C2E22] text-success'},
+  model:     {label:'VLM 模型', cls:'bg-purple-light dark:bg-[#2B1F3D] text-purple'},
+  manual:    {label:'人工',     cls:'bg-warning-light dark:bg-[#2E2417] text-warning'},
+  webhook:   {label:'外部查验回执',cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary'}
+};
+const ACTOR = {
+  system:  {label:'系统',  cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary', dot:'bg-primary'},
+  provider:{label:'Provider',cls:'bg-purple-light dark:bg-[#2B1F3D] text-purple', dot:'bg-purple'},
+  human:   {label:'人工',  cls:'bg-success-light dark:bg-[#1C2E22] text-success', dot:'bg-success'},
+  ai:      {label:'AI 建议',cls:'bg-warning-light dark:bg-[#2E2417] text-warning', dot:'bg-warning'}
+};
+
+/* ═══════════════════════ 双演示案件数据 ═══════════════════════ */
+const CASES = {
+/* ─────────── 中国数电票案件 ─────────── */
+'INV-CN-2026-0387': {
+  kind:'cn',
+  meta:{ status:'NEEDS_REVIEW', region:'CN · 中国', ext:'CN Extension · 数电票',
+         type:'数电票（增值税专用发票）', po:'PO-2026-0881', supplier:'北京中科华创科技有限公司', supId:'SUP-10042',
+         amount:'¥113,000.00', received:'2026-10-18 09:12', channel:'供应商邮箱（XML + PDF 附件）', adapter:'SAP Ariba · cXML InvoiceDetailRequest',
+         sm2:{ok:true, text:'SM2 国密验签通过 · 证书链有效 · 回执已归档'} },
+  schemaTag:'Global Schema · Core + CN Extension',
+  checks:[
+    {k:'supplierMatch 供应商匹配', v:'PASSED', note:'供应商名称 + 税号与 SUP-10042 主数据一致'},
+    {k:'authenticity 验真', v:'NOT_VERIFIED', note:'授权查验渠道超时 · 已排定自动重试（断点续跑）'},
+    {k:'duplicate 查重', v:'PASSED', note:'发票号 + 价税合计全局查重，相似度 < 阈值'},
+    {k:'poMatch PO 匹配', v:'AMOUNT_VARIANCE', note:'含税 ¥113,000.00 vs PO 净额 ¥100,000.00 · 差异 ¥13,000.00'}
+  ],
+  groups:[
+    {title:'发票基础信息', fields:[
+      {k:'发票号码', path:'header.invoice_no', v:'24112000000387', conf:99, src:'xml_direct', pv:'pv-invno',
+       ev:{page:1, bbox:'[842, 96, 1020, 122]', raw:'发票号码：24112000000387', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'invoice_no_format_check ✓'}},
+      {k:'开票日期', path:'header.issue_date', v:'2026-10-17', conf:99, src:'xml_direct', pv:'pv-date',
+       ev:{page:1, bbox:'[842, 128, 1020, 152]', raw:'开票日期：2026年10月17日', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'date_valid_range ✓'}}
+    ]},
+    {title:'销售方 / 购买方', fields:[
+      {k:'销售方名称', path:'seller.name', v:'北京中科华创科技有限公司', conf:99, src:'xml_direct', pv:'pv-seller',
+       ev:{page:1, bbox:'[56, 210, 380, 236]', raw:'名称：北京中科华创科技有限公司', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'supplier_master_match ✓'}},
+      {k:'销售方税号', path:'seller.tax_id', v:'91110108MA01C3872X', conf:99, src:'xml_direct', pv:'pv-seller',
+       ev:{page:1, bbox:'[56, 240, 380, 264]', raw:'统一社会信用代码/纳税人识别号：91110108MA01C3872X', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'tax_id_checksum ✓'}},
+      {k:'购买方名称', path:'buyer.name', v:'澜坞（上海）采购科技有限公司', conf:98, src:'xml_direct', pv:'pv-buyer',
+       ev:{page:1, bbox:'[430, 210, 760, 236]', raw:'名称：澜坞（上海）采购科技有限公司', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'buyer_entity_match ✓'}}
+    ]},
+    {title:'金额与税额', fields:[
+      {k:'不含税金额', path:'total.net_amount', v:'¥100,000.00', conf:98, src:'xml_direct', pv:'pv-net',
+       ev:{page:1, bbox:'[640, 560, 800, 586]', raw:'合 计 金 额 ¥100,000.00', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'—'}},
+      {k:'税额（13%）', path:'total.tax_amount', v:'¥13,000.00', conf:98, src:'xml_direct', pv:'pv-tax',
+       ev:{page:1, bbox:'[820, 560, 980, 586]', raw:'合 计 税 额 ¥13,000.00', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'tax_rate_13_check ✓'}},
+      {k:'价税合计 ★关键', path:'total.gross_amount', v:'¥113,000.00', conf:98, src:'xml_direct', pv:'pv-gross', star:true,
+       ev:{page:1, bbox:'[120, 300, 260, 330] → 票面 [56, 600, 520, 630]', raw:'价税合计（大写）壹拾壹万叁仟元整 （小写）¥113,000.00', model:'cn-xml-parser v3.2 · 交叉验证：百望云 ocr-vlm-2026-10', provider:'XML 直读 + 百望云 OCR 互证一致', rule:'amount_tax_sum_check ✓（净额+税额=价税合计）'}},
+      {k:'交叉验证（OCR）', path:'evidence.cross_check', v:'票面 OCR 价税合计 ¥113,000.00 · 与 XML 一致', conf:96, src:'ocr', pv:'pv-gross',
+       ev:{page:1, bbox:'[56, 600, 520, 630]', raw:'（小写）¥113,000.00', model:'ocr-vlm-2026-10', provider:'百望云', rule:'多源证据交叉验证（结构化原件 × 页面文本 × 金额勾稽）'}}
+    ]},
+    {title:'税码与关联（Link）', fields:[
+      {k:'增值税税率', path:'tax.rate', v:'13%（一般纳税人 · 货物）', conf:99, src:'xml_direct', pv:null,
+       ev:{page:1, bbox:'—（XML 节点）', raw:'<TaxRate>0.13</TaxRate>', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'tax_code_mapping → Ariba Tax Code J1'}},
+      {k:'关联 PO（Link）', path:'links.po', v:'PO-2026-0881 · 匹配 AMOUNT_VARIANCE', conf:95, src:'xml_direct', pv:null,
+       ev:{page:'—', bbox:'—', raw:'附件正文注明 PO：PO-2026-0881', model:'po-infer-rule v1.8', provider:'平台规则引擎', rule:'po_number_exact_match ✓ · 金额比对存在口径差异'}},
+      {k:'红字票关联（Link）', path:'links.credit_note', v:'无 · 本票非红冲票，未被红冲', conf:100, src:'xml_direct', pv:null,
+       ev:{page:'—', bbox:'—', raw:'<CreditNoteRef>（空）</CreditNoteRef>', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'credit_link_check ✓'}}
+    ]}
+  ],
+  items:{ src:'来源：XML 直读 · 行级勾稽校验通过（Σ行金额 = 合计）', head:['#','货物或应税项目名称','规格型号','单位','数量','单价','税率','金额'],
+    rows:[
+      ['1','*服务器*机架式服务器 R4900 G6','24核/128G/4T','台','2','¥38,000.00','13%','¥76,000.00'],
+      ['2','*技术服务*部署实施与维保服务','3年原厂维保','项','1','¥24,000.00','13%','¥24,000.00']
+    ]},
+  ai:{ title:'价税合计 vs PO 净额差异 ¥13,000.00 —— 口径差异解释',
+       conf:88, model:'qwen-finance-v2 · 2026-10-15',
+       body:'差异金额 ¥13,000.00 <b>恰等于本票税额</b>。PO-2026-0881 以<b>不含税净额</b>口径登记（¥100,000.00），发票以<b>含税价税合计</b>口径开具（¥113,000.00）。规则引擎复核：amount_tax_sum_check ✓、行级勾稽 ✓、税率 13% ✓。',
+       conclude:'初步结论：疑似<b>含税/不含税口径差异</b>，而非金额错误。建议按「口径差异」标记后放行，并回填 PO 含税金额字段。',
+       ruleNote:'规则引擎复核项均为确定性判定；LLM 仅承担差异语义解释，不修改任何字段。' },
+  timeline:[
+    {t:'10-18 09:12:04', a:'system', act:'CHANNEL_RECEIVED', d:'邮箱渠道受理 · 信封解析', x:'发件人 finance@zhongke-huachuang.cn · 附件 invoice_0387.xml / invoice_0387.pdf · 原件摘要登记（SHA-256）', v:'ingest-service v2.1'},
+    {t:'10-18 09:12:06', a:'system', act:'CARRIER_ROUTED', d:'载体检测与分流 → 结构化直读路径', x:'识别到数电票 XML 原件，按「能直读的不送 OCR」原则优先直读；PDF 留作票面证据', v:'router-policy v1.6'},
+    {t:'10-18 09:12:09', a:'system', act:'XML_PARSED', d:'XML 结构化直读解析完成 · 23 字段', x:'Schema 校验通过（Core + CN Extension）· 关键字段置信度均 ≥ 98%', v:'cn-xml-parser v3.2'},
+    {t:'10-18 09:12:11', a:'provider', act:'SM2_VERIFY', d:'SM2 国密验签 → PASS', x:'证书链有效 · 验签回执归档至案件附件 · 验真走授权渠道，模型不自行宣称发票真实', v:'国密验签服务 gm-verify v1.4'},
+    {t:'10-18 09:12:40', a:'provider', act:'AUTH_QUERY_TIMEOUT', d:'税务总局授权查验 → 超时 NOT_VERIFIED', x:'查验请求已发出，渠道响应超时 · 案件不阻塞其余校验，查验步骤单独排定重试（断点续跑）', v:'百望云 · 查验通道 bw-cloud-verify v2.0'},
+    {t:'10-18 09:13:02', a:'provider', act:'OCR_CROSS_CHECK', d:'OCR 交叉验证 → 关键金额一致', x:'对 PDF 票面执行 OCR，价税合计 / 发票号与 XML 直读互证一致（多源证据交叉验证）', v:'百望云 · ocr-vlm-2026-10'},
+    {t:'10-18 09:13:05', a:'system', act:'DEDUP_CHECK', d:'查重 → PASSED', x:'发票号 + 价税合计 + 销售方税号 全局查重，无重复命中', v:'dedup-rule v2.3'},
+    {t:'10-18 09:13:08', a:'system', act:'PO_MATCH', d:'PO 关联匹配 → AMOUNT_VARIANCE', x:'命中 PO-2026-0881（供应商 + 附件 PO 号）· 含税 ¥113,000.00 vs PO 净额 ¥100,000.00 · 差异 ¥13,000.00 超容差', v:'match-engine v1.9 · po-infer-rule v1.8'},
+    {t:'10-18 09:13:08', a:'system', act:'STATUS_CHANGE', d:'案件状态 RECOGNIZED → NEEDS_REVIEW', x:'触发条件：poMatch = AMOUNT_VARIANCE 且 authenticity = NOT_VERIFIED · 路由至亚太共享中心复核队列', v:'case-machine v2.2'},
+    {t:'10-18 10:02:17', a:'ai', act:'LLM_ADVICE', d:'差异解释建议生成（仅建议，不执行）', x:'结论候选：含税/不含税口径差异（置信度 88%）· 已按受控边界挂起，等待人工确认', v:'qwen-finance-v2 · 2026-10-15'},
+    {t:'10-20 14:36:50', a:'human', act:'REVIEW_OPENED', d:'人工认领并开始复核', x:'复核员：王莉（亚太采购共享中心）· 尚未修改任何字段', v:'review-ui v1.2'}
+  ],
+  links:{ inv:'INV-CN-2026-0387', sup:'北京中科华创科技有限公司', po:'PO-2026-0881', poState:'AMOUNT_VARIANCE', grn:['GRN-2026-1102（部分收货）'], credit:null,
+          files:'invoice_0387.xml / .pdf' },
+  file:{ pdf:'invoice_0387.pdf · 1 页 · SHA-256 3f8a…c92d', note:'数电票 XML 原件已按电子会计档案要求归档；PDF 为票面呈现件。原件摘要（SHA-256）于受理时登记，任何替换可被检测。' },
+  xml:`<?xml version="1.0" encoding="UTF-8"?>
+<EInvoice xmlns="urn:cn:tax:einvoice:1.0">
+  <Header>
+    <InvoiceNo>24112000000387</InvoiceNo>
+    <IssueDate>2026-10-17</IssueDate>
+    <InvoiceType>数电票（增值税专用发票）</InvoiceType>
+  </Header>
+  <Seller>
+    <Name>北京中科华创科技有限公司</Name>
+    <TaxID>91110108MA01C3872X</TaxID>
+  </Seller>
+  <Buyer>
+    <Name>澜坞（上海）采购科技有限公司</Name>
+    <TaxID>91310115MA1K35QT7B</TaxID>
+  </Buyer>
+  <Items>
+    <Item lineNo="1">
+      <Name>*服务器*机架式服务器 R4900 G6</Name>
+      <Spec>24核/128G/4T</Spec><Unit>台</Unit>
+      <Qty>2</Qty><Price>38000.00</Price>
+      <TaxRate>0.13</TaxRate><Amount>76000.00</Amount>
+    </Item>
+    <Item lineNo="2">
+      <Name>*技术服务*部署实施与维保服务</Name>
+      <Spec>3年原厂维保</Spec><Unit>项</Unit>
+      <Qty>1</Qty><Price>24000.00</Price>
+      <TaxRate>0.13</TaxRate><Amount>24000.00</Amount>
+    </Item>
+  </Items>
+  <Total>
+    <NetAmount>100000.00</NetAmount>
+    <TaxAmount>13000.00</TaxAmount>
+    <GrossAmount>113000.00</GrossAmount>
+    <GrossInWords>壹拾壹万叁仟元整</GrossInWords>
+  </Total>
+  <Signature alg="SM2">MEUCIQDx…（验签通过 · 回执 gm-rcpt-0931）</Signature>
+</EInvoice>`
+},
+/* ─────────── 中国数电票 · 篡改票阻断案件（演示场景：篡改票阻断） ─────────── */
+'INV-CN-2026-0379': {
+  kind:'cn', paperKey:'cn379',
+  meta:{ status:'BLOCKED', region:'CN · 中国', ext:'CN Extension · 数电票',
+         type:'数电票（增值税专用发票）', po:'PO-2026-0873', supplier:'成都天府新材料股份公司', supId:'SUP-10377',
+         amount:'¥47,200.00', received:'2026-10-19 16:22', channel:'供应商邮箱（XML + PDF 附件）', adapter:'SAP Ariba · cXML InvoiceDetailRequest（建档已挂起）',
+         sm2:{ok:false, text:'SM2 国密验签失败 · 证书链无法验证 · 疑似原件被篡改'} },
+  schemaTag:'Global Schema · Core + CN Extension',
+  checks:[
+    {k:'supplierMatch 供应商匹配', v:'PASSED', note:'供应商名称 + 税号与 SUP-10377 主数据一致'},
+    {k:'authenticity 验真', v:'FAILED', note:'SM2 验签失败：证书链无法验证 · 验真必须走授权渠道，模型不得自行宣称发票真实 → 红线拦截'},
+    {k:'duplicate 查重', v:'PASSED', note:'发票号 + 价税合计全局查重无命中'},
+    {k:'poMatch PO 匹配', v:'PASSED', note:'PO-2026-0873 含税口径一致（¥47,200.00）'}
+  ],
+  groups:[
+    {title:'发票基础信息', fields:[
+      {k:'发票号码', path:'header.invoice_no', v:'24512000000379', conf:99, src:'xml_direct', pv:'pv-invno',
+       ev:{page:1, bbox:'[842, 96, 1020, 122]', raw:'发票号码：24512000000379', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'invoice_no_format_check ✓'}},
+      {k:'开票日期', path:'header.issue_date', v:'2026-10-15', conf:99, src:'xml_direct', pv:'pv-date',
+       ev:{page:1, bbox:'[842, 128, 1020, 152]', raw:'开票日期：2026年10月15日', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'date_valid_range ✓'}}
+    ]},
+    {title:'销售方 / 购买方', fields:[
+      {k:'销售方名称', path:'seller.name', v:'成都天府新材料股份公司', conf:99, src:'xml_direct', pv:'pv-seller',
+       ev:{page:1, bbox:'[56, 210, 380, 236]', raw:'名称：成都天府新材料股份公司', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'supplier_master_match ✓'}},
+      {k:'销售方税号', path:'seller.tax_id', v:'91510100MA62T3791X', conf:99, src:'xml_direct', pv:'pv-seller',
+       ev:{page:1, bbox:'[56, 240, 380, 264]', raw:'统一社会信用代码/纳税人识别号：91510100MA62T3791X', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'tax_id_checksum ✓'}},
+      {k:'购买方名称', path:'buyer.name', v:'澜坞（上海）采购科技有限公司', conf:98, src:'xml_direct', pv:'pv-buyer',
+       ev:{page:1, bbox:'[430, 210, 760, 236]', raw:'名称：澜坞（上海）采购科技有限公司', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'buyer_entity_match ✓'}}
+    ]},
+    {title:'金额与税额（原件可信性失败 → 全字段降级标注）', fields:[
+      {k:'不含税金额', path:'total.net_amount', v:'¥41,769.91', conf:94, src:'xml_direct', pv:'pv-net',
+       ev:{page:1, bbox:'[640, 560, 800, 586]', raw:'合 计 金 额 ¥41,769.91', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'⚠ 数值勾稽通过，但原件验签失败，置信度按策略降级（可信性不成立）'}},
+      {k:'税额（13%）', path:'total.tax_amount', v:'¥5,430.09', conf:94, src:'xml_direct', pv:'pv-tax',
+       ev:{page:1, bbox:'[820, 560, 980, 586]', raw:'合 计 税 额 ¥5,430.09', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'tax_rate_13_check ✓ · ⚠ 原件可信性失败降级'}},
+      {k:'价税合计 ★关键', path:'total.gross_amount', v:'¥47,200.00', conf:94, src:'xml_direct', pv:'pv-gross', star:true,
+       ev:{page:1, bbox:'[56, 600, 520, 630]', raw:'价税合计（大写）肆万柒仟贰佰元整 （小写）¥47,200.00', model:'cn-xml-parser v3.2 · 交叉验证：百望云 ocr-vlm-2026-10', provider:'XML 直读 + 百望云 OCR 数值互证一致', rule:'amount_tax_sum_check ✓（数值一致 ≠ 原件可信；authenticity FAILED 时禁止自动放行）'}},
+      {k:'原件完整性 ★验签', path:'evidence.sm2_signature', v:'SM2 验签 FAILED · 疑似篡改', conf:100, src:'webhook', pv:'pv-stamp', star:true,
+       ev:{page:'—', bbox:'—（XML Signature 节点）', raw:'<Signature alg="SM2" result="FAILED">证书链无法验证</Signature>', model:'—（授权验签渠道，非模型判断）', provider:'国密验签服务 gm-verify v1.4 · 失败回执 gm-rcpt-1042 已归档', rule:'红线策略：验签失败 → authenticity FAILED → BLOCKED'}}
+    ]},
+    {title:'税码与关联（Link）', fields:[
+      {k:'增值税税率', path:'tax.rate', v:'13%（一般纳税人 · 货物）', conf:99, src:'xml_direct', pv:null,
+       ev:{page:1, bbox:'—（XML 节点）', raw:'<TaxRate>0.13</TaxRate>', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'tax_code_mapping → Ariba Tax Code J1'}},
+      {k:'关联 PO（Link）', path:'links.po', v:'PO-2026-0873 · 匹配 PASSED', conf:96, src:'xml_direct', pv:null,
+       ev:{page:'—', bbox:'—', raw:'附件正文注明 PO：PO-2026-0873', model:'po-infer-rule v1.8', provider:'平台规则引擎', rule:'po_number_exact_match ✓ · 含税口径金额一致'}},
+      {k:'红字票关联（Link）', path:'links.credit_note', v:'无 · 本票非红冲票', conf:100, src:'xml_direct', pv:null,
+       ev:{page:'—', bbox:'—', raw:'<CreditNoteRef>（空）</CreditNoteRef>', model:'cn-xml-parser v3.2', provider:'XML 直读（免 Provider）', rule:'credit_link_check ✓'}}
+    ]}
+  ],
+  items:{ src:'来源：XML 直读 · 数值勾稽校验通过；原件可信性失败不阻止展示，但阻止自动放行', head:['#','货物或应税项目名称','规格型号','单位','数量','单价','税率','金额'],
+    rows:[
+      ['1','*化工产品*高纯石英砂 Q-200','200kg/桶','吨','10','¥3,800.00','13%','¥38,000.00'],
+      ['2','*技术服务*现场指导与检测服务','—','项','1','¥3,769.91','13%','¥3,769.91']
+    ]},
+  ai:{ title:'SM2 验签失败 —— 疑似篡改票处置建议',
+       conf:94, model:'qwen-finance-v2 · 2026-10-15',
+       body:'XML 原件验签失败（证书链无法验证），票面 OCR 与 XML 数值一致（价税合计 ¥47,200.00），但<b>原件可信性不成立</b>——数值一致不能证明 XML 未被篡改（篡改者可同步修改票面与数值）。规则引擎已按红线策略将 authenticity 置为 <b class="text-danger">FAILED</b> 并自动 BLOCKED，cXML 建档挂起。',
+       conclude:'建议：阻断并要求供应商通过电子税务局渠道重开合规数电票；如供应商坚称原票有效，须由开票渠道出具可验证的验签回执。解除 BLOCKED 需<b>复核员 + 管理员双人审批</b>并全程留痕。',
+       ruleNote:'BLOCKED 由规则引擎红线策略判定（错误自动放行率趋近 0），非模型决策；AI 仅提供处置路径建议。' },
+  timeline:[
+    {t:'10-19 16:22:04', a:'system', act:'CHANNEL_RECEIVED', d:'邮箱渠道受理 · 信封解析', x:'发件人 billing@tianfu-materials.cn · 附件 invoice_0379.xml / invoice_0379.pdf · 原件摘要登记（SHA-256 c417…9e2b）', v:'ingest-service v2.1'},
+    {t:'10-19 16:22:07', a:'system', act:'XML_PARSED', d:'XML 结构化直读解析完成 · 23 字段', x:'Schema 校验通过 · 数值勾稽（净额+税额=价税合计）通过', v:'cn-xml-parser v3.2'},
+    {t:'10-19 16:22:09', a:'provider', act:'SM2_VERIFY_FAILED', d:'SM2 国密验签 → FAILED', x:'证书链无法验证 · 疑似 XML 原件被篡改 · 失败回执 gm-rcpt-1042 归档至案件附件（可司法取证）', v:'国密验签服务 gm-verify v1.4'},
+    {t:'10-19 16:22:09', a:'system', act:'STATUS_CHANGE', d:'案件状态 RECOGNIZED → BLOCKED', x:'触发条件：authenticity = FAILED（产品红线：验真失败票不得进入建档与付款）· cXML 建档挂起 · 通知复核队列（高风险）', v:'case-machine v2.2'},
+    {t:'10-19 16:22:31', a:'provider', act:'OCR_CROSS_CHECK', d:'OCR 交叉验证 → 票面与 XML 数值一致', x:'价税合计 / 发票号一致 · 结论标注：数值一致不构成原件可信性证明，不改变 BLOCKED', v:'百望云 · ocr-vlm-2026-10'},
+    {t:'10-19 16:22:35', a:'system', act:'DEDUP_PO_CHECK', d:'查重 PASSED · PO 匹配 PASSED', x:'查重无命中 · PO-2026-0873 含税口径一致（其余 Checks 不因 BLOCKED 停止，结论供解除拦截时参考）', v:'dedup-rule v2.3 · match-engine v1.9'},
+    {t:'10-19 17:05:12', a:'ai', act:'LLM_ADVICE', d:'处置建议生成（仅建议，不执行）', x:'建议阻断 + 要求供应商重开 · 解除拦截须双人审批 · 置信度 94%', v:'qwen-finance-v2 · 2026-10-15'},
+    {t:'10-20 15:02:40', a:'human', act:'REVIEW_OPENED', d:'人工认领（BLOCKED 案件双人审批流程）', x:'复核员：王莉（亚太采购共享中心）· 管理员会签人：陈铮 · 尚未执行任何处置', v:'review-ui v1.2'}
+  ],
+  links:{ inv:'INV-CN-2026-0379', sup:'成都天府新材料股份公司', po:'PO-2026-0873', poState:'PASSED', grn:['GRN-2026-1156'], credit:null,
+          files:'invoice_0379.xml / .pdf' },
+  file:{ pdf:'invoice_0379.pdf · 1 页 · SHA-256 c417…9e2b', note:'原件摘要于受理时登记；XML 验签失败回执随案归档（不可篡改），可用于对供应商追责与司法取证。' },
+  xml:`<?xml version="1.0" encoding="UTF-8"?>
+<EInvoice xmlns="urn:cn:tax:einvoice:1.0">
+  <Header>
+    <InvoiceNo>24512000000379</InvoiceNo>
+    <IssueDate>2026-10-15</IssueDate>
+    <InvoiceType>数电票（增值税专用发票）</InvoiceType>
+  </Header>
+  <Seller>
+    <Name>成都天府新材料股份公司</Name>
+    <TaxID>91510100MA62T3791X</TaxID>
+  </Seller>
+  <Buyer>
+    <Name>澜坞（上海）采购科技有限公司</Name>
+    <TaxID>91310115MA1K35QT7B</TaxID>
+  </Buyer>
+  <Items>
+    <Item lineNo="1">
+      <Name>*化工产品*高纯石英砂 Q-200</Name>
+      <Spec>200kg/桶</Spec><Unit>吨</Unit>
+      <Qty>10</Qty><Price>3800.00</Price>
+      <TaxRate>0.13</TaxRate><Amount>38000.00</Amount>
+    </Item>
+    <Item lineNo="2">
+      <Name>*技术服务*现场指导与检测服务</Name>
+      <Unit>项</Unit><Qty>1</Qty><Price>3769.91</Price>
+      <TaxRate>0.13</TaxRate><Amount>3769.91</Amount>
+    </Item>
+  </Items>
+  <Total>
+    <NetAmount>41769.91</NetAmount>
+    <TaxAmount>5430.09</TaxAmount>
+    <GrossAmount>47200.00</GrossAmount>
+    <GrossInWords>肆万柒仟贰佰元整</GrossInWords>
+  </Total>
+  <Signature alg="SM2" result="FAILED">
+    证书链无法验证 · 回执 gm-rcpt-1042 · 疑似原件篡改
+    （数值勾稽一致 ≠ 原件可信：BLOCKED 由规则引擎红线策略判定）
+  </Signature>
+</EInvoice>`
+},
+/* ─────────── 海外 Supplier Invoice 案件 ─────────── */
+'INV-SG-2026-0125': {
+  kind:'os',
+  meta:{ status:'INVESTIGATING', region:'APAC · 新加坡', ext:'Core + APAC Extension',
+         type:'Supplier Invoice（海外供应商发票）', po:'PO-4500123456', supplier:'Siemens Energy Pte. Ltd.', supId:'SUP-20871',
+         amount:'S$84,200.00', received:'2026-10-19 08:47（SGT）', channel:'供应商邮箱 PDF → 定时 Job → SAP DOX（某海外真实场景链路）', adapter:'SAP Ariba · cXML InvoiceDetailRequest',
+         sm2:null, vat:'Tax ID / VAT Reg. No：M90345678A · GST 注册校验通过' },
+  schemaTag:'Global Schema · Core + APAC Extension',
+  checks:[
+    {k:'supplierMatch 供应商匹配', v:'PASSED', note:'Tax ID M90345678A 与 SUP-20871 主数据一致'},
+    {k:'authenticity 验真', v:'PASSED', note:'GST 注册号格式与名录校验通过（海外无统一验签，走 Tax ID 校验）'},
+    {k:'duplicate 查重', v:'PASSED', note:'Invoice No + Amount 查重无命中'},
+    {k:'poMatch PO 匹配', v:'AMOUNT_VARIANCE', note:'Gross S$84,200.00 vs PO Net S$78,600.00 · 差异 S$5,600.00'}
+  ],
+  groups:[
+    {title:'Invoice 基础信息', fields:[
+      {k:'Invoice No.', path:'header.invoice_no', v:'SI-SG-77125', conf:97, src:'ocr', pv:'pv-invno',
+       ev:{page:1, bbox:'[700, 88, 880, 114]', raw:'Invoice No: SI-SG-77125', model:'ocr-vlm-2026-10', provider:'第三方 OCR（DOX 管道既有 Provider，可替换）', rule:'invoice_no_format_check ✓'}},
+      {k:'Invoice Date', path:'header.issue_date', v:'2026-10-16', conf:96, src:'ocr', pv:'pv-date',
+       ev:{page:1, bbox:'[700, 120, 880, 146]', raw:'Invoice Date: 16 Oct 2026', model:'ocr-vlm-2026-10', provider:'第三方 OCR', rule:'date_valid_range ✓'}}
+    ]},
+    {title:'Supplier / Bill-To（海外 Tax ID）', fields:[
+      {k:'Supplier Name', path:'seller.name', v:'Siemens Energy Pte. Ltd.', conf:98, src:'ocr', pv:'pv-seller',
+       ev:{page:1, bbox:'[56, 180, 360, 206]', raw:'Siemens Energy Pte. Ltd.', model:'ocr-vlm-2026-10', provider:'第三方 OCR', rule:'supplier_master_match ✓'}},
+      {k:'Tax ID / VAT Reg. No ★海外关键字段', path:'seller.tax_id', v:'M90345678A', conf:96, src:'ocr', pv:'pv-seller', star:true,
+       ev:{page:1, bbox:'[56, 210, 360, 234]', raw:'UEN / GST Reg. No: M90345678A', model:'ocr-vlm-2026-10', provider:'第三方 OCR · Tax ID 名录校验 webhook-sg v1.1', rule:'sg_uen_format_check ✓'}},
+      {k:'Bill-To（购买方）', path:'buyer.name', v:'Lanwu Procurement Technology (Singapore) Pte. Ltd.', conf:95, src:'ocr', pv:'pv-buyer',
+       ev:{page:1, bbox:'[430, 180, 760, 234]', raw:'Bill To: Lanwu Procurement Technology (Singapore) Pte. Ltd.', model:'ocr-vlm-2026-10', provider:'第三方 OCR', rule:'buyer_entity_match ✓'}}
+    ]},
+    {title:'金额 · 币种 · 税（多币种 / GST）', fields:[
+      {k:'Currency 币种', path:'total.currency', v:'SGD（S$）', conf:99, src:'ocr', pv:'pv-net',
+       ev:{page:1, bbox:'[560, 520, 640, 546]', raw:'All amounts in SGD (S$)', model:'ocr-vlm-2026-10', provider:'第三方 OCR', rule:'currency_iso_check ✓'}},
+      {k:'Net Amount 净额', path:'total.net_amount', v:'S$78,600.00', conf:97, src:'ocr', pv:'pv-net',
+       ev:{page:1, bbox:'[640, 548, 880, 574]', raw:'Net Amount: S$78,600.00', model:'ocr-vlm-2026-10', provider:'第三方 OCR', rule:'—'}},
+      {k:'GST 9%', path:'total.tax_amount', v:'S$4,100.00', conf:94, src:'ocr', pv:'pv-tax',
+       ev:{page:1, bbox:'[640, 576, 880, 602]', raw:'GST @9% (on taxable S$45,555.56): S$4,100.00', model:'ocr-vlm-2026-10', provider:'第三方 OCR', rule:'gst_rate_sg_check ✓ · 部分行项目 zero-rated'}},
+      {k:'Freight 运费行', path:'items.freight', v:'S$1,500.00（PO 未含）', conf:92, src:'ocr', pv:'pv-freight',
+       ev:{page:1, bbox:'[640, 604, 880, 630]', raw:'Freight & Handling: S$1,500.00', model:'ocr-vlm-2026-10', provider:'第三方 OCR', rule:'po_line_coverage → 无对应收货行'}},
+      {k:'Gross Total ★关键', path:'total.gross_amount', v:'S$84,200.00', conf:97, src:'ocr', pv:'pv-gross', star:true,
+       ev:{page:1, bbox:'[620, 640, 900, 672]', raw:'Total Due: S$84,200.00', model:'ocr-vlm-2026-10', provider:'第三方 OCR', rule:'amount_sum_check ✓（Net+GST+Freight=Gross）'}}
+    ]},
+    {title:'关联（Link）', fields:[
+      {k:'关联 PO（Link）', path:'links.po', v:'PO-4500123456 · AMOUNT_VARIANCE', conf:95, src:'webhook', pv:null,
+       ev:{page:'—', bbox:'—', raw:'Your Ref: PO-4500123456（票面引用）', model:'po-infer-rule v1.8', provider:'平台规则引擎 · BTP 匹配回执', rule:'po_number_exact_match ✓'}},
+      {k:'Credit Note 关联（Link）', path:'links.credit_note', v:'INV-SG-2026-0123（AWS）待人工确认关联 · 非本票', conf:92, src:'model', pv:null,
+       ev:{page:'—', bbox:'—', raw:'Link 校验：本票无「冲减 → 原票」关系；候选 Credit Note 属另一供应商案件', model:'link-infer v1.1', provider:'平台对象模型', rule:'credit_link_check → NOT_APPLICABLE'}}
+    ]}
+  ],
+  items:{ src:'来源：OCR（第三方 Provider）· 行级勾稽校验通过 · 币种 SGD', head:['#','Description','Qty','Unit Price','Tax','Amount'],
+    rows:[
+      ['1','Gas turbine maintenance service — Q3 2026','1','S$62,600.00','GST 9%','S$62,600.00'],
+      ['2','Spare parts kit (zero-rated, export)','1','S$16,000.00','0%','S$16,000.00'],
+      ['3','Freight & handling（PO 未含 · 差异来源）','1','S$1,500.00','GST 9%','S$1,500.00']
+    ]},
+  ai:{ title:'Gross S$84,200.00 vs PO Net S$78,600.00 —— 差异构成解释',
+       conf:88, model:'qwen-finance-v2 · 2026-10-15',
+       body:'系统已自动收集证据：PO 行项目 2 条 + 收货单 GRN 3 条 + GST 税率映射。差异 S$5,600.00 = <b>GST S$4,100.00</b>（PO 以净额登记，其中 spare parts 为 zero-rated）+ <b>运费行 S$1,500.00</b>（PO 无对应行，无收货记录）。',
+       conclude:'初步结论：GST 部分为口径差异；运费行属 <b>PO 外费用</b>，建议按合同条款判定——若合同含运费条款可补 PO 行后放行，否则部分退回供应商。',
+       ruleNote:'调查步骤由案件状态机驱动（INVESTIGATING），证据收集为只读操作；处置动作须人工确认。' },
+  timeline:[
+    {t:'10-19 08:47:12', a:'system', act:'CHANNEL_RECEIVED', d:'邮箱管道受理（定时 Job）', x:'供应商 PDF 附件 → 邮箱 → 定时 Job → SAP DOX（某海外真实场景链路）· 原件摘要登记（SHA-256）', v:'ingest-service v2.1 · dox-bridge v1.0'},
+    {t:'10-19 08:47:40', a:'provider', act:'OCR_RECOGNIZED', d:'第三方 OCR 识别完成 · 18 字段', x:'PDF 原生文本层不可用，路由至 OCR · 关键字段置信度 92–98%', v:'第三方 OCR · ocr-vlm-2026-10（可替换为客户自有 Provider）'},
+    {t:'10-19 08:47:44', a:'system', act:'INBOUND_ACCEPTED', d:'inbound 接收识别结果 · Schema 归一化', x:'Core + APAC Extension 字段映射 · GST / 币种 / Tax ID 落位', v:'normalize-service v1.5'},
+    {t:'10-19 08:48:02', a:'system', act:'TAXID_CHECK', d:'Tax ID 名录校验 → PASS', x:'M90345678A 格式与新加坡 UEN/GST 名录校验通过（海外验真走 Tax ID 校验，非 SM2 验签）', v:'webhook-sg v1.1'},
+    {t:'10-19 08:48:05', a:'system', act:'DEDUP_CHECK', d:'查重 → PASSED', x:'Invoice No + Amount + Supplier 全局查重无命中', v:'dedup-rule v2.3'},
+    {t:'10-19 08:48:10', a:'system', act:'BTP_MATCH', d:'BTP 匹配 / Check → AMOUNT_VARIANCE', x:'Gross S$84,200.00 vs PO Net S$78,600.00 · 差异 S$5,600.00 超容差 ±S$50', v:'btp-check v1.3 · match-engine v1.9'},
+    {t:'10-19 08:48:10', a:'system', act:'STATUS_CHANGE', d:'状态 RECOGNIZED → NEEDS_REVIEW → INVESTIGATING', x:'差异调查策略命中：金额差异 > 阈值时自动进入主动调查，而非直接抛给人工', v:'case-machine v2.2'},
+    {t:'10-19 08:48:31', a:'system', act:'EVIDENCE_COLLECTED', d:'调查证据自动收集（只读）', x:'PO-4500123456 行项目 ×2 · GRN-2026-1180/1181/1187 ×3 · GST 税率映射表 · 合同运费条款摘录', v:'investigator v1.0'},
+    {t:'10-19 08:49:02', a:'ai', act:'LLM_ADVICE', d:'差异解释建议生成（仅建议，不执行）', x:'差异构成：GST S$4,100.00 + 运费 S$1,500.00 · 置信度 88% · 等待人工确认', v:'qwen-finance-v2 · 2026-10-15'},
+    {t:'10-20 14:41:20', a:'human', act:'REVIEW_OPENED', d:'人工认领并开始复核', x:'复核员：王莉（亚太采购共享中心）· cXML 建档保持挂起，待处置结论', v:'review-ui v1.2'}
+  ],
+  links:{ inv:'INV-SG-2026-0125', sup:'Siemens Energy Pte. Ltd.', po:'PO-4500123456', poState:'AMOUNT_VARIANCE', grn:['GRN-2026-1180','GRN-2026-1181','GRN-2026-1187'], credit:null,
+          files:'siemens_si-sg-77125.pdf' },
+  file:{ pdf:'siemens_si-sg-77125.pdf · 1 页 · SHA-256 9be1…4a07', note:'海外实例无 XML 原件时以 PDF 为准，OCR 结果均带坐标与原文片段证据；本链路 DOX 预处理边界待产品细节确认（H30 余项）。' },
+  xml:`<!-- 无 XML 原件 · 展示 OCR 归一化后的结构化输出（统一 Schema） -->
+<Invoice xmlns="urn:global:invoice:schema:v1" region="APAC-SG">
+  <Header>
+    <InvoiceNo source="ocr" confidence="0.97">SI-SG-77125</InvoiceNo>
+    <IssueDate source="ocr" confidence="0.96">2026-10-16</IssueDate>
+    <InvoiceType>Supplier Invoice</InvoiceType>
+  </Header>
+  <Seller>
+    <Name source="ocr" confidence="0.98">Siemens Energy Pte. Ltd.</Name>
+    <TaxID source="ocr" confidence="0.96">M90345678A</TaxID>
+  </Seller>
+  <Buyer>
+    <Name source="ocr" confidence="0.95">Lanwu Procurement Technology (Singapore) Pte. Ltd.</Name>
+  </Buyer>
+  <Total currency="SGD">
+    <NetAmount source="ocr" confidence="0.97">78600.00</NetAmount>
+    <TaxAmount tax="GST" rate="0.09" source="ocr" confidence="0.94">4100.00</TaxAmount>
+    <Freight source="ocr" confidence="0.92">1500.00</Freight>
+    <GrossAmount source="ocr" confidence="0.97">84200.00</GrossAmount>
+  </Total>
+  <EvidenceRef provider="third_party_ocr" model="ocr-vlm-2026-10"
+    page="1" bbox="[620,640,900,672]" rule="amount_sum_check:PASSED"/>
+</Invoice>`
+}};
+
+/* ═══════════════════════ 票面预览模板 ═══════════════════════ */
+function paperCN(){ return `
+<div class="px-6 pt-5 pb-6 text-[#1D2129]" style="min-height:760px">
+  <div class="text-center">
+    <div class="text-[17px] font-semibold tracking-[6px] text-[#B22222]">电 子 发 票（增值税专用发票）</div>
+    <div class="text-[9px] text-[#86909C] mt-0.5">全国统一式样 · 数电票 · 票面尺寸示意</div>
+  </div>
+  <div class="flex justify-between items-end mt-2 text-[11px]">
+    <div>
+      <div id="pv-invno" class="px-1 -mx-1">发票号码：<b class="num text-[12px] text-[#B22222]">24112000000387</b></div>
+      <div id="pv-date" class="px-1 -mx-1 mt-0.5">开票日期：<span class="num">2026年10月17日</span></div>
+    </div>
+    <div class="text-right">
+      <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#00B42A] text-[#00874A] text-[9px] bg-[#E8FFEA]">🛡 SM2 验签通过</div>
+      <div class="text-[9px] text-[#86909C] mt-0.5 num">SHA-256 3f8a…c92d</div>
+    </div>
+  </div>
+  <div class="border border-[#B22222]/60 mt-2 grid grid-cols-2 text-[10.5px] leading-[1.7]">
+    <div id="pv-buyer" class="px-2.5 py-2 border-r border-[#B22222]/60">
+      <div class="text-[#B22222] font-medium mb-0.5">购买方信息</div>
+      <div>名　　称：澜坞（上海）采购科技有限公司</div>
+      <div class="num">纳税人识别号：91310115MA1K35QT7B</div>
+    </div>
+    <div id="pv-seller" class="px-2.5 py-2">
+      <div class="text-[#B22222] font-medium mb-0.5">销售方信息</div>
+      <div>名　　称：北京中科华创科技有限公司</div>
+      <div class="num">纳税人识别号：91110108MA01C3872X</div>
+    </div>
+  </div>
+  <table class="w-full border-collapse border border-[#B22222]/60 border-t-0 text-[10px] mt-0">
+    <thead><tr class="bg-[#FDF3F3] text-[#B22222]">
+      <th class="border border-[#B22222]/50 px-1.5 py-1 text-left font-medium">项目名称</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">规格型号</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">单位</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">数量</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">单价</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">税率</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">金额</th>
+    </tr></thead>
+    <tbody class="num">
+      <tr><td class="border border-[#B22222]/50 px-1.5 py-1.5 text-left">*服务器*机架式服务器 R4900 G6</td><td class="border border-[#B22222]/50 px-1.5 text-center">24核/128G/4T</td><td class="border border-[#B22222]/50 px-1.5 text-center">台</td><td class="border border-[#B22222]/50 px-1.5 text-center">2</td><td class="border border-[#B22222]/50 px-1.5 text-right">38,000.00</td><td class="border border-[#B22222]/50 px-1.5 text-center">13%</td><td class="border border-[#B22222]/50 px-1.5 text-right">76,000.00</td></tr>
+      <tr><td class="border border-[#B22222]/50 px-1.5 py-1.5 text-left">*技术服务*部署实施与维保服务</td><td class="border border-[#B22222]/50 px-1.5 text-center">3年原厂维保</td><td class="border border-[#B22222]/50 px-1.5 text-center">项</td><td class="border border-[#B22222]/50 px-1.5 text-center">1</td><td class="border border-[#B22222]/50 px-1.5 text-right">24,000.00</td><td class="border border-[#B22222]/50 px-1.5 text-center">13%</td><td class="border border-[#B22222]/50 px-1.5 text-right">24,000.00</td></tr>
+      <tr class="bg-[#FDF3F3]"><td class="border border-[#B22222]/50 px-1.5 py-1 text-left text-[#B22222]" colspan="5">合　计</td><td class="border border-[#B22222]/50 px-1.5 text-center">¥</td><td class="border border-[#B22222]/50 px-1.5 text-right font-semibold">100,000.00</td></tr>
+    </tbody>
+  </table>
+  <div class="flex justify-between text-[11px] mt-2 num">
+    <div id="pv-net" class="px-1 -mx-1">不含税金额合计：<b>¥100,000.00</b></div>
+    <div id="pv-tax" class="px-1 -mx-1">税额合计（13%）：<b>¥13,000.00</b></div>
+  </div>
+  <div id="pv-gross" class="mt-2 px-2.5 py-2 border-2 border-[#B22222]/70 rounded bg-[#FDF3F3] flex items-center justify-between">
+    <span class="text-[11px] text-[#B22222] font-medium">价税合计（大写）</span>
+    <span class="text-[12px] font-semibold tracking-wider">壹拾壹万叁仟元整</span>
+    <span class="text-[10px] text-[#86909C]">（小写）</span>
+    <span class="text-[15px] font-bold text-[#B22222] num">¥113,000.00</span>
+  </div>
+  <div class="flex justify-between items-end mt-4 text-[9.5px] text-[#4E5969]">
+    <div>收款人：周敏　　复核：李国强　　开票人：王芳</div>
+    <div class="w-14 h-14 border border-[#86909C]/60 rounded flex items-center justify-center text-[8px] text-[#86909C] text-center leading-tight">数电票<br>二维码<br>▦</div>
+  </div>
+  <div class="text-[8.5px] text-[#86909C] mt-2 border-t border-dashed border-[#C9CDD4] pt-1.5">本票为演示样例 · 销售方/购买方均为虚构 · 原件归档于对象存储（版本 + 生命周期策略）</div>
+</div>`;}
+
+function paperCN379(){ return `
+<div class="px-6 pt-4 pb-6 text-[#1D2129]" style="min-height:760px">
+  <div class="mb-2 px-2.5 py-2 rounded border-2 border-[#F53F3F] bg-[#FFECE8] flex items-center gap-2">
+    <span class="text-[14px]">⛔</span>
+    <div class="text-[10.5px] leading-snug"><b class="text-[#CB2634]">SM2 验签失败 · 疑似篡改 · 案件 BLOCKED</b><br><span class="text-[#4E5969]">原件可信性不成立：以下数值仅供取证比对，不得用于建档与付款</span></div>
+  </div>
+  <div class="text-center">
+    <div class="text-[17px] font-semibold tracking-[6px] text-[#B22222]">电 子 发 票（增值税专用发票）</div>
+    <div class="text-[9px] text-[#86909C] mt-0.5">全国统一式样 · 数电票 · 票面尺寸示意</div>
+  </div>
+  <div class="flex justify-between items-end mt-2 text-[11px]">
+    <div>
+      <div id="pv-invno" class="px-1 -mx-1">发票号码：<b class="num text-[12px] text-[#B22222]">24512000000379</b></div>
+      <div id="pv-date" class="px-1 -mx-1 mt-0.5">开票日期：<span class="num">2026年10月15日</span></div>
+    </div>
+    <div class="text-right">
+      <div id="pv-stamp" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border-2 border-[#F53F3F] text-[#CB2634] text-[9px] bg-[#FFECE8] font-semibold rotate-[-4deg]">✕ SM2 验签失败</div>
+      <div class="text-[9px] text-[#86909C] mt-1 num">SHA-256 c417…9e2b</div>
+    </div>
+  </div>
+  <div class="border border-[#B22222]/60 mt-2 grid grid-cols-2 text-[10.5px] leading-[1.7]">
+    <div id="pv-buyer" class="px-2.5 py-2 border-r border-[#B22222]/60">
+      <div class="text-[#B22222] font-medium mb-0.5">购买方信息</div>
+      <div>名　　称：澜坞（上海）采购科技有限公司</div>
+      <div class="num">纳税人识别号：91310115MA1K35QT7B</div>
+    </div>
+    <div id="pv-seller" class="px-2.5 py-2">
+      <div class="text-[#B22222] font-medium mb-0.5">销售方信息</div>
+      <div>名　　称：成都天府新材料股份公司</div>
+      <div class="num">纳税人识别号：91510100MA62T3791X</div>
+    </div>
+  </div>
+  <table class="w-full border-collapse border border-[#B22222]/60 border-t-0 text-[10px] mt-0">
+    <thead><tr class="bg-[#FDF3F3] text-[#B22222]">
+      <th class="border border-[#B22222]/50 px-1.5 py-1 text-left font-medium">项目名称</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">规格型号</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">单位</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">数量</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">单价</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">税率</th>
+      <th class="border border-[#B22222]/50 px-1.5 py-1 font-medium">金额</th>
+    </tr></thead>
+    <tbody class="num">
+      <tr><td class="border border-[#B22222]/50 px-1.5 py-1.5 text-left">*化工产品*高纯石英砂 Q-200</td><td class="border border-[#B22222]/50 px-1.5 text-center">200kg/桶</td><td class="border border-[#B22222]/50 px-1.5 text-center">吨</td><td class="border border-[#B22222]/50 px-1.5 text-center">10</td><td class="border border-[#B22222]/50 px-1.5 text-right">3,800.00</td><td class="border border-[#B22222]/50 px-1.5 text-center">13%</td><td class="border border-[#B22222]/50 px-1.5 text-right">38,000.00</td></tr>
+      <tr><td class="border border-[#B22222]/50 px-1.5 py-1.5 text-left">*技术服务*现场指导与检测服务</td><td class="border border-[#B222222]/50 px-1.5 text-center">—</td><td class="border border-[#B22222]/50 px-1.5 text-center">项</td><td class="border border-[#B22222]/50 px-1.5 text-center">1</td><td class="border border-[#B22222]/50 px-1.5 text-right">3,769.91</td><td class="border border-[#B22222]/50 px-1.5 text-center">13%</td><td class="border border-[#B22222]/50 px-1.5 text-right">3,769.91</td></tr>
+      <tr class="bg-[#FDF3F3]"><td class="border border-[#B22222]/50 px-1.5 py-1 text-left text-[#B22222]" colspan="5">合　计</td><td class="border border-[#B22222]/50 px-1.5 text-center">¥</td><td class="border border-[#B22222]/50 px-1.5 text-right font-semibold">41,769.91</td></tr>
+    </tbody>
+  </table>
+  <div class="flex justify-between text-[11px] mt-2 num">
+    <div id="pv-net" class="px-1 -mx-1">不含税金额合计：<b>¥41,769.91</b></div>
+    <div id="pv-tax" class="px-1 -mx-1">税额合计（13%）：<b>¥5,430.09</b></div>
+  </div>
+  <div id="pv-gross" class="mt-2 px-2.5 py-2 border-2 border-dashed border-[#F53F3F] rounded bg-[#FFECE8]/60 flex items-center justify-between relative">
+    <span class="absolute -top-2 left-2 text-[8.5px] px-1 bg-[#F53F3F] text-white rounded-sm">疑似篡改关注区 · 与归档原件摘要比对中</span>
+    <span class="text-[11px] text-[#B22222] font-medium">价税合计（大写）</span>
+    <span class="text-[12px] font-semibold tracking-wider">肆万柒仟贰佰元整</span>
+    <span class="text-[10px] text-[#86909C]">（小写）</span>
+    <span class="text-[15px] font-bold text-[#B22222] num">¥47,200.00</span>
+  </div>
+  <div class="flex justify-between items-end mt-4 text-[9.5px] text-[#4E5969]">
+    <div>收款人：何静　　复核：刘洋　　开票人：赵蕾</div>
+    <div class="w-14 h-14 border border-[#F53F3F]/60 rounded flex items-center justify-center text-[8px] text-[#CB2634] text-center leading-tight bg-[#FFECE8]">二维码<br>校验异常<br>▦</div>
+  </div>
+  <div class="text-[8.5px] text-[#86909C] mt-2 border-t border-dashed border-[#C9CDD4] pt-1.5">本票为「篡改票阻断」演示样例 · 验签失败回执 gm-rcpt-1042 已随案归档 · 原件摘要（SHA-256）受理时登记，任何替换可被检测</div>
+</div>`;}
+
+function paperOS(){ return `
+<div class="px-6 pt-5 pb-6 text-[#1D2129]" style="min-height:760px">
+  <div class="flex justify-between items-start">
+    <div>
+      <div class="text-[15px] font-bold tracking-wide text-[#0B3C7A]">SIEMENS ENERGY PTE. LTD.</div>
+      <div class="text-[9px] text-[#4E5969] mt-0.5 leading-relaxed">12 Marina View #15-01, Asia Square Tower 2, Singapore 018961<br><span class="num">UEN / GST Reg. No: M90345678A</span></div>
+    </div>
+    <div class="text-right">
+      <div class="text-[16px] font-semibold tracking-[2px]">SUPPLIER INVOICE</div>
+      <div id="pv-invno" class="text-[11px] mt-1 px-1 -mx-1 num">Invoice No: <b>SI-SG-77125</b></div>
+      <div id="pv-date" class="text-[11px] px-1 -mx-1 num">Invoice Date: 16 Oct 2026</div>
+    </div>
+  </div>
+  <div class="grid grid-cols-2 gap-3 mt-3 text-[10.5px] leading-[1.7]">
+    <div id="pv-buyer" class="px-2.5 py-2 rounded border border-[#C9CDD4] bg-[#F7F8FA]">
+      <div class="text-[9px] uppercase tracking-wide text-[#86909C] font-semibold mb-0.5">Bill To</div>
+      <div class="font-medium">Lanwu Procurement Technology (Singapore) Pte. Ltd.</div>
+      <div class="num text-[#4E5969]">UEN: 202534567K · 8 Cross Street, Singapore</div>
+    </div>
+    <div id="pv-seller" class="px-2.5 py-2 rounded border border-[#C9CDD4]">
+      <div class="text-[9px] uppercase tracking-wide text-[#86909C] font-semibold mb-0.5">Supplier / Remittance</div>
+      <div class="font-medium">Siemens Energy Pte. Ltd.</div>
+      <div class="num text-[#4E5969]">Tax ID: M90345678A · Bank: DBS · IBAN-style A/C ***4471</div>
+    </div>
+  </div>
+  <div class="text-[10px] num text-[#4E5969] mt-2 px-1">Your Ref / PO: <b class="text-[#1D2129]">PO-4500123456</b> · Payment Terms: Net 45 · Currency: <b class="text-[#1D2129]">SGD (S$)</b></div>
+  <table class="w-full border-collapse text-[10px] mt-2">
+    <thead><tr class="bg-[#0B3C7A] text-white">
+      <th class="px-2 py-1.5 text-left font-medium">#</th><th class="px-2 py-1.5 text-left font-medium">Description</th>
+      <th class="px-2 py-1.5 font-medium">Qty</th><th class="px-2 py-1.5 text-right font-medium">Unit Price</th>
+      <th class="px-2 py-1.5 font-medium">Tax</th><th class="px-2 py-1.5 text-right font-medium">Amount</th>
+    </tr></thead>
+    <tbody class="num">
+      <tr class="border-b border-[#E5E6EB]"><td class="px-2 py-2">1</td><td class="px-2 py-2 text-left">Gas turbine maintenance service — Q3 2026</td><td class="px-2 text-center">1</td><td class="px-2 text-right">S$62,600.00</td><td class="px-2 text-center">GST 9%</td><td class="px-2 text-right">S$62,600.00</td></tr>
+      <tr class="border-b border-[#E5E6EB]"><td class="px-2 py-2">2</td><td class="px-2 py-2 text-left">Spare parts kit (zero-rated, export)</td><td class="px-2 text-center">1</td><td class="px-2 text-right">S$16,000.00</td><td class="px-2 text-center">0%</td><td class="px-2 text-right">S$16,000.00</td></tr>
+      <tr class="border-b border-[#E5E6EB] bg-[#FFF7E8]"><td class="px-2 py-2">3</td><td class="px-2 py-2 text-left">Freight &amp; handling <span class="text-[#FF7D00]">⚠ 无 PO 对应行</span></td><td class="px-2 text-center">1</td><td class="px-2 text-right">S$1,500.00</td><td class="px-2 text-center">GST 9%</td><td class="px-2 text-right">S$1,500.00</td></tr>
+    </tbody>
+  </table>
+  <div class="flex justify-end mt-2">
+    <div class="w-[62%] text-[10.5px] num space-y-1">
+      <div id="pv-net" class="flex justify-between px-2 py-0.5 rounded"><span class="text-[#4E5969]">Net Amount</span><b>S$78,600.00</b></div>
+      <div id="pv-tax" class="flex justify-between px-2 py-0.5 rounded"><span class="text-[#4E5969]">GST @9%（部分行 zero-rated）</span><b>S$4,100.00</b></div>
+      <div id="pv-freight" class="flex justify-between px-2 py-0.5 rounded bg-[#FFF7E8]"><span class="text-[#B26B00]">Freight（PO 外费用）</span><b class="text-[#B26B00]">S$1,500.00</b></div>
+      <div id="pv-gross" class="flex justify-between px-2 py-1.5 rounded bg-[#0B3C7A] text-white"><span class="font-medium">Total Due</span><b class="text-[13px]">S$84,200.00</b></div>
+    </div>
+  </div>
+  <div class="text-[9px] text-[#86909C] mt-4 border-t border-dashed border-[#C9CDD4] pt-2 leading-relaxed">
+    Please quote Invoice No. and PO No. for all remittances. · This document is a demo sample; supplier and amounts are fictitious.<br>
+    Processed via: Supplier mailbox → Scheduled Job → SAP DOX → OCR Provider → Invoice Hub (this case)
+  </div>
+</div>`;}
+
+/* ═══════════════════════ 对象-关系 Link 图（SVG） ═══════════════════════ */
+function linkGraph(L, kind){
+  const edge = (x1,y1,x2,y2,color,dash,label,ly) => `
+    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1.6" ${dash?'stroke-dasharray="5 4"':''}/>
+    <text x="${(x1+x2)/2}" y="${ly ?? (y1+y2)/2 - 5}" text-anchor="middle" font-size="10" fill="${color}">${label}</text>`;
+  const node = (x,y,w,h,fill,stroke,title,sub) => `
+    <g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>
+    <text x="${x+w/2}" y="${y+18}" text-anchor="middle" font-size="11" font-weight="600" fill="#1D2129">${title}</text>
+    <text x="${x+w/2}" y="${y+33}" text-anchor="middle" font-size="9" fill="#86909C">${sub}</text></g>`;
+  const grnLabel = L.grn.length > 1 ? `${L.grn.length} 张收货单` : L.grn[0];
+  return `<svg viewBox="0 0 660 200" class="w-full">
+    ${edge(150,60, 250,88, '#86909C', false, '来自')}
+    ${edge(430,88, 520,52, L.poState==='PASSED' ? '#00B42A' : '#FF7D00', L.poState!=='PASSED', L.poState==='PASSED'?'匹配':'匹配 · 金额差异')}
+    ${edge(430,105, 520,120, '#86909C', false, '收货')}
+    ${edge(250,120, 150,155, '#86909C', false, '包含')}
+    ${L.credit ? edge(430,140, 520,175, '#F53F3F', false, '冲减') : `<text x="560" y="188" text-anchor="middle" font-size="9.5" fill="#C9CDD4">红字票/Credit Note 关联：无</text>`}
+    ${node(20,32, 130,44, '#F7F8FA', '#C9CDD4', '供应商 Object', L.sup.length>16?L.sup.slice(0,15)+'…':L.sup)}
+    ${node(250,72, 180,64, '#F0F5FF', '#165DFF', '📄 InvoiceCase', L.inv)}
+    ${node(520,26, 130,44, '#F7F8FA', L.poState==='PASSED'?'#00B42A':'#FF7D00', '采购订单 PO', L.po)}
+    ${node(520,98, 130,44, '#F7F8FA', '#C9CDD4', '收货单 GRN', grnLabel)}
+    ${node(20,132, 130,44, '#F7F8FA', '#C9CDD4', '原件 / 附件', L.files.length>18?L.files.slice(0,17)+'…':L.files)}
+    ${L.credit ? node(520,152, 130,44, '#FFECE8', '#F53F3F', '红字票 / CN', L.credit) : ''}
+    <text x="340" y="160" text-anchor="middle" font-size="9.5" fill="#86909C">Link 为模型中可查询、可校验的结构化关系（非文字描述）· Action 执行前自动校验相关 Link</text>
+  </svg>`;
+}
+
+/* ═══════════════ M2 WP2.3 接线：后台取数 + 契约形态→页面形态 adapter + demo-mode 回退 ═══════════════
+ * 数据入口 = GET /v1/cases/{id}?view=full（invoice-case 契约聚合，逐字段=seeds——M1/M2 契约测试保证）；
+ * apiToPageCase 把契约形态转为页内 CASES 形态（渲染函数与交互保持原型口径：证据弹窗七要素/原件定位
+ * 红框脉冲滚动/双 Tab/Link 图/切换器 replaceState）；取数失败/案件不存在回退内嵌 mock 或友好提示。 */
+const CHECK_ORDER = [['supplierMatch', '供应商匹配'], ['authenticity', '验真'], ['duplicate', '查重'], ['poMatch', 'PO 匹配']];
+function apiToPageCase(api){
+  const m = api.meta;
+  const groups = []; let g = null;
+  (api.evidence || []).forEach(e => {
+    if (!g || g.title !== (e.group || '字段')) { g = { title: e.group || '字段', fields: [] }; groups.push(g); }
+    g.fields.push({ k: e.label || e.field, path: e.field, v: e.value, conf: Math.round(e.confidence * 100),
+      src: e.source, pv: e.anchor || null, star: !!e.star,
+      ev: { page: e.evidence.page, bbox: e.evidence.bbox, raw: e.evidence.raw_text,
+            model: e.evidence.model_version, provider: e.evidence.provider, rule: e.evidence.rule } });
+  });
+  const L = api.links || {};
+  return {
+    kind: api.paper_template === 'os' ? 'os' : 'cn',
+    paperKey: api.paper_template || undefined,
+    schemaTag: 'Global Schema · ' + (m.ext && m.ext.startsWith('CN') ? 'Core + CN Extension' : m.ext),
+    meta: { status: api.status, region: m.region, ext: m.ext, type: m.type, po: m.po, supplier: m.supplier,
+            supId: m.supplier_id, amount: m.amount_display, received: m.received_at, channel: m.channel,
+            adapter: m.adapter, sm2: m.sm2, vat: m.vat },
+    checks: CHECK_ORDER.map(([k, cn]) => ({ k: `${k} ${cn}`, v: api.checks[k].result, note: api.checks[k].note })),
+    groups: groups,
+    items: { src: api.items.note, head: api.items.columns, rows: api.items.rows },
+    ai: api.ai ? { title: api.ai.title, conf: api.ai.confidence, model: api.ai.model_version,
+                    body: api.ai.body, conclude: api.ai.conclusion, ruleNote: api.ai.rule_note } : undefined,
+    timeline: api.timeline,
+    links: { inv: L.invoice, sup: L.supplier, po: L.po, poState: L.po_state,
+             grn: (L.grn || []).map(x => x.grn_no + (x.note ? `（${x.note}）` : '')),
+             credit: L.credit_note && L.credit_note.relation !== 'NONE' ? L.credit_note : null,
+             files: api.file ? (api.file.has_xml_original ? api.file.name.replace(/\.[A-Za-z]+$/, '') + '.xml / .pdf' : api.file.name) : '' },
+    file: api.file ? { pdf: api.file.display, note: api.file.note } : undefined,
+    xml: api.source_xml
+  };
+}
+function showBanner(msg, kind){
+  let b = document.getElementById('ihub-deeplink-banner');
+  if (!b) {
+    b = document.createElement('div'); b.id = 'ihub-deeplink-banner';
+    b.style.cssText = 'margin:10px 0;padding:10px 16px;border-radius:8px;font-size:13px;';
+    (document.querySelector('main') || document.body).prepend(b);
+  }
+  b.textContent = msg;
+  const c = kind === 'danger' ? '#F53F3F' : '#FF7D00';
+  b.style.background = kind === 'danger' ? '#FFECE8' : '#FFF7E8';
+  b.style.color = c; b.style.border = '1px solid ' + c;
+}
+function hideBanner(){ const b = document.getElementById('ihub-deeplink-banner'); if (b) b.remove(); }
+async function refreshCase(id){
+  if (!IHUB_DEMO.isLive()) return true;              // demo-mode：内嵌 CASES 即完整口径（三案逐字=seed）
+  if (!/^INV-(CN|SG)-\d{4}-\d{4}$/.test(id)) {
+    showBanner(`案件号 ${id} 格式非法（应为 INV-{CN|SG}-2026-NNNN，FN-0-13）——回退演示案件`, 'danger'); return false; }
+  try {
+    const api = await IHUB_API.getJSON('/v1/cases/' + encodeURIComponent(id),
+                    { view: 'full', instance: IHUB_API.instanceOfCase(id) });
+    if (api.detail_level !== 'full') {
+      showBanner(`案件 ${id} 为列表级案件（full 详情由 M3 受理管线生成）；演示详情覆盖三 full 案件`, 'warn'); return false; }
+    CASES[id] = apiToPageCase(api); return true;
+  } catch (e) {
+    if (e.status === 404) { showBanner(`案件 ${id} 不存在（CASE_NOT_FOUND）——已回退演示案件 0387（深链可分享性校验 FN-0-14）`, 'danger'); return false; }
+    if (e.status === 403) { showBanner(`无权访问 ${id}（E_TENANT_MISMATCH · 租户四隔离 FN-0-11）——已回退演示案件`, 'danger'); return false; }
+    console.warn('详情取数失败，本案件回退内嵌 mock：', e.message || e); return true;
+  }
+}
+async function loadCaseAsync(id){
+  const ok = await refreshCase(id);
+  if (ok) { hideBanner(); }
+  else if (CASES[id] === undefined) { id = 'INV-CN-2026-0387'; }   // 友好回退（banner 保留说明原因）
+  return loadCase(id);
+}
+
+/* ═══════════════════════ 渲染 ═══════════════════════ */
+let cur = null, curId = null, flatFields = [];
+
+function loadCase(id){
+  curId = id; cur = JSON.parse(JSON.stringify(CASES[id]));
+  const q = new URLSearchParams(location.search); if(q.get('case')!==id){ q.set('case',id); history.replaceState(null,'','?'+q.toString()); }
+  document.getElementById('case-switch').value = id;
+  document.title = `${id} · 票据案件详情 · Invoice Intelligence & Compliance Hub`;
+
+  /* 面包屑 + 状态 */
+  document.getElementById('bc-case').textContent = id;
+  renderStatus();
+
+  /* 左栏元信息 */
+  const m = cur.meta;
+  document.getElementById('m-region').innerHTML =
+    `<span class="inline-block text-[11px] px-2 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium">${m.ext}</span>
+     <span class="inline-block ml-1.5 text-[12px] text-ink-2 dark:text-gray-400">${m.region}</span>`;
+  let rows = [
+    ['票据类型', m.type], ['关联 PO', `<b class="num text-primary">${m.po}</b>`],
+    ['供应商', `${m.supplier} <span class="text-ink-3 num">（${m.supId}）</span>`],
+    ['案件金额', `<b class="num text-[14px]">${m.amount}</b>`],
+    ['受理时间', `<span class="num">${m.received}</span>`], ['接入渠道', m.channel],
+    ['目标适配', m.adapter]
+  ];
+  document.getElementById('m-list').innerHTML = rows.map(([k,v])=>`
+    <div class="flex gap-2"><dt class="w-[68px] shrink-0 text-ink-3 dark:text-gray-500">${k}</dt><dd class="flex-1 text-ink-1 dark:text-gray-200 break-all">${v}</dd></div>`).join('');
+  document.getElementById('m-sm2').innerHTML = m.sm2
+    ? `<div class="text-[11px] px-2.5 py-2 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30 text-[#00874A] dark:text-success leading-relaxed">🛡 <b>${m.sm2.text}</b><br><span class="opacity-75">数电票验真核心：验签走授权渠道并留存可验证回执</span></div>`
+    : (m.vat ? `<div class="text-[11px] px-2.5 py-2 rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] text-primary leading-relaxed">🌏 <b>${m.vat}</b><br><span class="opacity-75">海外实例验真走 Tax ID 名录校验，不使用 SM2</span></div>` : '');
+
+  /* Checks */
+  document.getElementById('checks').innerHTML = cur.checks.map(c=>`
+    <div class="flex items-start justify-between gap-2 p-2 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+      <div class="min-w-0">
+        <div class="text-[12px] font-medium num">${c.k}</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 leading-snug">${c.note}</div>
+      </div>
+      <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded border num ${CHECK[c.v].cls}">${c.v}</span>
+    </div>`).join('');
+
+  /* 时间线 */
+  renderTimeline();
+
+  /* 中栏字段 */
+  document.getElementById('schema-tag').textContent = cur.schemaTag;
+  flatFields = [];
+  document.getElementById('fields').innerHTML = cur.groups.map(g=>`
+    <div>
+      <div class="text-[13px] font-semibold text-ink-2 dark:text-gray-300 mb-1.5 pb-1 border-b border-line dark:border-dline">${g.title}</div>
+      <div class="space-y-0.5">${g.fields.map(f=>{ const idx=flatFields.length; flatFields.push(f); return fieldRow(f,idx); }).join('')}</div>
+    </div>`).join('');
+
+  /* 行项目 */
+  document.getElementById('items-src').textContent = cur.items.src;
+  document.getElementById('items-head').innerHTML = cur.items.head.map((h,i)=>`<th class="px-2.5 py-2 font-medium ${i>2?'text-right':''}">${h}</th>`).join('');
+  document.getElementById('items-body').innerHTML = cur.items.rows.map(r=>`
+    <tr class="${r[1].includes('运费')||r[1].includes('Freight')?'bg-warning-light dark:bg-[#2E2417]':''}">
+      ${r.map((c,i)=>`<td class="px-2.5 py-2 ${i===1?'text-left':''} ${i>2?'text-right num':''} ${i===0?'text-ink-3':''}">${c}</td>`).join('')}
+    </tr>`).join('');
+
+  /* AI 建议卡片 */
+  const a = cur.ai;
+  document.getElementById('ai-card').innerHTML = `
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-card bg-warning text-white flex items-center justify-center text-[13px] shrink-0">🤖</span>
+        <div>
+          <div class="text-[13.5px] font-semibold text-ink-1 dark:text-white">AI 差异调查建议 <span class="text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 font-medium ml-1">LLM 仅建议 · 不自动执行</span></div>
+          <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 num">${a.model} · 建议置信度 ${a.conf}%</div>
+        </div>
+      </div>
+      <span class="text-[13px] font-semibold text-ink-1 dark:text-white shrink-0">${a.title}</span>
+    </div>
+    <div class="mt-2.5 text-[12.5px] leading-relaxed text-ink-2 dark:text-gray-300">${a.body}</div>
+    <div class="mt-1.5 text-[12.5px] leading-relaxed text-ink-1 dark:text-gray-200 font-medium">${a.conclude}</div>
+    <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500">⚖️ ${a.ruleNote}</div>
+    <div class="mt-3 flex items-center gap-2.5">
+      <button onclick="adoptAdvice()" class="px-3.5 py-1.5 rounded-card bg-warning text-white text-[12.5px] font-medium hover:opacity-90">采纳建议 → 生成受控 Action（需人工确认）</button>
+      <button onclick="rejectAdvice(this)" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-danger hover:text-danger">不采纳并备注</button>
+      <span class="text-[11px] text-ink-3 dark:text-gray-500 ml-auto">无论采纳与否，均写入案件时间线留痕</span>
+    </div>`;
+
+  /* Link 图 */
+  document.getElementById('link-graph').innerHTML = linkGraph(cur.links, cur.kind);
+
+  /* 右栏原件 */
+  document.getElementById('paper-wrap').innerHTML = cur.paperKey==='cn379' ? paperCN379() : (cur.kind==='cn' ? paperCN() : paperOS());
+  document.getElementById('pv-file').textContent = cur.file.pdf;
+  document.getElementById('pv-note').textContent = cur.file.note;
+  document.getElementById('xml-code').textContent = cur.xml;
+  switchTab('pdf');
+
+  /* 修正字段下拉 */
+  document.getElementById('ed-field').innerHTML = flatFields
+    .map((f,i)=>`<option value="${i}">${f.k}（${f.path}）· 当前 ${f.v}</option>`).join('');
+}
+
+function fieldRow(f, idx){
+  return `
+  <div class="flex items-center gap-2.5 py-[7px] group">
+    <span class="w-[150px] shrink-0 text-[12px] text-ink-3 dark:text-gray-500 truncate ${f.star?'text-danger font-medium':''}">${f.star?'★ ':''}${f.k}</span>
+    <span id="fv-${idx}" class="flex-1 min-w-0 text-[13px] font-medium truncate ${f.star?'text-[15px] num':''}" title="${f.v}">${f.v}</span>
+    <span class="shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${SRC[f.src].cls}">${SRC[f.src].label}</span>
+    <span class="shrink-0">${confBadge(f.conf)}</span>
+    <button onclick="openEv(${idx})" title="查看字段证据" class="shrink-0 text-[11px] px-2 py-1 rounded border border-line dark:border-dline text-ink-3 dark:text-gray-500 hover:border-primary hover:text-primary transition-colors">🔍 证据</button>
+  </div>`;
+}
+
+function renderStatus(){
+  const s = STATUS[cur.meta.status];
+  const badge = `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold num ${s.cls}">${s.label}</span>`;
+  document.getElementById('bc-status').innerHTML = badge;
+  document.getElementById('m-status').innerHTML = badge;
+}
+
+function renderTimeline(){
+  document.getElementById('timeline').innerHTML = cur.timeline.map(e=>{
+    const A = ACTOR[e.a];
+    return `<li class="relative pl-4">
+      <span class="absolute -left-[7px] top-1 w-3 h-3 rounded-full border-2 border-card dark:border-dcard ${A.dot}"></span>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="num text-[11px] text-ink-3 dark:text-gray-500">${e.t}</span>
+        <span class="text-[10px] px-1.5 py-px rounded font-medium ${A.cls}">${A.label}</span>
+        <code class="text-[10px] px-1.5 py-px rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400 num">${e.act}</code>
+      </div>
+      <div class="text-[12.5px] font-medium mt-0.5">${e.d}</div>
+      <div class="text-[11px] text-ink-2 dark:text-gray-400 mt-0.5 leading-relaxed">${e.x}</div>
+      <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-0.5 num">版本：${e.v}</div>
+    </li>`;
+  }).join('');
+}
+
+/* ═══════════════ 证据弹窗 & 原件定位 ═══════════════ */
+let evIdx = null;
+function openEv(i){
+  evIdx = i; const f = flatFields[i], e = f.ev;
+  document.getElementById('ev-body').innerHTML = `
+    <div class="flex items-center justify-between gap-2 pb-3 border-b border-line dark:border-dline">
+      <code class="text-[12px] num text-primary bg-primary-light dark:bg-[#1B2A4A] px-2 py-1 rounded">${f.path}</code>
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] px-2 py-0.5 rounded font-medium ${SRC[f.src].cls}">source: ${f.src}</span>
+        ${confBadge(f.conf)}
+      </div>
+    </div>
+    <div class="mt-3 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline p-3">
+      <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-1">识别值</div>
+      <div class="text-[16px] font-semibold num">${f.v}</div>
+    </div>
+    <table class="w-full mt-3 text-[12px]">
+      <tr class="border-b border-line dark:border-dline"><td class="py-2 text-ink-3 dark:text-gray-500 w-[110px]">原文片段 raw_text</td><td class="py-2 font-medium">“${e.raw}”</td></tr>
+      <tr class="border-b border-line dark:border-dline"><td class="py-2 text-ink-3 dark:text-gray-500">页码 / 坐标 bbox</td><td class="py-2 num">page ${e.page} · ${e.bbox}</td></tr>
+      <tr class="border-b border-line dark:border-dline"><td class="py-2 text-ink-3 dark:text-gray-500">Provider</td><td class="py-2">${e.provider}</td></tr>
+      <tr class="border-b border-line dark:border-dline"><td class="py-2 text-ink-3 dark:text-gray-500">模型版本</td><td class="py-2 num">${e.model}</td></tr>
+      <tr><td class="py-2 text-ink-3 dark:text-gray-500">规则命中</td><td class="py-2 num">${e.rule}</td></tr>
+    </table>`;
+  const btn = document.getElementById('ev-locate');
+  btn.style.display = f.pv ? '' : 'none';
+  btn.onclick = ()=>{ closeEv(); locate(f.pv); };
+  showModal('ev-modal');
+}
+function closeEv(){ hideModal('ev-modal'); }
+
+function locate(pvId){
+  switchTab('pdf');
+  const pv = document.getElementById(pvId), wrap = document.getElementById('paper-wrap');
+  if(!pv || !wrap) return;
+  requestAnimationFrame(()=>{
+    const r = pv.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+    const hl = document.getElementById('hl');
+    hl.style.left = (r.left - w.left - 2) + 'px';
+    hl.style.top  = (r.top - w.top - 2) + 'px';
+    hl.style.width  = (r.width + 4) + 'px';
+    hl.style.height = (r.height + 4) + 'px';
+    hl.classList.remove('hidden');
+    hl.style.animation = 'none'; void hl.offsetWidth; hl.style.animation = '';
+    pv.scrollIntoView({block:'center', behavior:'smooth'});
+    toast('已在原件中定位字段坐标（bbox 高亮）');
+  });
+}
+
+function switchTab(t){
+  const on = 'px-3 py-1.5 text-[12px] font-medium rounded-t-card border-b-2 border-primary text-primary';
+  const off = 'px-3 py-1.5 text-[12px] font-medium rounded-t-card border-b-2 border-transparent text-ink-3 dark:text-gray-500 hover:text-ink-2';
+  document.getElementById('tab-pdf').className = t==='pdf'?on:off;
+  document.getElementById('tab-xml').className = t==='xml'?on:off;
+  document.getElementById('pv-pdf').classList.toggle('hidden', t!=='pdf');
+  document.getElementById('pv-xml').classList.toggle('hidden', t!=='xml');
+}
+
+/* ═══════════════ 受控 Action（二次确认 + 留痕） ═══════════════ */
+const ACTIONS = {
+  release:{ label:'放行案件', icon:'✓', danger:false,
+    warn:'放行后案件将进入 <b>Ariba cXML 建档</b>流程（InvoiceDetailRequest）。请确认：poMatch 差异已有处置结论、authenticity 状态可接受。',
+    to:'RESOLVED' },
+  hold:{ label:'挂起调查', icon:'⏸', danger:false,
+    warn:'案件转入 <b>INVESTIGATING</b>：系统将自动收集 PO / GRN / 合同条款证据（只读），cXML 建档保持挂起。',
+    to:'INVESTIGATING' },
+  return:{ label:'退回供应商', icon:'↩', danger:true,
+    warn:'将生成退回通知（邮件渠道），案件置为 <b>BLOCKED</b>，<b>不会</b>推送目标系统建档。属对外动作，请确认退回理由。',
+    to:'BLOCKED' }
+};
+let pendingAction = null;
+
+function openAction(key, presetNote){
+  pendingAction = key; const A = ACTIONS[key];
+  document.getElementById('act-head').innerHTML = `${A.icon} ${A.label} · 受控写操作二次确认`;
+  document.getElementById('act-warn').innerHTML = A.warn;
+  document.getElementById('act-warn').className = `text-[12px] leading-relaxed rounded-card border p-3 ${A.danger?'border-danger/40 bg-danger-light dark:bg-[#3A2426] text-ink-1 dark:text-gray-200':'border-primary-mid dark:border-[#2A3F6B] bg-primary-light dark:bg-[#1B2A4A] text-ink-1 dark:text-gray-200'}`;
+  document.getElementById('act-case').textContent = curId;
+  document.getElementById('act-status').textContent = cur.meta.status;
+  document.getElementById('act-note').value = presetNote || '';
+  const chk = document.getElementById('act-confirm-chk'); chk.checked = false; chk.onchange = ()=>{
+    const ok = document.getElementById('act-ok');
+    ok.disabled = !chk.checked;
+    ok.className = `px-3.5 py-1.5 rounded-card text-[13px] font-medium text-white ${chk.checked ? (A.danger?'bg-danger hover:opacity-90':'bg-primary hover:bg-[#4080FF]') : 'bg-ink-4 cursor-not-allowed'}`;
+  };
+  chk.onchange();
+  showModal('act-modal');
+}
+function closeAct(){ hideModal('act-modal'); pendingAction=null; }
+
+/* M2 接线（P03 §0 二选一，用户裁决 2026-10-26）：受控 Action 按钮保留五要素弹窗 UI 基准，
+ * 提交不执行、不改本地数据——受控写命令在 M3（受理与写路径）激活后接线
+ * POST /v1/cases/{id}/risk-challenge + /actions/{action}（后端五要素框架 M1 WP1.5 已就绪）。
+ * 页面一致性核对清单（P03 §3）据此口径：弹窗可开、要素齐备、提交为 M3 提示。 */
+const M3_GATE = '受控写命令将在 M3（写路径垂直切片）激活——本次未提交、案件数据未修改（五要素弹窗为 UI 基准预览）';
+function doAction(){
+  closeAct();
+  toast(M3_GATE);
+}
+
+function adoptAdvice(){
+  openAction('release', `采纳 AI 差异解释（${cur.ai.title}，置信度 ${cur.ai.conf}%）：确认为口径差异，按建议处置。人工复核：王莉`);
+}
+function rejectAdvice(btn){
+  toast('不采纳留痕（LLM_ADVICE_REJECTED 入时间线）将在 M3 激活——本次未执行任何修改 · AI 建议未被执行');
+}
+
+/* 人工修正字段（M2 接线口径：弹窗与必填校验为 UI 基准；提交在 M3 接线受控 edit_field 命令） */
+function openEdit(){ showModal('edit-modal'); }
+function closeEdit(){ hideModal('edit-modal'); }
+function doEdit(){
+  const nv = document.getElementById('ed-value').value.trim();
+  const rs = document.getElementById('ed-reason').value.trim();
+  if(!nv || !rs){ toast('新值与修改原因均为必填（审计要求）'); return; }
+  closeEdit();
+  toast(M3_GATE);
+}
+
+/* ═══════════════ 工具 ═══════════════ */
+function showModal(id){ const m=document.getElementById(id); m.classList.remove('hidden'); m.classList.add('flex'); }
+function hideModal(id){ const m=document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex'); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 2800);
+}
+function nowStr(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeEv(); closeAct(); closeEdit(); } });
+
+/* 初始化（M2 接线）：探测后台 → 深链 ?case= 取数（不可达时以内嵌 CASES 演示）· 默认中国数电票案件 */
+(async function boot(){
+  await IHUB_DEMO.probe();
+  await loadCaseAsync(new URLSearchParams(location.search).get('case') || 'INV-CN-2026-0387');
+})();
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='workbench';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

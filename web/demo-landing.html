@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产品演示 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF'},
+      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
+      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
+      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
+      purple:{DEFAULT:'#722ED1',light:'#F5E8FF'},
+      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
+      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
+    },
+    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
+    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',cardhover:'0 4px 16px rgba(29,33,41,.10)'},
+    borderRadius:{card:'8px'}
+  } }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  /* 流程链箭头 */
+  .flow-arrow{position:relative;flex-shrink:0;width:18px;display:flex;align-items:center;justify-content:center;color:#BEDAFF;}
+  .dark .flow-arrow{color:#2A3F6B;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- 顶部细导航（仅演示导航，无业务控件） -->
+<header class="h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-8 flex items-center justify-between sticky top-0 z-40">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="leading-tight">
+      <div class="text-[14px] font-semibold">票据智能与合规中台 · 客户演示</div>
+      <div class="text-[11px] text-ink-3 dark:text-gray-500">v1.2-candidate 蓝图口径 · 2026-10</div>
+    </div>
+  </div>
+  <div class="flex items-center gap-3">
+    <a href="login.html" class="text-[13px] px-3.5 py-1.5 rounded-card bg-primary text-white font-medium hover:bg-[#4080FF] transition-colors">登录平台 →</a>
+    <a href="dashboard-overview.html" class="text-[13px] px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">进入系统总览 →</a>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="深色模式（投屏可切换）">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-8">
+
+  <!-- ═══════════════ ① Hero ═══════════════ -->
+  <section class="pt-14 pb-10 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] text-primary text-[12px] font-medium">
+      面向 SAP Ariba · Oracle Procurement / Payables · Coupa Invoicing · SAP S/4HANA · 企业自研采购应付
+    </div>
+    <h1 class="mt-5 text-[40px] leading-tight font-bold tracking-tight">全球采购平台票据智能与合规中台</h1>
+    <div class="mt-2 text-[18px] text-ink-2 dark:text-gray-400 font-medium tracking-wide">Invoice Intelligence &amp; Compliance Hub <span class="text-ink-3 dark:text-gray-500">for Global Procurement Platforms</span></div>
+    <p class="mt-5 max-w-[860px] mx-auto text-[15px] leading-relaxed text-ink-2 dark:text-gray-300">
+      跨地区供应商发票智能合规适配中台：把不同国家、格式、渠道与 Provider 输出的采购票据，统一转成采购平台 / ERP
+      <b class="text-ink-1 dark:text-white">可用、可信、可审计、可匹配</b>的数据。<br>
+      <b class="text-primary">不替换现有 ERP</b>，增强票据可信化、结构化、合规化与可适配化能力。
+    </p>
+    <!-- 数字摘要（蓝图封面口径） -->
+    <div class="mt-8 flex items-center justify-center gap-4 text-left">
+      <div class="px-5 py-3 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card"><b class="block text-[22px] num text-primary">9 层</b><span class="text-[12px] text-ink-3 dark:text-gray-500">逻辑能力架构</span></div>
+      <div class="px-5 py-3 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card"><b class="block text-[22px] num text-primary">2 实例</b><span class="text-[12px] text-ink-3 dark:text-gray-500">国外已验证 + 中国扩展包</span></div>
+      <div class="px-5 py-3 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card"><b class="block text-[22px] num text-primary">3 类</b><span class="text-[12px] text-ink-3 dark:text-gray-500">稳定接口契约（含 MCP）</span></div>
+      <div class="px-5 py-3 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card"><b class="block text-[22px] num text-primary">L1–L5</b><span class="text-[12px] text-ink-3 dark:text-gray-500">成熟度演进 · 当前 L2 可演示</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ② 核心能力价值链流程图（§3.1） ═══════════════ -->
+  <section class="pb-10">
+    <div class="text-center mb-5">
+      <h2 class="text-[22px] font-semibold">一条链路：从多来源票据到目标系统建档</h2>
+      <div class="text-[13px] text-ink-3 dark:text-gray-500 mt-1">核心价值链可视化 · 每张票据全程案件化（InvoiceCase），任一环节可回溯</div>
+    </div>
+    <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card px-6 py-6 overflow-x-auto">
+      <div class="flex items-stretch gap-0 min-w-[1240px]">
+        <!-- 来源 -->
+        <div class="shrink-0 w-[128px] rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-3 py-3 text-center self-center">
+          <div class="text-[18px]">📥</div>
+          <div class="text-[12.5px] font-semibold mt-1">多来源供应商发票</div>
+          <div class="text-[10.5px] text-ink-3 dark:text-gray-500 mt-1 leading-relaxed">数电票 XML / OFD<br>PDF / 纸质扫描<br>邮箱 · 门户 · API</div>
+        </div>
+        <div class="flow-arrow">➜</div>
+        <!-- 9 步链路 -->
+        <div class="flex-1 grid grid-cols-9 gap-0 items-stretch">
+          <!-- 步骤模板：①接入受理 … ⑨审计追溯 -->
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-primary bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-2 py-3 text-center">
+              <div class="text-[16px]">📮</div>
+              <div class="text-[12px] font-semibold mt-1">接入受理</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">信封解析 · 载体检测 · 非发票过滤</div>
+            </div>
+          </div>
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-purple bg-card dark:bg-[#23282F] border border-line dark:border-dline px-2 py-3 text-center">
+              <div class="text-[16px]">🔌</div>
+              <div class="text-[12px] font-semibold mt-1">Provider 编排</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">直读 / OCR / VLM 智能路由 · 降级</div>
+            </div>
+            <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-purple text-white shadow-card">可插拔 Provider</span>
+          </div>
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-primary bg-card dark:bg-[#23282F] border border-line dark:border-dline px-2 py-3 text-center">
+              <div class="text-[16px]">🔍</div>
+              <div class="text-[12px] font-semibold mt-1">可解释证据</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">坐标 · 原文 · 置信度 · 版本</div>
+            </div>
+            <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-primary text-white shadow-card">字段级证据链</span>
+          </div>
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-primary bg-card dark:bg-[#23282F] border border-line dark:border-dline px-2 py-3 text-center">
+              <div class="text-[16px]">🧩</div>
+              <div class="text-[12px] font-semibold mt-1">融合校验</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">多源互证 · 冲突解释 · 统一 Schema</div>
+            </div>
+          </div>
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-danger bg-card dark:bg-[#23282F] border border-line dark:border-dline px-2 py-3 text-center">
+              <div class="text-[16px]">🛡</div>
+              <div class="text-[12px] font-semibold mt-1">合规风控</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">验真 · 查重 · 归档 · 风险前置</div>
+            </div>
+          </div>
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-success bg-card dark:bg-[#23282F] border border-line dark:border-dline px-2 py-3 text-center">
+              <div class="text-[16px]">🎯</div>
+              <div class="text-[12px] font-semibold mt-1">匹配就绪</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">PO 推断 · 税码映射 · 尾差处理</div>
+            </div>
+          </div>
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-primary bg-card dark:bg-[#23282F] border border-line dark:border-dline px-2 py-3 text-center">
+              <div class="text-[16px]">🔗</div>
+              <div class="text-[12px] font-semibold mt-1">目标系统适配</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">cXML / AP Invoice / Adapter</div>
+            </div>
+          </div>
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-warning bg-card dark:bg-[#23282F] border border-line dark:border-dline px-2 py-3 text-center">
+              <div class="text-[16px]">🗂</div>
+              <div class="text-[12px] font-semibold mt-1">审计追溯</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">案件时间线 · 全量留痕 · 可断点续跑</div>
+            </div>
+            <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-warning text-white shadow-card">InvoiceCase 全链路审计</span>
+          </div>
+          <div class="relative px-1">
+            <div class="h-full rounded-card border-t-[3px] border-t-success bg-success-light dark:bg-[#1C2E22] border border-success/30 px-2 py-3 text-center">
+              <div class="text-[16px]">📊</div>
+              <div class="text-[12px] font-semibold mt-1">持续优化</div>
+              <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">标注沉淀 · 策略校准 · SLA 运营</div>
+            </div>
+          </div>
+        </div>
+        <div class="flow-arrow">➜</div>
+        <!-- 目标 -->
+        <div class="shrink-0 w-[128px] rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-3 py-3 text-center self-center">
+          <div class="text-[18px]">🏢</div>
+          <div class="text-[12.5px] font-semibold mt-1">目标采购平台</div>
+          <div class="text-[10.5px] text-ink-3 dark:text-gray-500 mt-1 leading-relaxed">SAP Ariba · Oracle<br>Coupa · S/4HANA<br>自研应付 · Data Lake</div>
+        </div>
+      </div>
+      <!-- 双实例横贯标注 -->
+      <div class="min-w-[1240px] mt-4 flex items-center gap-3">
+        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-primary-mid to-transparent dark:via-[#2A3F6B]"></div>
+        <span class="shrink-0 text-[11px] font-semibold px-3 py-1 rounded-full bg-primary text-white shadow-card">🇨🇳 中国实例（CN 扩展包）＋ 🌏 海外实例（已验证）—— 同一骨架 · 同一 Schema · 同一接口面</span>
+        <div class="flex-1 h-px bg-gradient-to-r from-transparent via-primary-mid to-transparent dark:via-[#2A3F6B]"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ③ 四大差异化价值卡片 ═══════════════ -->
+  <section class="pb-10">
+    <div class="text-center mb-5">
+      <h2 class="text-[22px] font-semibold">四大差异化价值</h2>
+      <div class="text-[13px] text-ink-3 dark:text-gray-500 mt-1">区别于单点 OCR 工具与传统票税产品的长期价值</div>
+    </div>
+    <div class="grid grid-cols-4 gap-4">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5 hover:shadow-cardhover transition-shadow">
+        <div class="w-10 h-10 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-[20px]">🔗</div>
+        <div class="mt-3 text-[15px] font-semibold">跨平台适配</div>
+        <div class="mt-1.5 text-[12.5px] text-ink-2 dark:text-gray-400 leading-relaxed">兼容 SAP Ariba（cXML）、Oracle Procurement / Payables、Coupa Invoicing、S/4HANA Supplier Invoice 与自研应付系统。新目标系统按 Adapter 模板开发，复用统一 Schema 出口。</div>
+        <div class="mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500">采购平台管流程 · 中台管票据可信化</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5 hover:shadow-cardhover transition-shadow">
+        <div class="w-10 h-10 rounded-card bg-success-light dark:bg-[#1C2E22] flex items-center justify-center text-[20px]">🌏</div>
+        <div class="mt-3 text-[15px] font-semibold">全球双实例治理</div>
+        <div class="mt-1.5 text-[12.5px] text-ink-2 dark:text-gray-400 leading-relaxed">中国数电票 <b>CN 扩展包</b>（XML 直读 · SM2 验签 · 红字票 · 归档合规）＋ 海外 <b>Supplier Invoice / Credit Note</b>（VAT / GST · 多币种 · Peppol / UBL），统一在同一套全球票据 Schema 上。</div>
+        <div class="mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500">不用中国逻辑硬套海外，也不用海外逻辑弱化中国合规</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5 hover:shadow-cardhover transition-shadow">
+        <div class="w-10 h-10 rounded-card bg-warning-light dark:bg-[#2E2417] flex items-center justify-center text-[20px]">🔍</div>
+        <div class="mt-3 text-[15px] font-semibold">可解释票据 AI</div>
+        <div class="mt-1.5 text-[12.5px] text-ink-2 dark:text-gray-400 leading-relaxed">每个字段带来源、置信度、原文片段、坐标与模型 / Provider 版本；InvoiceCase 案件全链路审计留痕。<b class="text-danger">拒绝黑盒 OCR</b>，LLM 只做建议，关键业务判断交给规则引擎。</div>
+        <div class="mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500">产品红线：错误自动放行率趋近 0</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5 hover:shadow-cardhover transition-shadow">
+        <div class="w-10 h-10 rounded-card bg-purple-light dark:bg-[#2B1F3D] flex items-center justify-center text-[20px]">🔌</div>
+        <div class="mt-3 text-[15px] font-semibold">可插拔服务商</div>
+        <div class="mt-1.5 text-[12.5px] text-ink-2 dark:text-gray-400 leading-relaxed">兼容百望云、诺诺、客户已有 OCR、私有化自托管 OCR / VLM、海外 e-invoicing 服务；地区 / 票种级路由策略可配置、可模拟、可切换。<b>不被任何单一厂商锁定</b>。</div>
+        <div class="mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500">已购百望云的客户：继续使用，我们负责转成采购平台可用数据</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ④ Demo 快速演示入口 ═══════════════ -->
+  <section class="pb-10">
+    <div class="text-center mb-5">
+      <h2 class="text-[22px] font-semibold">现场演示入口</h2>
+      <div class="text-[13px] text-ink-3 dark:text-gray-500 mt-1">以下为可运行的演示资产（ariba-mock + invoice-platform 闭环 · L2 可演示级）</div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <a href="case-detail.html?case=INV-SG-2026-0125" class="group rounded-card bg-card dark:bg-dcard border-2 border-line dark:border-dline hover:border-primary shadow-card hover:shadow-cardhover p-5 flex items-center gap-4 transition-all">
+        <span class="w-12 h-12 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-[24px] shrink-0">🌏</span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-[15px] font-semibold group-hover:text-primary">演示 1 · 海外新加坡 Ariba 端到端链路</span>
+          <span class="block text-[12px] text-ink-3 dark:text-gray-500 mt-1 leading-relaxed">供应商 PDF → 邮箱 → 定时 Job → SAP DOX → 第三方 OCR → 匹配 / Check → cXML → Ariba Invoice Document（已验证实例 · 案件时间线逐步回放）</span>
+        </span>
+        <span class="text-primary text-[18px] shrink-0 group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+      <a href="case-detail.html?case=INV-CN-2026-0387" class="group rounded-card bg-card dark:bg-dcard border-2 border-line dark:border-dline hover:border-primary shadow-card hover:shadow-cardhover p-5 flex items-center gap-4 transition-all">
+        <span class="w-12 h-12 rounded-card bg-success-light dark:bg-[#1C2E22] flex items-center justify-center text-[24px] shrink-0">🇨🇳</span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-[15px] font-semibold group-hover:text-primary">演示 2 · 中国数电票 XML 直读 + SM2 验签</span>
+          <span class="block text-[12px] text-ink-3 dark:text-gray-500 mt-1 leading-relaxed">不用 OCR：结构化原件直读 23 字段 + 国密验签 + 授权查验回执归档（CN 扩展包 · 右栏可切换查看 XML 源文件）</span>
+        </span>
+        <span class="text-primary text-[18px] shrink-0 group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+      <a href="case-detail.html?case=INV-SG-2026-0125" class="group rounded-card bg-card dark:bg-dcard border-2 border-line dark:border-dline hover:border-primary shadow-card hover:shadow-cardhover p-5 flex items-center gap-4 transition-all">
+        <span class="w-12 h-12 rounded-card bg-warning-light dark:bg-[#2E2417] flex items-center justify-center text-[24px] shrink-0">🗂</span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-[15px] font-semibold group-hover:text-primary">演示 3 · 单票据 InvoiceCase 证据详情</span>
+          <span class="block text-[12px] text-ink-3 dark:text-gray-500 mt-1 leading-relaxed">字段级证据弹窗（来源 / 置信度 / 坐标 / 原文片段 / 版本）· 对象-Link 关系图 · AI 差异调查建议与受控 Action 人工确认</span>
+        </span>
+        <span class="text-primary text-[18px] shrink-0 group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+      <a href="provider-orchestration.html" class="group rounded-card bg-card dark:bg-dcard border-2 border-line dark:border-dline hover:border-primary shadow-card hover:shadow-cardhover p-5 flex items-center gap-4 transition-all">
+        <span class="w-12 h-12 rounded-card bg-purple-light dark:bg-[#2B1F3D] flex items-center justify-center text-[24px] shrink-0">🔌</span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-[15px] font-semibold group-hover:text-primary">演示 4 · Provider 切换与路由策略</span>
+          <span class="block text-[12px] text-ink-3 dark:text-gray-500 mt-1 leading-relaxed">多厂商共存启停 · 地区 / 票种级路由编辑 · 置信度阈值与人工兜底 · 策略模拟测试区即时预演执行链路</span>
+        </span>
+        <span class="text-primary text-[18px] shrink-0 group-hover:translate-x-1 transition-transform">→</span>
+      </a>
+    </div>
+    <!-- 次级入口 -->
+    <div class="mt-4 flex items-center justify-center gap-3 text-[13px]">
+      <span class="text-ink-3 dark:text-gray-500">更多演示：</span>
+      <a href="dashboard-overview.html" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">📊 总览仪表盘（双实例切换）</a>
+      <a href="agent-workbench.html" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">🤖 Agent 对话 + 复核工作台双模式</a>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ⑤ 底部对比简述（轻量） ═══════════════ -->
+  <section class="pb-12">
+    <div class="rounded-card bg-ink-1 dark:bg-dcard text-white px-8 py-6 flex items-center gap-8">
+      <div class="flex-1">
+        <div class="text-[15px] font-semibold">与普通 OCR 工具的区别</div>
+        <p class="mt-2 text-[13.5px] leading-relaxed text-gray-300">
+          我们是面向<b class="text-white">采购应付流程</b>的票据能力中台——重点在<b class="text-white">系统适配、合规审计、跨地区治理</b>，而非单纯图片文字识别。
+          识别能力本身可插拔（含客户已购的百望云 / 诺诺 / 自有 OCR），平台核心价值在于把这些输出统一成可信、可解释、可匹配、可建档的采购发票数据。
+        </p>
+      </div>
+      <div class="shrink-0 grid grid-cols-3 gap-3 text-center text-[11.5px]">
+        <div class="px-3 py-2.5 rounded-card bg-white/10"><div class="text-gray-400 line-through">单点识别输出</div><div class="mt-1 font-medium">全链路案件化处理</div></div>
+        <div class="px-3 py-2.5 rounded-card bg-white/10"><div class="text-gray-400 line-through">黑盒 AI 结果</div><div class="mt-1 font-medium">字段级证据可审计</div></div>
+        <div class="px-3 py-2.5 rounded-card bg-white/10"><div class="text-gray-400 line-through">绑定单一厂商</div><div class="mt-1 font-medium">Provider 可插拔编排</div></div>
+      </div>
+    </div>
+    <div class="mt-5 text-center text-[11px] text-ink-3 dark:text-gray-600 leading-relaxed">
+      本页为对外演示宣讲页（Why / What 层）· 内容口径以《产品定位与实施蓝图 v1.2-candidate》为准 · 演示数据均为虚构样例<br>
+      业务范围：供应商采购发票（PO / non-PO / 数电票 / 海外 Supplier Invoice / Credit Note）· 不含员工报销、销项开票与税务申报
+    </div>
+  </section>
+</main>
+
+</body>
+</html>

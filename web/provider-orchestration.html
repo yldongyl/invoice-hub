@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Provider 编排配置 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF'},
+      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
+      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
+      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
+      purple:{DEFAULT:'#722ED1',light:'#F5E8FF'},
+      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
+      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
+    },
+    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
+    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',cardhover:'0 4px 16px rgba(29,33,41,.10)'},
+    borderRadius:{card:'8px'}
+  } }
+}
+</script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .switch{position:relative;width:36px;height:20px;border-radius:10px;background:#C9CDD4;cursor:pointer;transition:background .2s;flex-shrink:0;}
+  .switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .switch.on{background:#00B42A;} .switch.on::after{left:18px;}
+  .switch.blue.on{background:#165DFF;}
+  .toast{transition:opacity .3s,transform .3s;}
+  .sim-step{opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s;}
+  .sim-step.show{opacity:1;transform:none;}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header ═══════════════ -->
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <span class="text-ink-3 dark:text-gray-500">平台配置</span>
+      <span class="text-ink-4">›</span>
+      <b class="text-ink-1 dark:text-white">Provider 编排配置</b>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <span id="policy-ver" class="text-[11px] num px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">策略版本 v2026-10-20.3 · 已发布</span>
+    <button onclick="toggleDark()" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="深色模式">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">陈铮 · 实施管理员</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">Provider 管理权限</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-4">
+
+  <!-- ═══════════════ ① Provider 总览 ═══════════════ -->
+  <section class="rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-6 py-4 flex items-center justify-between gap-6">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-card bg-primary flex items-center justify-center shrink-0 text-white">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <div class="text-[15px] font-semibold">Provider 编排层 <span class="text-[11px] font-medium ml-1 px-1.5 py-0.5 rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">本层只是编排层 · 不绑定任何单一厂商</span></div>
+        <div class="text-[12px] text-ink-2 dark:text-gray-300 mt-0.5">可插拔识别与查验服务编排：支持客户已有服务、商业厂商（百望云 / 诺诺 / 海外 e-invoicing）、私有化自托管 VLM / OCR。新增 Provider 只需实现 SPI 并注册路由，不改平台内核。</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 shrink-0 text-[12px]">
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b id="stat-on" class="block text-[16px] num text-success">5</b><span class="text-ink-3 dark:text-gray-500">启用中</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-primary">4</b><span class="text-ink-3 dark:text-gray-500">路由策略</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num">99.7%</b><span class="text-ink-3 dark:text-gray-500">30 日可用性</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ② Provider 实例管理表格 ═══════════════ -->
+  <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+    <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+      <div>
+        <div class="text-[15px] font-semibold">Provider 实例管理</div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">多厂商共存 · 客户级 / 票种级 / 地区级路由 · 成本统计 · SLA 监控 · 数据合规配置（不留存、不训练合同条款）</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="toast('SPI 契约文档：最小实现契约 + 结果归一化格式 + 路由/降级配置（演示入口）')" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">📄 Provider SPI 契约</button>
+        <button onclick="addProvider()" class="px-3 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">+ 注册新 Provider</button>
+      </div>
+    </div>
+    <table class="w-full text-[13px]">
+      <thead>
+        <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+          <th class="px-5 py-2.5 font-medium">Provider 名称</th>
+          <th class="px-3 py-2.5 font-medium">类型</th>
+          <th class="px-3 py-2.5 font-medium">部署模式</th>
+          <th class="px-3 py-2.5 font-medium">启用状态</th>
+          <th class="px-3 py-2.5 font-medium">SLA 监控</th>
+          <th class="px-3 py-2.5 font-medium text-right">成本统计（本月）</th>
+          <th class="px-3 py-2.5 font-medium text-right pr-5">操作</th>
+        </tr>
+      </thead>
+      <tbody id="pv-tbody" class="divide-y divide-line dark:divide-dline"></tbody>
+    </table>
+    <!-- 内置能力说明行：避免暗示自研 OCR 为平台能力主体 -->
+    <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">
+      ℹ️ <b>平台内置解析能力（非 Provider、非自研 OCR）</b>：XML / OFD / PDF 文本层直读采用成熟解析库 + Schema 校验，属工程化接入能力；常规票据识别与查验一律由上方可插拔 Provider 承担，平台<b class="text-danger">不自研通用 OCR 基础模型</b>，核心技术投入在路由、证据融合与关键字段校验。
+    </div>
+  </section>
+
+  <!-- ═══════════════ ③ 路由策略编辑器 + ④ 模拟测试区 ═══════════════ -->
+  <section class="grid grid-cols-12 gap-4">
+
+    <!-- 左：路由策略编辑器 -->
+    <div class="col-span-7 space-y-4">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+          <div>
+            <div class="text-[15px] font-semibold">路由策略编辑器</div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">识别路由是<b class="text-ink-2 dark:text-gray-400">可配置的策略资产</b>：按 地区 | 票种 | 票据载体 匹配，按优先级顺序执行；准确率不足的 Provider 降低优先级但保留兼容</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="addRule()" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">+ 新增规则</button>
+            <button onclick="publishPolicy()" class="px-3 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">发布策略</button>
+          </div>
+        </div>
+        <div id="rule-list" class="p-4 space-y-3"></div>
+      </div>
+
+      <!-- 全局兜底与降级 -->
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+        <div class="text-[14px] font-semibold mb-3">全局降级与人工兜底</div>
+        <div class="grid grid-cols-2 gap-x-8 gap-y-3 text-[13px]">
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-ink-2 dark:text-gray-400">fallback 降级策略</label>
+            <select class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+              <option>沿路由链顺次降级 → 人工兜底</option><option>直接人工兜底</option><option>并行取最高置信度</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-ink-2 dark:text-gray-400">Provider 全部不可用时</label>
+            <select class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+              <option>案件挂起 + 告警运维（保留断点续跑）</option><option>仅人工兜底</option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="block text-ink-2 dark:text-gray-400 mb-1.5">人工兜底触发条件（任一命中即进复核工作台）</label>
+            <div class="flex flex-wrap gap-2 text-[12px]">
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked class="accent-[#165DFF]">最终置信度低于阈值</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked class="accent-[#165DFF]">关键字段冲突（金额/税额/发票号）</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked class="accent-[#165DFF]">验真 / 验签失败</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked class="accent-[#165DFF]">Provider 全链路降级失败</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" class="accent-[#165DFF]">新客户首月全量复核</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：策略模拟测试区 -->
+    <div class="col-span-5">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden sticky top-[72px]">
+        <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
+          <div class="text-[15px] font-semibold flex items-center gap-2">策略模拟测试区 <span class="text-[10px] px-1.5 py-0.5 rounded bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30 font-medium">预演 · 不产生真实调用</span></div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">输入样例票据类型 → 预览当前策略将选择的 Provider 与完整执行链路</div>
+        </div>
+        <div class="px-5 py-4 space-y-3 border-b border-line dark:border-dline">
+          <div class="grid grid-cols-3 gap-3">
+            <div><label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">地区</label>
+              <select id="sim-region" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-2 text-[12.5px] focus:outline-none focus:border-primary">
+                <option>CN 中国</option><option selected>APAC 亚太</option><option>EU 欧盟</option></select></div>
+            <div><label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">票种</label>
+              <select id="sim-type" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-2 text-[12.5px] focus:outline-none focus:border-primary">
+                <option>数电票</option><option>增值税专票/普票（纸质扫描）</option><option selected>Supplier Invoice</option><option>Credit Note</option></select></div>
+            <div><label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">票据载体</label>
+              <select id="sim-carrier" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-2 text-[12.5px] focus:outline-none focus:border-primary">
+                <option>XML 原件 + PDF</option><option>OFD</option><option selected>PDF（原生文本层）</option><option>纸质扫描 / 图片</option></select></div>
+          </div>
+          <button onclick="runSim()" class="w-full py-2.5 rounded-card bg-primary text-white text-[13.5px] font-medium hover:bg-[#4080FF] shadow-card">▶ 模拟路由执行</button>
+        </div>
+        <div id="sim-out" class="px-5 py-4 min-h-[240px]">
+          <div class="text-[12.5px] text-ink-3 dark:text-gray-500 leading-relaxed">
+            选择样例票据类型后点击模拟。模拟引擎将按当前策略（含未发布的草稿改动）推演：<br><br>
+            ① 命中哪条路由规则 → ② 逐个 Provider 的执行 / 降级过程 → ③ 交叉验证步骤 → ④ 最终落点（自动通过 / 人工兜底）与预估成本、时延。
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
+    Provider 编排与路由策略仅服务采购发票 / 供应商发票处理 · 变更全部记入审计日志（操作人 / 时间 / 前后值）· v1.2-candidate 蓝图口径
+  </footer>
+</main>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[640px]"></div>
+
+<script>
+/* ═══════════════ Provider 实例数据 ═══════════════ */
+const PROVIDERS = [
+  { id:'bw',   name:'百望云', tag:'商业厂商', type:'国内查验 + OCR', deploy:'API（SaaS）', on:true,
+    sla:{lv:'ok', txt:'99.95% · P95 2.1s'}, cost:'¥12,480 · ¥0.08/张 · 15.6万张', note:'合同含「不留存、不训练」条款 ✓' },
+  { id:'nn',   name:'诺诺', tag:'商业厂商', type:'国内查验 + OCR', deploy:'API（SaaS）', on:true,
+    sla:{lv:'ok', txt:'99.90% · P95 2.8s'}, cost:'¥5,230 · ¥0.06/张 · 8.7万张', note:'合同含「不留存、不训练」条款 ✓' },
+  { id:'cust', name:'客户自有 OCR', tag:'客户已有', type:'OCR 识别', deploy:'客户环境 API', on:true,
+    sla:{lv:'warn', txt:'99.20% · P95 8.2s ⚠ 超阈值 8s'}, cost:'¥0（客户内部结算）· 4.2万张', note:'接入走 Provider SPI 归一化契约' },
+  { id:'self', name:'自托管 OCR-VLM', tag:'私有化', type:'OCR / VLM 文档理解', deploy:'私有化自托管（GPU）', on:true,
+    sla:{lv:'ok', txt:'99.80% · P95 3.4s'}, cost:'GPU 分摊 ¥0.02/张 · 9.1万张', note:'数据不出客户控制域 · 输出仅作证据源，非天然可信' },
+  { id:'sg',   name:'海外 e-invoicing（新加坡）', tag:'商业厂商', type:'海外 e-invoicing / tax compliance', deploy:'API（SaaS）', on:true,
+    sla:{lv:'ok', txt:'99.85% · P95 1.9s'}, cost:'S$1,860 · S$0.05/张 · 3.7万张', note:'覆盖 Peppol / UBL / GST 校验' },
+  { id:'man',  name:'人工兜底', tag:'平台内置', type:'人工复核通道', deploy:'平台复核工作台', on:true, lock:true,
+    sla:{lv:'ok', txt:'队列 SLA：高风险 30 分钟内认领'}, cost:'按复核工时计 · 本月 1,284 张', note:'所有降级链路的最终兜底，不可停用' }
+];
+
+function slaBadge(s){
+  const cls = s.lv==='ok' ? 'bg-success-light dark:bg-[#1C2E22] text-success border-success/30' : 'bg-warning-light dark:bg-[#2E2417] text-warning border-warning/30';
+  return `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium border num ${cls}">${s.txt}</span>`;
+}
+function tagCls(t){
+  return t==='商业厂商' ? 'bg-primary-light dark:bg-[#1B2A4A] text-primary'
+       : t==='客户已有' ? 'bg-success-light dark:bg-[#1C2E22] text-success'
+       : t==='私有化'   ? 'bg-purple-light dark:bg-[#2B1F3D] text-purple'
+       : 'bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-400 border border-line dark:border-dline';
+}
+function renderProviders(){
+  document.getElementById('pv-tbody').innerHTML = PROVIDERS.map((p,i)=>`
+    <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+      <td class="px-5 py-3">
+        <div class="flex items-center gap-2">
+          <b class="font-medium">${p.name}</b>
+          <span class="text-[10px] px-1.5 py-px rounded font-medium ${tagCls(p.tag)}">${p.tag}</span>
+        </div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">${p.note}</div>
+      </td>
+      <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${p.type}</td>
+      <td class="px-3 py-3 text-[12px] whitespace-nowrap"><span class="px-2 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">${p.deploy}</span></td>
+      <td class="px-3 py-3"><div class="flex items-center gap-2"><div class="switch ${p.on?'on':''} ${p.lock?'opacity-50':''}" onclick="togglePv(${i})"></div><span class="text-[11px] ${p.on?'text-success':'text-ink-3 dark:text-gray-500'}">${p.lock?'常开兜底':(p.on?'已启用':'已停用')}</span></div></td>
+      <td class="px-3 py-3">${slaBadge(p.sla)}</td>
+      <td class="px-3 py-3 text-right num text-[12px] whitespace-nowrap">${p.cost}</td>
+      <td class="px-3 py-3 pr-5 text-right whitespace-nowrap">
+        <button onclick="editPv(${i})" class="text-primary text-[12px] hover:underline mr-3">编辑</button>
+        <button id="test-${p.id}" onclick="testPv(${i})" class="text-[12px] px-2 py-1 rounded border border-line dark:border-dline text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">测试连通</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('stat-on').textContent = PROVIDERS.filter(p=>p.on).length;
+}
+function togglePv(i){
+  const p = PROVIDERS[i];
+  if(p.lock){ toast('「人工兜底」是所有降级链路的最终兜底，不可停用'); return; }
+  p.on = !p.on;
+  renderProviders();
+  toast(p.on ? `已启用「${p.name}」· 变更记入审计日志` : `⚠ 已停用「${p.name}」· 引用该 Provider 的路由策略将自动跳过并降级至链上下一个（留痕于审计日志）`);
+}
+function editPv(i){ toast(`编辑「${PROVIDERS[i].name}」：凭证走 KMS/Vault 管理，界面不回显（演示入口）· 数据合规配置：区域 ${PROVIDERS[i].deploy.includes('私有化')?'数据不出域':'按合同约束'}`); }
+function testPv(i){
+  const p = PROVIDERS[i], btn = document.getElementById('test-'+p.id);
+  btn.disabled = true; btn.textContent = '测试中…'; btn.classList.add('opacity-60');
+  setTimeout(()=>{
+    btn.disabled = false; btn.textContent = '测试连通'; btn.classList.remove('opacity-60');
+    const ms = p.id==='man' ? '—' : (120 + (i*137)%680) + ' ms';
+    toast(`✓「${p.name}」连通测试通过 · 握手 ${ms} · 结果归一化格式校验 OK · 已记入审计日志`);
+  }, 1100);
+}
+function addProvider(){ toast('注册新 Provider：实现 Provider SPI 最小契约（识别/查验 + 结果归一化）→ 配置凭证（KMS）→ 注册路由 → 灰度启用。不改平台内核（演示入口）'); }
+
+/* ═══════════════ 路由策略规则 ═══════════════ */
+let RULES = [
+  { id:1, on:true, region:'CN 中国', type:'数电票', carrier:'XML 原件 + PDF',
+    chain:['XML 直读（内置解析）','百望云'], thr:0.85, cross:false,
+    desc:'优先 XML 结构化直读（能直读的不送 OCR）；解析失败或票面不一致时路由百望云 OCR 交叉核对；置信度 < 0.85 进人工复核' },
+  { id:2, on:true, region:'CN 中国', type:'增值税专票/普票（纸质扫描）', carrier:'纸质扫描 / 图片',
+    chain:['百望云','诺诺','客户自有 OCR'], thr:0.88, cross:true,
+    desc:'商业 OCR 优先，双 Provider 顺次降级；开启多源交叉验证（授权查验结果 × OCR 票面 × 金额勾稽）' },
+  { id:3, on:true, region:'APAC 亚太 / EU 欧盟', type:'Supplier Invoice', carrier:'PDF（原生文本层）',
+    chain:['海外 e-invoicing（新加坡）','自托管 OCR-VLM'], thr:0.85, cross:true,
+    desc:'海外实例：优先文本层直读 + e-invoicing Provider；降级至自托管 VLM（数据不出域）；GST/VAT 字段交叉验证' },
+  { id:4, on:true, region:'APAC 亚太 / EU 欧盟', type:'Credit Note', carrier:'PDF（原生文本层）',
+    chain:['海外 e-invoicing（新加坡）','自托管 OCR-VLM'], thr:0.90, cross:true,
+    desc:'Credit Note 冲减关系影响付款，阈值上调至 0.90；未关联原票一律人工确认 Link 后放行' }
+];
+let ruleSeq = 5;
+
+function renderRules(){
+  document.getElementById('rule-list').innerHTML = RULES.map((r,i)=>`
+    <div class="rounded-card border ${r.on?'border-line dark:border-dline':'border-dashed border-ink-4/50 dark:border-dline opacity-60'} bg-card dark:bg-dcard p-4 ${i===0?'':''}">
+      <div class="flex items-center gap-2.5">
+        <span class="w-6 h-6 rounded-full ${r.on?'bg-primary text-white':'bg-surface dark:bg-[#23282F] text-ink-3'} text-[11px] font-semibold flex items-center justify-center num shrink-0">${i+1}</span>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-[11.5px] px-2 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium">${r.region}</span>
+          <span class="text-ink-4">|</span>
+          <span class="text-[11.5px] px-2 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success font-medium">${r.type}</span>
+          <span class="text-ink-4">|</span>
+          <span class="text-[11.5px] px-2 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">${r.carrier}</span>
+        </div>
+        <div class="ml-auto flex items-center gap-1.5 shrink-0">
+          <div class="switch blue ${r.on?'on':''}" onclick="RULES[${i}].on=!RULES[${i}].on;renderRules();toast('规则「${r.type}」已${r.on?'启用':'停用（草稿）'}')"></div>
+          <button onclick="moveRule(${i},-1)" ${i===0?'disabled':''} class="w-6 h-6 rounded border border-line dark:border-dline text-ink-3 hover:text-primary hover:border-primary disabled:opacity-30 text-[11px]" title="提升优先级">▲</button>
+          <button onclick="moveRule(${i},1)" ${i===RULES.length-1?'disabled':''} class="w-6 h-6 rounded border border-line dark:border-dline text-ink-3 hover:text-primary hover:border-primary disabled:opacity-30 text-[11px]" title="降低优先级">▼</button>
+          <button onclick="delRule(${i})" class="w-6 h-6 rounded border border-line dark:border-dline text-ink-3 hover:text-danger hover:border-danger text-[11px]" title="删除规则">✕</button>
+        </div>
+      </div>
+      <!-- 路由链 -->
+      <div class="mt-3 flex items-center gap-1.5 flex-wrap text-[12px]">
+        <span class="text-ink-3 dark:text-gray-500 mr-1">路由链（顺次降级）：</span>
+        ${r.chain.map((c,ci)=>`
+          <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline font-medium whitespace-nowrap">🔌 ${c}</span>
+          ${ci<r.chain.length-1?'<span class="text-ink-4">→</span>':''}`).join('')}
+        <span class="text-ink-4">→</span>
+        <span class="px-2 py-1 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-warning font-medium whitespace-nowrap">🙋 人工兜底</span>
+      </div>
+      <!-- 参数 -->
+      <div class="mt-3 flex items-center gap-6 flex-wrap text-[12px]">
+        <label class="flex items-center gap-2 text-ink-2 dark:text-gray-400">置信度阈值
+          <input type="number" step="0.01" min="0.5" max="0.99" value="${r.thr}" onchange="RULES[${i}].thr=parseFloat(this.value)||0.85;renderRules();toast('阈值已更新为 '+RULES[${i}].thr+'（草稿，发布后生效并留痕）')"
+            class="w-16 num rounded border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2 py-1 text-[12px] focus:outline-none focus:border-primary">
+          <span class="text-ink-3 dark:text-gray-500">低于阈值 → 降级 / 人工复核</span>
+        </label>
+        <label class="flex items-center gap-2 text-ink-2 dark:text-gray-400 cursor-pointer" title="交叉验证须来自不同证据类别（结构化原件、页面文本、金额勾稽、外部授权查验）；同类模型对比投票不构成有效交叉验证">
+          多引擎并行交叉验证
+          <span class="switch blue ${r.cross?'on':''}" onclick="event.preventDefault();RULES[${i}].cross=!RULES[${i}].cross;renderRules();toast(RULES[${i}].cross?'已开启交叉验证：仅接受异构证据源互证，同类模型重复投票被自动排除':'已关闭交叉验证（草稿）')"></span>
+        </label>
+      </div>
+      <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">📋 ${r.desc}</div>
+    </div>`).join('');
+}
+function moveRule(i,d){ const j=i+d; if(j<0||j>=RULES.length)return; [RULES[i],RULES[j]]=[RULES[j],RULES[i]]; renderRules(); toast(`优先级调整：「${RULES[j].type}」→ 第 ${j+1} 位（草稿）`); }
+function delRule(i){ const r=RULES.splice(i,1)[0]; renderRules(); toast(`已删除规则「${r.region} | ${r.type}」（草稿，发布后生效并留痕）`); }
+function addRule(){
+  RULES.push({ id:ruleSeq++, on:false, region:'EU 欧盟', type:'Peppol / UBL 电子发票', carrier:'XML（UBL 2.1）',
+    chain:['海外 e-invoicing（新加坡）','自托管 OCR-VLM'], thr:0.85, cross:true,
+    desc:'新增草稿规则：Peppol 网络接入票据 UBL 直读优先，VAT ID 走 EU 名录校验' });
+  renderRules(); toast('已新增草稿规则（未启用）· 发布前请先在右侧模拟测试');
+}
+let ver = 3;
+function publishPolicy(){
+  ver++; const d=new Date();
+  document.getElementById('policy-ver').textContent = `策略版本 v2026-10-${(d.getDate()<10?'0':'')+d.getDate()}.${ver} · 已发布`;
+  toast(`✓ 策略已发布 v2026-10-…${ver} · 变更 diff、操作人（陈铮）、时间已记入不可篡改审计日志 · 旧版本保留可回滚`);
+}
+
+/* ═══════════════ 模拟测试引擎 ═══════════════ */
+const SIM_CONF = {
+  '数电票':                              {'XML 直读（内置解析）':0.99, '百望云':0.97},
+  '增值税专票/普票（纸质扫描）':          {'百望云':0.82, '诺诺':0.91, '客户自有 OCR':0.88},
+  'Supplier Invoice':                    {'海外 e-invoicing（新加坡）':0.93, '自托管 OCR-VLM':0.90},
+  'Credit Note':                         {'海外 e-invoicing（新加坡）':0.78, '自托管 OCR-VLM':0.74}
+};
+const SIM_COST = { 'XML 直读（内置解析）':'¥0', '百望云':'¥0.08', '诺诺':'¥0.06', '客户自有 OCR':'¥0（内部结算）', '海外 e-invoicing（新加坡）':'S$0.05', '自托管 OCR-VLM':'¥0.02（GPU 分摊）' };
+const SIM_MS   = { 'XML 直读（内置解析）':'380 ms', '百望云':'2.1 s', '诺诺':'2.8 s', '客户自有 OCR':'8.2 s', '海外 e-invoicing（新加坡）':'1.9 s', '自托管 OCR-VLM':'3.4 s' };
+
+function runSim(){
+  const region = document.getElementById('sim-region').value;
+  const type   = document.getElementById('sim-type').value;
+  const carrier= document.getElementById('sim-carrier').value;
+  const out = document.getElementById('sim-out');
+
+  /* 规则匹配（模拟按地区+票种，载体纳入命中说明） */
+  const rule = RULES.filter(r=>r.on).find(r =>
+      type===r.type && (r.region.includes(region.split(' ')[0]) || region.startsWith(r.region.split(' ')[0]) || r.region.includes(region)) );
+  if(!rule){
+    out.innerHTML = `<div class="text-[13px] p-3 rounded-card bg-danger-light dark:bg-[#3A2426] border border-danger/30 text-danger">
+      ✕ 未命中任何启用规则：「${region} | ${type} | ${carrier}」<br>
+      <span class="text-[12px] text-ink-2 dark:text-gray-300 mt-1 block">按全局兜底策略 → 案件直接进入<b>人工兜底</b>队列并告警运维。建议新增规则覆盖该组合。</span></div>`;
+    return;
+  }
+
+  const confs = SIM_CONF[type] || {};
+  const steps = [];
+  steps.push({ st:'info', t:`命中规则 #${RULES.indexOf(rule)+1}「${rule.region} | ${rule.type}」`, d:`载体：${carrier} · 置信度阈值 ${rule.thr} · 交叉验证 ${rule.cross?'开启':'关闭'}` });
+  steps.push({ st:'ok', t:'① 接入与信封解析 → 载体检测与分流', d:`检测载体：${carrier} · 原件摘要（SHA-256）登记`, ms:'120 ms' });
+
+  let final = null, ci = 1;
+  for(const p of rule.chain){
+    if(!PROVIDERS.some(x=>x.on && p.includes(x.name)) && !p.includes('内置')){
+      steps.push({ st:'skip', t:`${roman(ci++)} ${p}`, d:'Provider 已停用 → 按路由链自动跳过（降级留痕）' });
+      continue;
+    }
+    const c = confs[p] ?? 0.9;
+    if(c >= rule.thr){
+      steps.push({ st:'ok', t:`${roman(ci++)} ${p} → 识别成功`, d:`字段级置信度 ${c.toFixed(2)} ≥ 阈值 ${rule.thr} · 证据（坐标/原文片段/模型版本）已挂案件`, ms:SIM_MS[p]||'—', cost:SIM_COST[p]||'—' });
+      final = { p, c };
+      break;
+    } else {
+      steps.push({ st:'fail', t:`${roman(ci++)} ${p} → 置信度不足`, d:`${c.toFixed(2)} < 阈值 ${rule.thr} · 结果与证据仍保留（可解释）· 触发 fallback 降级至链上下一个`, ms:SIM_MS[p]||'—', cost:SIM_COST[p]||'—' });
+    }
+  }
+
+  if(final){
+    if(rule.cross){
+      steps.push({ st:'ok', t:`${roman(ci++)} 多源交叉验证（异构证据源）`, d:'结构化原件 × 页面文本 × 金额勾稽 × 外部授权查验 互证一致 · <b>同类模型对比投票已被排除</b>（相似数据与方法可能犯同样错误）', ms:'+400 ms' });
+    }
+    steps.push({ st:'done', t:`✓ 模拟终点：${final.p} 结果进入融合校验 → 合规风控`, d:`综合置信度 ${final.c.toFixed(2)} · 无需人工兜底 · 后续：查重 / 验真 / PO 匹配就绪化 → Adapter 建档（Ariba cXML）` });
+  } else {
+    steps.push({ st:'manual', t:`${roman(ci)} 路由链耗尽 → 🙋 人工兜底触发`, d:`全部 Provider 置信度低于 ${rule.thr} · 案件进入复核工作台（NEEDS_REVIEW）· 已有识别结果与证据随案件带入，人工修正后沉淀为规则` });
+  }
+
+  /* 渲染（克制地逐条浮现） */
+  out.innerHTML = `
+    <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-2 num">模拟输入：${region} | ${type} | ${carrier} · 基于当前草稿策略推演</div>
+    <ol class="space-y-2">${steps.map((s,i)=>`
+      <li class="sim-step" style="transition-delay:${i*180}ms">
+        <div class="flex items-start gap-2 p-2.5 rounded-card border ${
+          s.st==='ok'||s.st==='done' ? 'border-success/30 bg-success-light dark:bg-[#1C2E22]' :
+          s.st==='fail' ? 'border-warning/30 bg-warning-light dark:bg-[#2E2417]' :
+          s.st==='manual' ? 'border-warning/40 bg-warning-light dark:bg-[#2E2417]' :
+          s.st==='skip' ? 'border-dashed border-line dark:border-dline bg-surface dark:bg-[#23282F] opacity-70' :
+          'border-primary-mid dark:border-[#2A3F6B] bg-primary-light dark:bg-[#1B2A4A]'}">
+          <span class="mt-0.5 shrink-0">${
+            s.st==='ok'?'<span class="text-success">●</span>': s.st==='done'?'<span class="text-success">✔</span>':
+            s.st==='fail'?'<span class="text-warning">▼</span>': s.st==='manual'?'<span class="text-warning">🙋</span>':
+            s.st==='skip'?'<span class="text-ink-4">○</span>':'<span class="text-primary">ℹ</span>'}</span>
+          <div class="min-w-0 flex-1">
+            <div class="text-[12.5px] font-medium leading-snug">${s.t}</div>
+            <div class="text-[11.5px] text-ink-2 dark:text-gray-400 mt-0.5 leading-relaxed">${s.d}</div>
+            ${s.ms||s.cost?`<div class="text-[10.5px] text-ink-3 dark:text-gray-500 mt-1 num">⏱ ${s.ms||'—'} · 💰 ${s.cost||'—'}</div>`:''}
+          </div>
+        </div>
+      </li>`).join('')}
+    </ol>
+    <div class="sim-step mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed" style="transition-delay:${steps.length*180}ms">
+      ⚖️ 模拟为只读预演，不产生真实 Provider 调用与费用；发布策略后变更 diff 记入审计日志。阈值与路由基于实测准确率持续校准。
+    </div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    out.querySelectorAll('.sim-step').forEach(el=>el.classList.add('show'));
+  }));
+}
+function roman(n){ return ['①','②','③','④','⑤','⑥','⑦'][n-1] || n+'.'; }
+
+/* ═══════════════ 通用 ═══════════════ */
+function toggleDark(){ document.documentElement.classList.toggle('dark'); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.innerHTML=msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3600);
+}
+
+renderProviders();
+renderRules();
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='provider';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

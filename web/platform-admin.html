@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平台支撑管理 · 全球采购平台票据智能与合规中台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        primary: { DEFAULT: '#165DFF', light: '#F0F5FF', mid: '#BEDAFF' },
+        success: { DEFAULT: '#00B42A', light: '#E8FFEA' },
+        warning: { DEFAULT: '#FF7D00', light: '#FFF7E8' },
+        danger:  { DEFAULT: '#F53F3F', light: '#FFECE8' },
+        purple:  { DEFAULT: '#722ED1', light: '#F5E8FF' },
+        ink:  { 1: '#1D2129', 2: '#4E5969', 3: '#86909C', 4: '#C9CDD4' },
+        line: '#E5E6EB',
+        surface: '#F7F8FA',
+        card: '#FFFFFF',
+        dcard: '#1D2129',
+        dline: '#333A45'
+      },
+      fontFamily: { sans: ['Inter', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'sans-serif'] },
+      boxShadow: { card: '0 2px 8px rgba(29,33,41,.06)', cardhover: '0 4px 16px rgba(29,33,41,.10)' },
+      borderRadius: { card: '8px' }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: Inter, 'Noto Sans SC', 'Source Han Sans SC', sans-serif; }
+  .num { font-variant-numeric: tabular-nums; }
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .switch{position:relative;width:36px;height:20px;border-radius:10px;background:#C9CDD4;cursor:pointer;transition:background .2s;flex-shrink:0;}
+  .switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .switch.on{background:#00B42A;} .switch.on::after{left:18px;}
+  .switch.blue.on{background:#165DFF;}
+  .toast{transition:opacity .3s,transform .3s;}
+  .tab-btn{position:relative;padding:10px 4px;font-size:14px;color:#4E5969;font-weight:500;transition:color .15s;}
+  .dark .tab-btn{color:#9CA3AF;}
+  .tab-btn:hover{color:#165DFF;}
+  .tab-btn.active{color:#165DFF;font-weight:600;}
+  .tab-btn.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#165DFF;border-radius:1px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .modal-mask{display:none;}
+  .modal-mask.open{display:flex;}
+
+  /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+
+<!-- ═══════════ 全局菜单（百炼式悬浮抽屉 · 不占布局） ═══════════ -->
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div>
+        <div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div>
+      </div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">复核运营</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
+    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
+    <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
+  </div>
+</aside>
+
+
+<!-- ═══════════════ Header ═══════════════ -->
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <nav class="text-[13px] flex items-center gap-1.5">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary">总览仪表盘</a>
+      <span class="text-ink-4">›</span>
+      <span class="text-ink-3 dark:text-gray-500">平台配置</span>
+      <span class="text-ink-4">›</span>
+      <b class="text-ink-1 dark:text-white">平台支撑管理</b>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <span class="text-[11px] num px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">环境：生产 · 双实例（CN / SG）· 平台版本 v1.2-candidate</span>
+    <button onclick="toggleDark()" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="深色模式">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+    </button>
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
+      <div class="leading-tight">
+        <div class="text-[13px] font-medium">陈铮 · 平台管理员</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500">平台支撑层 · 租户与配置权限</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-4">
+
+  <!-- ═══════════════ ① 蓝图口径横幅 ═══════════════ -->
+  <section class="rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-6 py-4 flex items-center justify-between gap-6">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-card bg-primary flex items-center justify-center shrink-0 text-white">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z" stroke-linejoin="round"/><circle cx="12" cy="11" r="2.5"/><path d="M12 13.5V16" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <div class="text-[15px] font-semibold text-ink-1 dark:text-white">平台支撑管理 <span class="text-[11px] font-medium ml-1 px-1.5 py-0.5 rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">§4.1-⑨平台支撑层 · 身份与权限为设计期预留、非即时交付（2026-10-19确认）</span></div>
+        <div class="text-[12px] text-ink-2 dark:text-gray-300 mt-0.5">租户隔离 / 角色权限 / 服务监控 / 全局配置 / 标注数据沉淀 —— 只服务供应商采购发票（Supplier Invoice）业务；高风险配置变更一律二次确认并写入不可篡改审计日志</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 shrink-0 text-[12px]">
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-primary">2</b><span class="text-ink-3 dark:text-gray-500">生产租户</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-success">6/6</b><span class="text-ink-3 dark:text-gray-500">服务健康</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-warning">1</b><span class="text-ink-3 dark:text-gray-500">告警触发中</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ② Tab 导航 ═══════════════ -->
+  <nav class="border-b border-line dark:border-dline flex items-center gap-8 px-1">
+    <button class="tab-btn active" data-tab="tab-tenant" onclick="switchTab('tab-tenant', this)">租户与权限</button>
+    <button class="tab-btn" data-tab="tab-monitor" onclick="switchTab('tab-monitor', this)">监控与告警</button>
+    <button class="tab-btn" data-tab="tab-config" onclick="switchTab('tab-config', this)">配置中心</button>
+    <button class="tab-btn" data-tab="tab-annotate" onclick="switchTab('tab-annotate', this)">标注与数据沉淀</button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       Tab 1 · 租户与权限
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="tab-tenant" class="tab-panel active space-y-4">
+
+    <!-- 租户卡片 ×2 -->
+    <section class="grid grid-cols-2 gap-4">
+      <!-- 中国租户 -->
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-[18px] shrink-0">🇨🇳</div>
+            <div class="min-w-0">
+              <div class="text-[15px] font-semibold truncate">澜坞（上海）采购科技有限公司</div>
+              <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5 num">租户 ID：TENANT-CN-LANWU-001 · 中国实例</div>
+            </div>
+          </div>
+          <span class="shrink-0 px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">生产</span>
+        </div>
+        <div class="mt-3 p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[12px] leading-relaxed">
+          <span class="text-ink-3 dark:text-gray-500">数据区域：</span><b>中国 · 境内存储</b>
+          <span class="ml-1 text-[11px] px-1.5 py-px rounded bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30">数据驻留要求待 H39 确认 · 推断</span>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-2 text-[12px] text-center">
+          <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>发票池隔离</div>
+          <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>配置隔离</div>
+          <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>Provider Key 隔离</div>
+        </div>
+      </div>
+      <!-- 海外租户 -->
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-[18px] shrink-0">🌏</div>
+            <div class="min-w-0">
+              <div class="text-[15px] font-semibold truncate">Lanwu Procurement Technology (Singapore) Pte. Ltd.</div>
+              <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5 num">租户 ID：TENANT-SG-LANWU-001 · 海外实例</div>
+            </div>
+          </div>
+          <span class="shrink-0 px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">生产</span>
+        </div>
+        <div class="mt-3 p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[12px] leading-relaxed">
+          <span class="text-ink-3 dark:text-gray-500">数据区域：</span><b>新加坡（Singapore Region）</b>
+          <span class="ml-1 text-[11px] px-1.5 py-px rounded bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">海外 Supplier Invoice / Credit Note</span>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-2 text-[12px] text-center">
+          <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>发票池隔离</div>
+          <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>配置隔离</div>
+          <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>Provider Key 隔离</div>
+        </div>
+      </div>
+    </section>
+    <div class="rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-4 py-2.5 text-[12px] text-ink-2 dark:text-gray-400">
+      🔒 <b>租户隔离：数据、配置、Provider Key、发票池四隔离</b> —— 任一租户的票据数据、识别配置、Provider 凭证与案件池均不与其他租户共享；隔离边界变更属高风险操作，须二次确认并写入审计日志。
+    </div>
+
+    <!-- 角色权限矩阵 -->
+    <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+        <div>
+          <div class="text-[15px] font-semibold">角色权限矩阵 <span class="text-[10px] px-1.5 py-0.5 rounded bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30 font-medium ml-1">设计期预留 · 只读展示</span></div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">支持对接客户 IdP/SSO（SAP IAS、xsuaa、OIDC/SAML）—— 设计期预留；权限变更属高风险操作，开放编辑后保存须二次确认 + 写入不可篡改审计日志</div>
+        </div>
+        <button onclick="toast('权限矩阵编辑为设计期预留（§4.1-⑨，非即时交付）· 开放后：变更保存 → 二次确认 → diff 写入不可篡改审计日志')" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-3 dark:text-gray-400 cursor-not-allowed opacity-60">编辑矩阵（预留）</button>
+      </div>
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-5 py-2.5 font-medium">角色 \ 权限</th>
+            <th class="px-3 py-2.5 font-medium text-center">案件查看</th>
+            <th class="px-3 py-2.5 font-medium text-center">受控 Action 放行/退回</th>
+            <th class="px-3 py-2.5 font-medium text-center">字段修正</th>
+            <th class="px-3 py-2.5 font-medium text-center">Provider 配置</th>
+            <th class="px-3 py-2.5 font-medium text-center">策略发布</th>
+            <th class="px-3 py-2.5 font-medium text-center">审计导出</th>
+            <th class="px-3 py-2.5 font-medium text-center pr-5">租户管理</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line dark:divide-dline" id="rbac-tbody"></tbody>
+      </table>
+      <div class="px-5 py-2.5 text-[12px] text-ink-3 dark:text-gray-500 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F]">
+        ⚖️ AI/LLM 不持有任何矩阵内角色：放行 / 退回 / 字段修正等业务写操作只能由「复核员」及以上人工执行（受控 Action + 留痕），系统不静默写回。
+      </div>
+    </section>
+
+    <!-- SSO 连接状态 + 用户列表 -->
+    <section class="grid grid-cols-12 gap-4">
+      <div class="col-span-5 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+        <div class="text-[15px] font-semibold">SSO / IdP 连接状态</div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5 mb-3">身份源对接为设计期预留能力，状态为演示样例</div>
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
+            <div class="flex items-center gap-2.5"><span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
+              <span><b class="block text-[13px]">SAP IAS</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">Identity Authentication Service</span></span></div>
+            <span class="text-[11.5px] px-2 py-0.5 rounded bg-card dark:bg-dcard border border-success/30 text-success font-medium num">已连接 · SAML 2.0</span>
+          </div>
+          <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
+            <div class="flex items-center gap-2.5"><span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
+              <span><b class="block text-[13px]">xsuaa</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">SAP BTP Extended Services UAA</span></span></div>
+            <span class="text-[11.5px] px-2 py-0.5 rounded bg-card dark:bg-dcard border border-success/30 text-success font-medium num">已连接 · OIDC</span>
+          </div>
+          <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline">
+            <div class="flex items-center gap-2.5"><span class="w-5 h-5 rounded-full bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-500 flex items-center justify-center text-[12px] shrink-0 border border-line dark:border-dline">○</span>
+              <span><b class="block text-[13px]">客户 AD</b><span class="block text-[11px] text-ink-3 dark:text-gray-500">Active Directory（LDAP / ADFS）</span></span></div>
+            <span class="text-[11.5px] px-2 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium">未连接</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-span-7 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
+          <div class="text-[15px] font-semibold">平台用户</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">全部用户已启用 MFA（多因素认证）· 登录与操作留痕于不可篡改审计日志</div>
+        </div>
+        <table class="w-full text-[13px]">
+          <thead>
+            <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+              <th class="px-5 py-2.5 font-medium">用户</th>
+              <th class="px-3 py-2.5 font-medium">角色</th>
+              <th class="px-3 py-2.5 font-medium">状态</th>
+              <th class="px-3 py-2.5 font-medium">最近登录</th>
+              <th class="px-3 py-2.5 font-medium text-center pr-5">MFA</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line dark:divide-dline" id="user-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       Tab 2 · 监控与告警
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="tab-monitor" class="tab-panel space-y-4">
+
+    <!-- 服务健康卡 ×6 -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="text-[15px] font-semibold">服务健康（近 24h）</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">监控图表为手写内联 SVG 迷你曲线（吞吐 / 延迟 / 利用率），数据为演示样例</div>
+        </div>
+        <span class="text-[11.5px] px-2 py-1 rounded-card bg-success-light dark:bg-[#1C2E22] text-success border border-success/30 font-medium num">6/6 在线 · 采集自 Prometheus</span>
+      </div>
+      <div class="grid grid-cols-3 gap-4" id="health-grid"></div>
+    </section>
+
+    <!-- 异步任务队列 -->
+    <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+        <div>
+          <div class="text-[15px] font-semibold">异步任务队列</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">断点续跑：单项查验失败只重试相关步骤，不重跑识别 —— InvoiceCase 状态机与证据链保持连续</div>
+        </div>
+        <span class="text-[11.5px] px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 num">Broker：Redis Streams</span>
+      </div>
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-5 py-2.5 font-medium">队列</th>
+            <th class="px-3 py-2.5 font-medium text-right">积压数</th>
+            <th class="px-3 py-2.5 font-medium text-right">消费速率</th>
+            <th class="px-3 py-2.5 font-medium text-right">最老任务年龄</th>
+            <th class="px-3 py-2.5 font-medium pr-5">健康判定</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line dark:divide-dline num" id="queue-tbody"></tbody>
+      </table>
+    </section>
+
+    <!-- 告警规则 -->
+    <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
+        <div class="text-[15px] font-semibold">告警规则</div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">阈值调整属高风险配置变更：保存须二次确认 + 写入不可篡改审计日志（当前为演示开关，变更即时留痕）</div>
+      </div>
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-5 py-2.5 font-medium">规则</th>
+            <th class="px-3 py-2.5 font-medium">级别</th>
+            <th class="px-3 py-2.5 font-medium">通知渠道</th>
+            <th class="px-3 py-2.5 font-medium">当前状态</th>
+            <th class="px-3 py-2.5 font-medium text-center pr-5">启用开关</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line dark:divide-dline" id="alert-tbody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       Tab 3 · 配置中心
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="tab-config" class="tab-panel space-y-4">
+
+    <section class="grid grid-cols-12 gap-4">
+      <!-- 左列：全局识别配置 + 密钥管理 -->
+      <div class="col-span-7 space-y-4">
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+          <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+            <div>
+              <div class="text-[15px] font-semibold">全局识别配置 <span class="text-[10px] px-1.5 py-0.5 rounded bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30 font-medium ml-1">高风险 · 保存需二次确认</span></div>
+              <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">租户级覆盖配置；保存后 diff（变更前后值）写入不可篡改审计日志，旧版本保留可回滚</div>
+            </div>
+            <span id="cfg-ver" class="text-[11px] num px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">配置版本 v2026-10-21.2 · 已发布</span>
+          </div>
+          <div class="p-5 space-y-4 text-[13px]">
+            <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+              <div>
+                <label class="block text-ink-2 dark:text-gray-400 mb-1.5" for="cfg-threshold">置信度阈值（全局默认）</label>
+                <input id="cfg-threshold" type="number" step="0.01" min="0.5" max="0.99" value="0.85"
+                  onchange="draft.threshold=this.value;markDirty()"
+                  class="w-full num rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[13px] focus:outline-none focus:border-primary">
+                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">具体数值以《平台功能规格说明书》为准，此处为租户级覆盖</div>
+              </div>
+              <div>
+                <label class="block text-ink-2 dark:text-gray-400 mb-1.5" for="cfg-tolerance">尾差容差（金额勾稽）</label>
+                <input id="cfg-tolerance" type="text" value="±0.06"
+                  onchange="draft.tolerance=this.value;markDirty()"
+                  class="w-full num rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[13px] focus:outline-none focus:border-primary">
+                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">不含税金额 + 税额 vs 价税合计的允许尾差；超容差 → 冲突规则命中转人工</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline">
+              <div><b class="block font-medium">低置信强制人工</b><span class="block text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5">低于阈值的识别结果一律进入复核工作台（NEEDS_REVIEW），禁止自动放行 —— 产品红线：错误自动放行率趋近 0</span></div>
+              <div id="sw-lowconf" class="switch on" onclick="toggleDraftSwitch('lowConfManual', this)"></div>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline">
+              <div><b class="block font-medium">新客户首月全量复核</b><span class="block text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5">新接入客户首月所有 InvoiceCase 全量人工复核，用于校准阈值与映射规则</span></div>
+              <div id="sw-newcust" class="switch" onclick="toggleDraftSwitch('newCustReview', this)"></div>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
+            <span id="cfg-dirty" class="text-[12px] text-ink-3 dark:text-gray-500">无未发布改动</span>
+            <div class="flex items-center gap-2">
+              <button onclick="resetDraft()" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">重置</button>
+              <button onclick="saveConfig()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">保存并发布</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 密钥管理说明 -->
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+          <div class="flex items-center justify-between">
+            <div class="text-[15px] font-semibold flex items-center gap-2">密钥管理
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium">KMS / Vault 托管</span>
+            </div>
+            <button onclick="toast('凭证轮换走 KMS/Vault 流程（申请 → 审批 → 自动轮换 → 审计留痕）· 界面任何位置不回显明文（演示入口）')" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">🔑 凭证轮换（KMS 流程）</button>
+          </div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1 mb-3">Provider 凭证 / API Key / 证书由 KMS/Vault 统一管理，界面一律掩码显示、不回显明文；密钥访问与轮换全部留痕</div>
+          <div class="grid grid-cols-2 gap-2.5 text-[12.5px]">
+            <div class="flex items-center justify-between p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline"><span class="text-ink-2 dark:text-gray-400">百望云 API Key</span><code class="num text-ink-3 dark:text-gray-500">bw-cloud-key: ****c92d</code></div>
+            <div class="flex items-center justify-between p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline"><span class="text-ink-2 dark:text-gray-400">诺诺 API Key</span><code class="num text-ink-3 dark:text-gray-500">nn-invoice-key: ****7f31</code></div>
+            <div class="flex items-center justify-between p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline"><span class="text-ink-2 dark:text-gray-400">海外 e-invoicing 证书</span><code class="num text-ink-3 dark:text-gray-500">sg-einv-cert: ****a05e</code></div>
+            <div class="flex items-center justify-between p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline"><span class="text-ink-2 dark:text-gray-400">自托管 OCR-VLM 端点凭证</span><code class="num text-ink-3 dark:text-gray-500">self-vlm-api: ****d417</code></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右列：数据合规配置 -->
+      <div class="col-span-5 space-y-4">
+        <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+          <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
+            <div class="text-[15px] font-semibold">数据合规配置 <span class="text-[10px] px-1.5 py-0.5 rounded bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30 font-medium ml-1">数据区域属高风险项</span></div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">数据区域路由变更纳入左侧「保存并发布」的二次确认与审计 diff</div>
+          </div>
+          <div class="p-5 space-y-4 text-[13px]">
+            <div>
+              <label class="block text-ink-2 dark:text-gray-400 mb-1.5" for="cfg-region">数据区域路由</label>
+              <select id="cfg-region" onchange="draft.regionRoute=this.value;markDirty()"
+                class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[12.5px] focus:outline-none focus:border-primary">
+                <option selected>中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域</option>
+                <option>全部票据 → 新加坡区域（仅海外租户可用）</option>
+                <option>全部票据 → 境内 Provider 优先（仅中国租户可用）</option>
+              </select>
+              <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">中国数电票 / 增值税票不出境；海外 Supplier Invoice / Credit Note 在新加坡区域处理</div>
+            </div>
+            <div>
+              <div class="text-ink-2 dark:text-gray-400 mb-1.5">第三方 Provider 合同条款登记（不留存、不训练）</div>
+              <div class="space-y-1.5 text-[12.5px]">
+                <div class="flex items-center justify-between p-2 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30"><span>百望云</span><span class="text-success font-medium">✓ 已登记 · 合同 §7.3</span></div>
+                <div class="flex items-center justify-between p-2 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30"><span>诺诺</span><span class="text-success font-medium">✓ 已登记 · 合同 §5.1</span></div>
+                <div class="flex items-center justify-between p-2 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30"><span>海外 e-invoicing（新加坡）</span><span class="text-success font-medium">✓ 已登记 · DPA Annex 2</span></div>
+              </div>
+            </div>
+            <div class="p-3 rounded-card border border-line dark:border-dline">
+              <div class="text-ink-2 dark:text-gray-400 mb-1.5">模型数据边界（LLM 调用范围）</div>
+              <ul class="text-[12.5px] space-y-1 text-ink-2 dark:text-gray-400 leading-relaxed">
+                <li>· 调用范围：<b class="text-ink-1 dark:text-white">字段语义与差异解释</b>（qwen-finance-v2 / ocr-vlm-2026-10），不用于确定性判定</li>
+                <li>· Prompt / 响应保存期限：<b class="text-ink-1 dark:text-white num">30 天</b>，到期自动清理</li>
+                <li>· LLM 调用审计：<span class="text-success font-medium">开启 ✓</span>（每次调用记录模型版本、输入摘要、输出与采纳情况）</li>
+              </ul>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline">
+              <span class="text-ink-2 dark:text-gray-400">证据与档案保存期限策略</span>
+              <a href="case-detail.html" class="text-primary text-[12.5px] hover:underline shrink-0">查看归档页（案件证据链 / 审计留痕）→</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-4 py-3 text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">
+          🧾 <b>审计口径</b>：本页所有配置变更（阈值、容差、开关、数据区域路由）保存时弹出二次确认，展示变更前后值 diff，确认后写入不可篡改审计日志（操作人 / 时间 / 前后值 / trace），并同步通知目标平台适配器侧（SAP Ariba / Oracle / Coupa / S4 / 自研）不受影响的兼容性校验结果。
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       Tab 4 · 标注与数据沉淀
+  ═══════════════════════════════════════════════════════════ -->
+  <div id="tab-annotate" class="tab-panel space-y-4">
+
+    <!-- 统计卡 ×4 -->
+    <section class="grid grid-cols-4 gap-4">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[13px] text-ink-2 dark:text-gray-400">本月标注样本</div>
+        <div class="mt-2 flex items-end gap-2"><span class="num text-[28px] font-semibold leading-none">1,284</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">张</span></div>
+        <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">▲ 9.6% 环比 · 数电票 / 增值税票 / 海外票全票种</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[13px] text-ink-2 dark:text-gray-400">待标注队列</div>
+        <div class="mt-2 flex items-end gap-2"><span class="num text-[28px] font-semibold leading-none text-warning">312</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">张</span></div>
+        <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">真实错误样本优先入队 · 平均等待 1.8 天</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[13px] text-ink-2 dark:text-gray-400">标注一致率</div>
+        <div class="mt-2 flex items-end gap-2"><span class="num text-[28px] font-semibold leading-none text-success">97.2%</span></div>
+        <div class="mt-2 w-full h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:97.2%"></div></div>
+        <div class="mt-1.5 text-[12px] text-ink-3 dark:text-gray-500">双人背靠背标注 · 分歧样本三审仲裁</div>
+      </div>
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+        <div class="text-[13px] text-ink-2 dark:text-gray-400">沉淀规则数</div>
+        <div class="mt-2 flex items-end gap-2"><span class="num text-[28px] font-semibold leading-none text-primary">46</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">条</span></div>
+        <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">人工修正 → 规则引擎可执行条款（版本化 + 可回滚）</div>
+      </div>
+    </section>
+
+    <!-- 样本回流说明 -->
+    <section class="rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-5 py-4 flex items-center justify-between gap-6">
+      <div class="text-[12.5px] text-ink-2 dark:text-gray-300 leading-relaxed">
+        <b class="text-[13.5px] text-ink-1 dark:text-white block mb-1">🔁 样本回流闭环（蓝图 §4.8 重点投入区）</b>
+        真实错误样本（识别错、验真异常、字段冲突、人工修正记录）自动回流至标注队列 → 评估纠错机制 → 沉淀为规则与评估集；模型与规则的效果用<b>同一批真实样本</b>持续评估，防止策略资产退化。
+      </div>
+      <div class="flex items-center gap-3 shrink-0 p-3 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline">
+        <div>
+          <b class="block text-[13px]">标注数据不出客户控制域</b>
+          <span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">标注样本与产出规则仅存储于客户租户边界内</span>
+        </div>
+        <div id="sw-datastay" class="switch on" onclick="toggleDataStay(this)"></div>
+      </div>
+    </section>
+
+    <!-- 标注任务表 -->
+    <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+      <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
+        <div class="text-[15px] font-semibold">标注任务</div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">票种覆盖中国数电票 / 增值税专票与海外 Supplier Invoice / Credit Note · 字段级标注（含坐标与原文片段对齐）</div>
+      </div>
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
+            <th class="px-5 py-2.5 font-medium">任务 ID</th>
+            <th class="px-3 py-2.5 font-medium">票种</th>
+            <th class="px-3 py-2.5 font-medium text-right">样本数</th>
+            <th class="px-3 py-2.5 font-medium w-[220px]">进度</th>
+            <th class="px-3 py-2.5 font-medium">标注员</th>
+            <th class="px-3 py-2.5 font-medium pr-5">状态</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line dark:divide-dline" id="anno-tbody"></tbody>
+      </table>
+      <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] text-[12px] text-ink-2 dark:text-gray-400 leading-relaxed">
+        📌 <b>持续运维 rationale</b>：策略资产、映射规则与 Schema 必须与客户业务现实同步（供应商开票习惯变化、税改、新票种、新目标平台字段），否则会退化为「没人信的宽表」—— 标注与规则沉淀是长期运营投入，不是一次性实施动作。
+      </div>
+    </section>
+  </div>
+
+  <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
+    平台支撑管理 · 仅服务供应商采购发票（Supplier Invoice）业务 · 数据为演示样例 · v1.2-candidate 蓝图口径
+  </footer>
+</main>
+
+<!-- ═══════════════ 二次确认弹窗（高风险配置变更） ═══════════════ -->
+<div id="confirm-mask" class="modal-mask fixed inset-0 z-50 bg-ink-1/50 dark:bg-black/60 items-center justify-center">
+  <div class="w-[560px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-4 border-b border-line dark:border-dline flex items-center gap-2.5">
+      <span class="w-8 h-8 rounded-card bg-danger-light dark:bg-[#3A2426] flex items-center justify-center text-danger shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v5M12 16.5v.5" stroke-linecap="round"/><path d="M10.3 3.9L2.6 17.4A2 2 0 0 0 4.3 20.4h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" stroke-linejoin="round"/></svg>
+      </span>
+      <div>
+        <div class="text-[15px] font-semibold">高风险配置变更 · 二次确认</div>
+        <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5">确认后变更立即生效，并<b class="text-danger">写入不可篡改审计日志</b>（操作人 / 时间 / 前后值 / trace）</div>
+      </div>
+    </div>
+    <div class="px-5 py-4">
+      <div class="text-[12px] text-ink-3 dark:text-gray-500 mb-2">变更明细（diff · 前值 → 后值）</div>
+      <div id="diff-list" class="space-y-1.5 max-h-[240px] overflow-y-auto"></div>
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
+      <span class="text-[11.5px] text-ink-3 dark:text-gray-500">操作人：陈铮 · 平台管理员 · 旧版本保留可回滚</span>
+      <div class="flex items-center gap-2">
+        <button onclick="closeConfirm()" class="px-4 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">取消</button>
+        <button onclick="confirmPublish()" class="px-4 py-1.5 rounded-card bg-danger text-white text-[12.5px] font-medium hover:bg-[#F76560]">确认发布并写入审计日志</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[640px]"></div>
+
+<script>
+/* ════════════════ 通用：Tab / 深色 / Toast ════════════════ */
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+function toggleDark(){ document.documentElement.classList.toggle('dark'); }
+function toast(msg){
+  const t = document.getElementById('toast'); t.innerHTML = msg;
+  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3800);
+}
+
+/* ════════════════ Tab 1 · 角色权限矩阵 + 用户 ════════════════ */
+const PERMS = ['案件查看','受控 Action 放行/退回','字段修正','Provider 配置','策略发布','审计导出','租户管理'];
+const ROLES = [
+  { name:'管理员',    who:'陈铮（平台管理员 / 实施管理员）', grants:[1,1,1,1,1,1,1] },
+  { name:'复核员',    who:'王莉（财务经理 · 亚太采购共享中心）', grants:[1,1,1,0,0,1,0] },
+  { name:'运营',      who:'刘工（平台运营）', grants:[1,0,0,1,0,0,0] },
+  { name:'审计只读',  who:'张审计（只读审计角色）', grants:[1,0,0,0,0,1,0] }
+];
+function yn(v){
+  return v ? '<span class="inline-flex w-5 h-5 rounded-full bg-success-light dark:bg-[#1C2E22] border border-success/30 text-success items-center justify-center text-[11px] font-medium">✓</span>'
+           : '<span class="inline-flex w-5 h-5 rounded-full bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-4 dark:text-gray-600 items-center justify-center text-[11px]">✗</span>';
+}
+document.getElementById('rbac-tbody').innerHTML = ROLES.map(r => `
+  <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+    <td class="px-5 py-3"><b class="font-medium">${r.name}</b><span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">${r.who}</span></td>
+    ${r.grants.map(g => `<td class="px-3 py-3 text-center">${yn(g)}</td>`).join('')}
+  </tr>`).join('');
+
+const USERS = [
+  { name:'王莉',   role:'复核员 · 财务经理', org:'亚太采购共享中心', status:'启用', login:'2026-10-21 09:12（上海）' },
+  { name:'陈铮',   role:'实施管理员 / 平台管理员', org:'澜坞（上海）采购科技', status:'启用', login:'2026-10-21 08:47（上海）' },
+  { name:'刘工',   role:'运营', org:'平台运营组', status:'启用', login:'2026-10-20 22:31（上海）' },
+  { name:'张审计', role:'审计只读', org:'客户内审部（外部只读）', status:'启用', login:'2026-10-18 15:06（新加坡）' }
+];
+document.getElementById('user-tbody').innerHTML = USERS.map(u => `
+  <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+    <td class="px-5 py-3"><div class="flex items-center gap-2.5">
+      <span class="w-7 h-7 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[11px] font-semibold shrink-0">${u.name.slice(0,1)}</span>
+      <span><b class="block font-medium">${u.name}</b><span class="block text-[11px] text-ink-3 dark:text-gray-500">${u.org}</span></span>
+    </div></td>
+    <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${u.role}</td>
+    <td class="px-3 py-3"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">${u.status}</span></td>
+    <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 num whitespace-nowrap">${u.login}</td>
+    <td class="px-3 py-3 pr-5 text-center"><span class="inline-flex items-center gap-1 text-[12px] text-success font-medium">✓ 已启用</span></td>
+  </tr>`).join('');
+
+/* ════════════════ Tab 2 · 服务健康迷你 SVG ════════════════ */
+function sparkline(data, color, id){
+  const W = 260, H = 40, P = 3;
+  const max = Math.max(...data), min = Math.min(...data);
+  const span = (max - min) || 1;
+  const x = i => P + i * (W - 2*P) / (data.length - 1);
+  const y = v => H - P - (v - min) * (H - 2*P) / span;
+  const pts = data.map((v,i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area = `${P},${H-P} ${pts} ${W-P},${H-P}`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="w-full h-10" preserveAspectRatio="none" role="img" aria-label="24小时趋势迷你图">
+    <polygon points="${area}" fill="${color}" opacity="0.10"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(data.length-1).toFixed(1)}" cy="${y(data[data.length-1]).toFixed(1)}" r="2.6" fill="${color}"/>
+  </svg>`;
+}
+const HEALTH = [
+  { name:'应用服务（API / Worker）', meta:'Kubernetes · 3 副本 · 滚动更新', ok:true, badge:'✓ 健康', metric:'吞吐 1,842 req/min', color:'#165DFF',
+    data:[42,45,48,51,49,55,62,70,74,71,68,72,75,73,78,82,79,74,69,64,58,52,47,44] },
+  { name:'PostgreSQL（案件库）', meta:'主从复制 · 流复制延迟 < 1s', ok:true, badge:'✓ 健康', metric:'P95 查询延迟 12 ms', color:'#00B42A',
+    data:[12,11,13,12,14,13,15,18,17,16,15,17,19,18,16,15,17,16,14,13,15,14,12,12] },
+  { name:'对象存储 MinIO（票据原件）', meta:'4 节点 · EC 纠删码 · SHA-256 摘要校验', ok:true, badge:'✓ 健康', metric:'写入成功率 100%', color:'#00B42A',
+    data:[60,62,65,63,68,72,75,78,80,77,74,76,79,81,78,75,72,70,68,66,64,63,61,60] },
+  { name:'消息队列 Redis', meta:'Redis Streams · 异步任务 Broker', ok:true, badge:'✓ 健康', metric:'队列深度 1,284', color:'#165DFF',
+    data:[900,1050,1180,1320,1240,1150,1420,1680,1520,1390,1280,1350,1480,1390,1260,1180,1320,1450,1380,1290,1220,1180,1250,1284] },
+  { name:'GPU 节点（自托管 OCR-VLM）', meta:'2 × NVIDIA A10 · ocr-vlm-2026-10 推理', ok:true, badge:'✓ 健康', metric:'利用率 68% · 阈值告警 90%', color:'#FF7D00',
+    data:[45,48,52,58,62,66,70,74,72,68,64,60,63,67,71,75,73,69,65,61,57,53,49,46] },
+  { name:'Prometheus / Grafana', meta:'指标采集 15s · 看板 12 个 · 告警联动', ok:true, badge:'✓ 健康', metric:'采集目标 34/34 up', color:'#00B42A',
+    data:[30,31,30,32,31,33,32,34,33,32,33,34,33,32,33,34,33,32,31,32,31,30,31,30] }
+];
+document.getElementById('health-grid').innerHTML = HEALTH.map(h => `
+  <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0">
+        <div class="text-[13.5px] font-semibold truncate">${h.name}</div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">${h.meta}</div>
+      </div>
+      <span class="shrink-0 px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">${h.badge}</span>
+    </div>
+    <div class="mt-2">${sparkline(h.data, h.color)}</div>
+    <div class="mt-1.5 flex items-center justify-between text-[11.5px]">
+      <span class="text-ink-2 dark:text-gray-400 num">${h.metric}</span>
+      <span class="text-ink-3 dark:text-gray-500 num">近 24h</span>
+    </div>
+  </div>`).join('');
+
+/* ════════════════ Tab 2 · 异步任务队列 ════════════════ */
+const QUEUES = [
+  { name:'识别任务', backlog:'214', rate:'38 / 分钟', age:'2 分 14 秒', ok:'正常 · 消费速率 > 生产速率' },
+  { name:'归档任务', backlog:'96', rate:'52 / 分钟', age:'1 分 08 秒', ok:'正常 · 原件 + 证据链落 MinIO' },
+  { name:'回调重试', backlog:'23', rate:'12 / 分钟', age:'6 分 41 秒', ok:'正常 · 指数退避，最多 5 次后进人工' },
+  { name:'Provider 超时重试', backlog:'7', rate:'9 / 分钟', age:'3 分 55 秒', ok:'关注 · 客户自有 OCR P95 8.2s 超阈值触发（断点续跑：只重试相关步骤，不重跑识别）' }
+];
+document.getElementById('queue-tbody').innerHTML = QUEUES.map(q => `
+  <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+    <td class="px-5 py-3 font-medium whitespace-nowrap">${q.name}</td>
+    <td class="px-3 py-3 text-right whitespace-nowrap">${q.backlog}</td>
+    <td class="px-3 py-3 text-right whitespace-nowrap text-ink-2 dark:text-gray-400">${q.rate}</td>
+    <td class="px-3 py-3 text-right whitespace-nowrap text-ink-2 dark:text-gray-400">${q.age}</td>
+    <td class="px-3 py-3 pr-5 text-[12px] ${q.ok.startsWith('关注') ? 'text-warning' : 'text-ink-3 dark:text-gray-500'}">${q.ok.startsWith('关注') ? '⚠ ' : '✓ '}${q.ok}</td>
+  </tr>`).join('');
+
+/* ════════════════ Tab 2 · 告警规则 ════════════════ */
+const ALERT_RULES = [
+  { name:'Provider P95 超阈值', detail:'当前触发中：客户自有 OCR P95 8.2s > 8s', level:'warning', levelTxt:'P2 · 警告', channel:'邮件 + webhook（运维群）', firing:true, on:true },
+  { name:'错误自动放行率 > 0.05%', detail:'产品红线指标 · 当前 0.02%，未触发', level:'danger', levelTxt:'P0 · 红线', channel:'邮件 + webhook + 短信（管理员）', firing:false, on:true, redline:true },
+  { name:'队列积压 > 5,000', detail:'任一异步队列积压超阈值 · 当前最大 214，未触发', level:'warning', levelTxt:'P2 · 警告', channel:'邮件 + webhook（运维群）', firing:false, on:true },
+  { name:'GPU 利用率 > 90%', detail:'自托管 OCR-VLM 推理节点 · 当前 68%，未触发', level:'warning', levelTxt:'P1 · 重要', channel:'webhook（运维群）', firing:false, on:true }
+];
+function renderAlertRules(){
+  document.getElementById('alert-tbody').innerHTML = ALERT_RULES.map((r,i) => `
+    <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors ${r.firing ? 'bg-warning-light dark:bg-[#2E2417]' : ''}">
+      <td class="px-5 py-3">
+        <div class="flex items-center gap-2"><b class="font-medium">${r.name}</b>${r.redline ? '<span class="text-[10px] px-1.5 py-px rounded bg-danger text-white font-medium">产品红线</span>' : ''}</div>
+        <div class="text-[11px] ${r.firing ? 'text-warning font-medium' : 'text-ink-3 dark:text-gray-500'} mt-0.5">${r.firing ? '⚠ ' : ''}${r.detail}</div>
+      </td>
+      <td class="px-3 py-3 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${
+        r.level === 'danger' ? 'bg-danger-light dark:bg-[#3A2426] text-danger border-danger/30' : 'bg-warning-light dark:bg-[#2E2417] text-warning border-warning/30'}">${r.levelTxt}</span></td>
+      <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${r.channel}</td>
+      <td class="px-3 py-3 whitespace-nowrap">${r.firing
+        ? '<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-warning text-white">触发中 ⚠</span>'
+        : '<span class="text-[12px] text-ink-3 dark:text-gray-500">未触发</span>'}</td>
+      <td class="px-3 py-3 pr-5 text-center">
+        <div class="inline-flex items-center gap-2"><div class="switch ${r.on ? 'on' : ''}" onclick="toggleAlertRule(${i}, this)"></div></div>
+      </td>
+    </tr>`).join('');
+}
+function toggleAlertRule(i, el){
+  const r = ALERT_RULES[i];
+  if(r.redline && !r.on){
+    r.on = true; el.classList.add('on');
+    toast('「错误自动放行率 > 0.05%」为产品红线告警，<b>不可停用</b> · 本次尝试已记入审计日志');
+    return;
+  }
+  r.on = !r.on;
+  el.classList.toggle('on', r.on);
+  toast(`告警规则「${r.name}」已${r.on ? '启用' : '停用'} · 变更记入审计日志（操作人陈铮）`);
+}
+renderAlertRules();
+
+/* ════════════════ Tab 3 · 配置中心：草稿 / diff / 二次确认 ════════════════ */
+const LABELS = {
+  threshold:   '置信度阈值（全局默认）',
+  tolerance:   '尾差容差（金额勾稽）',
+  lowConfManual: '低置信强制人工',
+  newCustReview: '新客户首月全量复核',
+  regionRoute: '数据区域路由'
+};
+let saved = { threshold:'0.85', tolerance:'±0.06', lowConfManual:true, newCustReview:false,
+              regionRoute:'中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域' };
+let draft = Object.assign({}, saved);
+let cfgVer = 2;
+
+function fmtVal(k, v){
+  if(k === 'lowConfManual' || k === 'newCustReview') return v ? '开启' : '关闭';
+  return String(v);
+}
+function toggleDraftSwitch(key, el){
+  draft[key] = !draft[key];
+  el.classList.toggle('on', draft[key]);
+  if(key === 'lowConfManual' && !draft[key]){
+    toast('⚠ 关闭「低置信强制人工」将允许低置信结果自动流转，与产品红线（错误自动放行率趋近 0）冲突 —— 改动仅为草稿，发布仍需二次确认');
+  }
+  markDirty();
+}
+function markDirty(){
+  const diffs = diffList();
+  const el = document.getElementById('cfg-dirty');
+  if(diffs.length){
+    el.innerHTML = `<span class="text-warning font-medium">● ${diffs.length} 项未发布改动</span><span class="text-ink-3 dark:text-gray-500"> · 保存需二次确认，diff 写入不可篡改审计日志</span>`;
+  } else {
+    el.textContent = '无未发布改动';
+  }
+}
+function diffList(){
+  return Object.keys(saved).filter(k => String(saved[k]) !== String(draft[k]));
+}
+function resetDraft(){
+  draft = Object.assign({}, saved);
+  document.getElementById('cfg-threshold').value = saved.threshold;
+  document.getElementById('cfg-tolerance').value = saved.tolerance;
+  document.getElementById('sw-lowconf').classList.toggle('on', saved.lowConfManual);
+  document.getElementById('sw-newcust').classList.toggle('on', saved.newCustReview);
+  document.getElementById('cfg-region').value = saved.regionRoute;
+  markDirty();
+  toast('已重置为当前已发布配置（草稿改动丢弃，未产生审计记录）');
+}
+function saveConfig(){
+  /* 输入框值同步回草稿 */
+  draft.threshold = document.getElementById('cfg-threshold').value;
+  draft.tolerance = document.getElementById('cfg-tolerance').value;
+  const diffs = diffList();
+  if(!diffs.length){ toast('无变更项，无需发布 · 当前配置与已发布版本一致'); return; }
+  document.getElementById('diff-list').innerHTML = diffs.map(k => `
+    <div class="flex items-center justify-between gap-3 p-2.5 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] text-[12.5px]">
+      <span class="text-ink-2 dark:text-gray-400 shrink-0 w-[180px]">${LABELS[k]}</span>
+      <span class="flex items-center gap-2 min-w-0">
+        <code class="num px-2 py-0.5 rounded bg-danger-light dark:bg-[#3A2426] text-danger line-through truncate">${fmtVal(k, saved[k])}</code>
+        <span class="text-ink-4 shrink-0">→</span>
+        <code class="num px-2 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success truncate">${fmtVal(k, draft[k])}</code>
+      </span>
+    </div>`).join('');
+  document.getElementById('confirm-mask').classList.add('open');
+}
+function closeConfirm(){ document.getElementById('confirm-mask').classList.remove('open'); }
+function confirmPublish(){
+  saved = Object.assign({}, draft);
+  cfgVer++;
+  const d = new Date();
+  document.getElementById('cfg-ver').textContent = `配置版本 v2026-10-${(d.getDate()<10?'0':'')+d.getDate()}.${cfgVer} · 已发布`;
+  closeConfirm();
+  markDirty();
+  toast('✓ 配置已发布 · diff 记入审计日志（操作人陈铮）· 旧版本保留可回滚 · 不可篡改留痕（时间 / 前后值 / trace）');
+}
+
+/* ════════════════ Tab 4 · 标注数据 ════════════════ */
+const ANNO_STATUS = {
+  doing:  { label:'标注中',   cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
+  review: { label:'三审仲裁', cls:'bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30' },
+  done:   { label:'已完成 · 已沉淀', cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30' },
+  queue:  { label:'排队中',   cls:'bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-500 border border-line dark:border-dline' }
+};
+const ANNO_TASKS = [
+  { id:'ANNO-2026-1012', type:'数电票（CN · XML 直读失败回流）', count:420, done:301, who:'王莉（复核员）+ 标注组 A', st:'doing' },
+  { id:'ANNO-2026-1011', type:'增值税专票（纸质扫描 · OCR 纠错）', count:380, done:380, who:'标注组 B', st:'done' },
+  { id:'ANNO-2026-1010', type:'海外 Supplier Invoice（SG · GST 字段）', count:312, done:96,  who:'标注组 C（双语）', st:'review' },
+  { id:'ANNO-2026-1009', type:'Credit Note（冲减关系 Link 标注）', count:172, done:0,   who:'待分配', st:'queue' }
+];
+document.getElementById('anno-tbody').innerHTML = ANNO_TASKS.map(t => {
+  const pct = Math.round(t.done / t.count * 100);
+  const s = ANNO_STATUS[t.st];
+  return `
+  <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+    <td class="px-5 py-3 num font-medium text-primary whitespace-nowrap">${t.id}</td>
+    <td class="px-3 py-3 text-[12.5px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${t.type}</td>
+    <td class="px-3 py-3 text-right num whitespace-nowrap">${t.count.toLocaleString('en-US')}</td>
+    <td class="px-3 py-3">
+      <div class="flex items-center gap-2">
+        <div class="flex-1 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full ${pct===100?'bg-success':'bg-primary'}" style="width:${pct}%"></div></div>
+        <span class="text-[11px] num text-ink-3 dark:text-gray-500 shrink-0">${t.done.toLocaleString('en-US')}/${t.count.toLocaleString('en-US')} · ${pct}%</span>
+      </div>
+    </td>
+    <td class="px-3 py-3 text-[12.5px] whitespace-nowrap">${t.who}</td>
+    <td class="px-3 py-3 pr-5 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${s.cls}">${s.label}</span></td>
+  </tr>`;
+}).join('');
+
+function toggleDataStay(el){
+  if(el.classList.contains('on')){
+    toast('「标注数据不出客户控制域」为数据合规约束，<b>不建议关闭</b> · 如确需变更，请走数据合规评审流程（本次点击未生效）');
+    return;
+  }
+  el.classList.add('on');
+}
+</script>
+<script>
+/* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
+(function(){
+  var key='admin';
+  document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); });
+})();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>
