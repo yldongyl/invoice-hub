@@ -8,8 +8,8 @@
     状态/风险/租户维度过滤）——双层一致由 seed_loader 装载时强制校验，禁止旁路写投影列。
   - 枚举字段一律经 domain/registry.py 引用 enum-registry/契约内联枚举校验，禁止字面量散落
     （依赖纪律第 4 条）。
-  - 五类 Link 词表 = 清单 FN-0-04 中文名（匹配/收货/来自/冲减/包含）；enum-registry/Sheet08
-    无 Link 类别，不造词，以清单原文为准。
+  - 五类 Link 词表 = enum-registry.link_type（v1.1.0 增补，值源清单 FN-0-04 原文；
+    M1 门禁 MINOR M-M1-002 于 M2 关闭——原硬编码常量改为 registry 引用）。
   - Batch/FileIntake/Provider/Policy/MappingRule 为接口位（WP1.2 仅建模与装载，业务行为在 M3/M4）。
   - AuditBlock：append-only（WORM 语义）——仓储层只暴露 insert/读取，无 update/delete API
     （完整性校验与哈希链实装属 WP1.4，本阶段装载 seeds 短哈希展示口径逐字保留）。
@@ -19,10 +19,13 @@ from sqlalchemy import (JSON, Boolean, Float, ForeignKey, Integer, String, Text,
                         UniqueConstraint)
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.domain.registry import get_registry
 from app.services.persistence import Base
 
-# 五类 Link（FN-0-04）
-LINK_TYPES = ("匹配", "收货", "来自", "冲减", "包含")
+
+def link_types() -> tuple:
+    """五类 Link 词表（FN-0-04）——enum-registry.link_type 运行时引用（M-M1-002 关闭）。"""
+    return tuple(get_registry().category("link_type"))
 
 
 class Case(Base):
@@ -56,6 +59,8 @@ class Case(Base):
     claimed_by: Mapped[str | None] = mapped_column(String(60))
     claimed_at: Mapped[str | None] = mapped_column(String(30))
     doc_hold_pending: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 装载序（seeds/cases.json 原始顺序，0 起）——case-detail 切换器/聚合排序稳定源（M2 WP2.1）
+    load_seq: Mapped[int] = mapped_column(Integer, default=0)
     # —— 契约子结构逐字快照 ——
     meta_raw: Mapped[dict] = mapped_column(JSON)
     facts_raw: Mapped[dict] = mapped_column(JSON)
@@ -121,7 +126,7 @@ class ObjectLink(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     case_id: Mapped[str] = mapped_column(ForeignKey("cases.case_id"), index=True)
     seq: Mapped[int] = mapped_column(Integer)
-    link_type: Mapped[str] = mapped_column(String(8), index=True)   # LINK_TYPES 五值
+    link_type: Mapped[str] = mapped_column(String(8), index=True)   # enum-registry.link_type 五值
     ref: Mapped[str | None] = mapped_column(String(60))             # 关系目标（po/grn/案件号/供应商）
     po_state: Mapped[str | None] = mapped_column(String(20))        # 匹配态（check_result 同源）
     link_raw: Mapped[dict] = mapped_column(JSON)
@@ -260,6 +265,21 @@ class AuditBlock(Base):
     chain_hash: Mapped[str | None] = mapped_column(String(64))      # 64hex 本块链式 SHA-256（WP1.4）
     instance: Mapped[str | None] = mapped_column(String(2))         # 双实例独立成链（FN-0-10/0-11）
     chain_scope: Mapped[str | None] = mapped_column(String(10))     # 链域 CN | OS | PLATFORM（无案件归属的平台事件独立成链，演示口径）
+
+
+class Adapter(Base):
+    """目标采购平台适配状态条（M2 新增，FN-7-01 呈现位 / 清单 §4.3 后台数据契约「Adapter 状态清单」；
+    来源 seeds/adapters.json——dashboard 底部 5 行逐字。status_code ∈ enum-registry.adapter_status
+    三值装载即校验；glyph 由聚合服务从 status_code 派生，不单独存列。adapter 全量治理属 M4 接线）。"""
+
+    __tablename__ = "adapters"
+
+    name: Mapped[str] = mapped_column(String(40), primary_key=True)
+    mode: Mapped[str | None] = mapped_column(String(60))               # 接口模式（cXML / AP Invoice Import…）
+    status_text: Mapped[str] = mapped_column(String(20))               # 状态文案（已实联/适配中/规划中/已对接）
+    status_code: Mapped[str] = mapped_column(String(20), index=True)   # adapter_status 三值
+    display: Mapped[str] = mapped_column(String(80))                   # 页面小字逐字（模式 · 状态）
+    load_seq: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Alert(Base):

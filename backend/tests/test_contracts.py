@@ -58,8 +58,10 @@ def test_all_enum_values_in_registry(session, seeds_cases):
 
 
 def test_five_link_types_queryable(session, seeds_cases):
-    """五类 Link（匹配/收货/来自/冲减/包含）词表 = 清单 FN-0-04，装载后逐案可查。"""
-    from app.domain.models import LINK_TYPES
+    """五类 Link（匹配/收货/来自/冲减/包含）词表 = enum-registry.link_type（v1.1.0，
+    关闭 M1 门禁 MINOR M-M1-002——由 models 硬编码常量改为 registry 引用），装载后逐案可查。"""
+    from app.domain.models import link_types
+    LINK_TYPES = link_types()
     seen = set()
     for c in seeds_cases["cases"]:
         rows = session.scalars(select(m.ObjectLink).where(m.ObjectLink.case_id == c["caseId"]))
@@ -67,3 +69,12 @@ def test_five_link_types_queryable(session, seeds_cases):
             assert r.link_type in LINK_TYPES, (c["caseId"], r.link_type)
             seen.add(r.link_type)
     assert set(LINK_TYPES) <= seen  # 全部五类至少出现一次（跨 11 案）
+
+
+def test_link_type_registry_source():
+    """词表唯一来源=注册表（依赖纪律④）：models.link_types() 必须等于 enum-registry.link_type。"""
+    from app.domain.models import link_types
+    from app.domain.registry import get_registry
+    assert set(link_types()) == get_registry().code_set("link_type")
+    assert tuple(link_types()) == tuple(
+        v["code"] for v in get_registry().category_items("link_type"))

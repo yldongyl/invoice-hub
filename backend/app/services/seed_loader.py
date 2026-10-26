@@ -63,7 +63,11 @@ def _validate_case(c: dict, reg, ce, case_ids: set):
 
 
 def _links_rows(c: dict):
-    """从 links 契约对象派生五类 Link 行（FN-0-04）。"""
+    """从 links 契约对象派生五类 Link 行（FN-0-04）。
+
+    行构造的中文值为 enum-registry.link_type 的 code（词表 v1.1.0 入注册表）——
+    装载调用方逐行 reg.validate("link_type", …)，词表漂移即拒载。
+    """
     links = c.get("links") or {}
     cid = c["caseId"]
     rows = []
@@ -100,7 +104,7 @@ def load_all(session, seeds_dir: Path | None = None):
     _cases_data = jl("cases.json")
     data = _cases_data
     case_ids = {c["caseId"] for c in data["cases"]}
-    for c in data["cases"]:
+    for _load_seq, c in enumerate(data["cases"]):
         _validate_case(c, reg, ce, case_ids)
         meta, facts = c["meta"], c["facts"]
         session.add(m.Case(
@@ -115,6 +119,7 @@ def load_all(session, seeds_dir: Path | None = None):
             provider=meta.get("provider"), channel=meta.get("channel"), adapter=meta.get("adapter"),
             trace_id=meta.get("trace_id"), claimed_by=meta.get("claimed_by"),
             claimed_at=meta.get("claimed_at"), doc_hold_pending=bool(meta.get("doc_hold_pending")),
+            load_seq=_load_seq,
             meta_raw=meta, facts_raw=facts,
             checks_raw=c.get("checks"), links_raw=c.get("links"), items_raw=c.get("items"),
             file_raw=c.get("file"), ai_raw=c.get("ai"), next_action_raw=c.get("nextAction"),
@@ -132,6 +137,7 @@ def load_all(session, seeds_dir: Path | None = None):
             session.add(m.TimelineEvent(case_id=c["caseId"], seq=i, t=tl["t"],
                                         actor=tl["a"], act=tl["act"], event_raw=tl))
         for i, (lt, ref, attrs, _links) in enumerate(_links_rows(c)):
+            reg.validate("link_type", lt, where=f"{c['caseId']}.links[{i}]")  # M-M1-002：装载即校验
             session.add(m.ObjectLink(case_id=c["caseId"], seq=i, link_type=lt, ref=ref,
                                      po_state=attrs.get("po_state") if lt == "匹配" else None,
                                      link_raw=attrs))
@@ -155,6 +161,10 @@ def load_all(session, seeds_dir: Path | None = None):
                                      conf=fd.get("conf"), intake_raw=fd))
     counts["batches"] = len(data["batches"])
     counts["file_intake"] = sum(len(b.get("detail") or []) for b in data["batches"])
+    # 页面既有差异登记条目入 SeedMeta——聚合服务交叉核算的豁免判定数据源（G-M0-001 豁免纪律，
+    # M2 WP2.1：dashboard top_cases 对照须命中登记项方可豁免，未登记差异=服务报错）
+    session.add(m.SeedMeta(name="known_page_discrepancies",
+                           payload={"items": list(data.get("known_page_discrepancies", []))}))
 
     # ---- audit_events（FN-0-10 装载；链式 SHA-256 于末尾 build_chain 计算并自检，WP1.4）----
     data = jl("audit_events.json")
@@ -290,6 +300,14 @@ def load_all(session, seeds_dir: Path | None = None):
             n += 1
     counts["alerts"] = n
 
+    # ---- adapters（M2 新增：dashboard 适配状态条读侧，§4.3/FN-7-01 呈现位）----
+    data = jl("adapters.json")
+    for i, a in enumerate(data["adapters"]):
+        reg.validate("adapter_status", a["status_code"], where=f"adapters[{a['name']}]")
+        session.add(m.Adapter(name=a["name"], mode=a.get("mode"), status_text=a["status_text"],
+                              status_code=a["status_code"], display=a["display"], load_seq=i))
+    counts["adapters"] = len(data["adapters"])
+
     data = jl("kpi.json")
     for inst, snap in data["instances"].items():
         for tc in snap.get("top_cases", []):
@@ -326,6 +344,10 @@ def rebuild_and_load(session_factory=None, seeds_dir: Path | None = None) -> dic
 
 
 def main():
+    # Windows 默认控制台 cp1252 下 print emoji 会抛 UnicodeEncodeError 致退出码非零
+    # （M1 门禁 MINOR M-M1-001，M2 修复：入口强制 stdout UTF-8，与 tools/*.py 同口径）
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     counts = rebuild_and_load()
     total = sum(counts.values())
     print(f"✅ make seed 完成（幂等重建）：{len(counts)} 类资产 / {total} 行")

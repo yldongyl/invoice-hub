@@ -5,8 +5,8 @@
 按链域独立成链（CN / OS / PLATFORM——无案件归属的平台事件单列成链，演示口径）、
 链头管理（blk# 全局递增分配，跨链域共享序号，与 audit_events.json blk 口径一致）、
 完整性校验（逐条前向比对，任一字段被篡改→定位首个断点 blk#，校验人/时间登记 VerifyRun）、
-trace 贯穿（tr-{8hex} 生成器：编号发号器正式实装属 WP1.7，此处以 secrets 随机 hex 生成并做 pattern 校验，
-标注 TODO(WP1.7)）。
+trace 贯穿（tr-{8hex} 生成器统一收口 WP1.7 发号器 issuer.new_trace_id()，本模块薄代理保持调用面
+兼容——M1 R5 落地，M2 清理陈旧注记 M-M1-004）。
 
 canonical 记录载荷（FN-0-10）：
   {blk, ts, trace_id, actor, act, cs, from, to, note, op, prev_hash}
@@ -15,7 +15,6 @@ canonical 记录载荷（FN-0-10）：
 
 import hashlib
 import json
-import secrets
 from datetime import datetime, timezone
 
 from sqlalchemy import event, select

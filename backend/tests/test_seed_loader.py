@@ -22,6 +22,12 @@ def test_counts(session):
     assert session.scalar(select(func.count()).select_from(m.RuleCatalogEntry)) == 20
     assert session.scalar(select(func.count()).select_from(m.Provider)) == 6
     assert session.scalar(select(func.count()).select_from(m.ComponentVersion)) == 19
+    # M2 新增装载：适配状态条 5 条（seeds/adapters.json）；页面差异登记入 SeedMeta
+    assert session.scalar(select(func.count()).select_from(m.Adapter)) == 5
+    assert session.get(m.SeedMeta, "known_page_discrepancies") is not None
+    # load_seq 播种与 seed 原序一致（0..10，切换器排序稳定源）
+    seqs = session.scalars(select(m.Case.load_seq).order_by(m.Case.load_seq)).all()
+    assert seqs == list(range(11))
 
 
 def test_rebuild_twice_identical(session_factory, seeds_cases):
