@@ -40,3 +40,6 @@ E_RULE_NOT_IMPLEMENTED = "E_RULE_NOT_IMPLEMENTED"  # 已注册未实装（归属
 # —— WP1.8 版本化资产（FN-0-12/9-09）——
 E_CONFIG_REDLINE_BYPASS = "E_CONFIG_REDLINE_BYPASS"  # 红线项不得经配置绕过（P00 §5）
 E_VERSION_NOT_FOUND = "E_VERSION_NOT_FOUND"         # 回滚目标版本不存在
+# —— M2 读路径（WP2.1/2.2：聚合核算与深链校验；读侧无写操作，不入受控命令框架）——
+E_DEEPLINK_TAB_INVALID = "E_DEEPLINK_TAB_INVALID"   # FN-0-14 ?tab= 词汇非法（{log|sla|arch}，词汇源=contracts/case-read.schema）
+E_AGGREGATION_MISMATCH = "E_AGGREGATION_MISMATCH"   # G-M0-001 豁免纪律：快照↔库内交叉核算出现未登记差异=数据完整性缺陷（500，禁静默吞差异）

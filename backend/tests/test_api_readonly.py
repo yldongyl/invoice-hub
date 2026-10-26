@@ -26,15 +26,19 @@ def test_list_cases_requires_tenant(client):
     assert r.json()["detail"]["error_code"] == "E_TENANT_MISSING"
 
 
-def test_list_cases_filtered(client, case_validator):
+def test_list_cases_filtered(client, list_projection_validator):
     r = client.get("/v1/cases", params={"instance": "CN"})
     assert r.status_code == 200
     body = r.json()
     assert body["total"] == 7  # CN 实例 7 案（0387/0386/0385/0384/0383/0381/0379）
+    # 响应整体过 case-read.schema（M2 WP2.1 列表投影契约，M-M1-005 瘦身）
+    assert not schema_errors(list_projection_validator, body), [e.message for e in schema_errors(list_projection_validator, body)][:3]
     for item in body["items"]:
         assert item["meta"]["instance"] == "CN"
-        # 列表项=契约合法 list 级案件形态（§3：响应过 Schema）
-        assert not schema_errors(case_validator, item), item["caseId"]
+        # 投影形态：六键、full 案件不再内嵌全要素（瘦身断言）
+        assert set(item) == {"caseId", "detail_level", "status", "summary", "meta", "facts"}
+        if item["detail_level"] == "full":
+            assert "checks" not in item and "evidence" not in item
     r = client.get("/v1/cases", params={"status": "BLOCKED", "instance": "CN"})
     assert {i["caseId"] for i in r.json()["items"]} == {"INV-CN-2026-0385", "INV-CN-2026-0379"}
     r = client.get("/v1/cases", params={"instance": "CN", "risk": "重复票"})
@@ -87,6 +91,33 @@ def test_evidence_by_field(client, case_validator):
     from jsonschema import Draft202012Validator
     for it in body["items"]:
         assert not list(Draft202012Validator(entry_def).iter_errors(it))
+
+
+def test_switcher_view(client, switcher_validator, seeds_cases):
+    """案件切换器（WP2.1 · FN-8-03/FN-0-14）：本实例 full 案件 号+票种+状态，load_seq 原序。
+    页面三案=前端合并双实例各请求一次（四隔离①数据强制，口径见 M2-self-check）。"""
+    r = client.get("/v1/cases", params={"instance": "CN", "view": "switcher"})
+    assert r.status_code == 200
+    body = r.json()
+    assert not schema_errors(switcher_validator, body)
+    assert [i["caseId"] for i in body["items"]] == ["INV-CN-2026-0387", "INV-CN-2026-0379"]
+    assert body["items"][0]["type_short"] == "数电票"
+    assert body["items"][0]["status"] == "NEEDS_REVIEW"
+    assert body["items"][0]["invoice_type_machine"] == "E_INVOICE_VAT_SPECIAL"
+    r = client.get("/v1/cases", params={"instance": "OS", "view": "switcher"})
+    assert not schema_errors(switcher_validator, r.json())
+    assert [i["caseId"] for i in r.json()["items"]] == ["INV-SG-2026-0125"]
+    assert r.json()["items"][0]["status"] == "INVESTIGATING"
+    assert r.json()["items"][0]["type_short"] == "Supplier Invoice"
+    # 全库 full 案件三案合计（跨页合并口径的库内完整性）
+    full_ids = {c["caseId"] for c in seeds_cases["cases"] if c["detail_level"] == "full"}
+    assert full_ids == {"INV-CN-2026-0387", "INV-CN-2026-0379", "INV-SG-2026-0125"}
+
+
+def test_switcher_requires_tenant(client):
+    r = client.get("/v1/cases", params={"view": "switcher"})
+    assert r.status_code == 400
+    assert r.json()["detail"]["error_code"] == "E_TENANT_MISSING"
 
 
 def test_timeline(client, events_validator):

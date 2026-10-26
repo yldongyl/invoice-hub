@@ -75,14 +75,14 @@ def get_timeline(session, ctx: TenantContext, case_id: str):
 
 
 def summary_of(session, c: m.Case) -> dict:
-    """列表/摘要投影：契约合法形态（§3 响应过 Schema）。
+    """列表投影（M2 WP2.1 · M-M1-005 瘦身）：GET /v1/cases 行一律投影形态
+    （caseId/detail_level/status/summary/meta/facts，契约=contracts/case-read.schema
+    $defs.listProjection，内部读面首次接线前的形态收敛，无既有消费者）。
 
-    list 案件=轻量子集（caseId/detail_level/status/summary/meta/facts）；
-    full 案件按契约 allOf 要求必须携带全要素 → 返回完整聚合（M2 列表分页可按需瘦身为
-    摘要投影列 + detail_level 降级，本阶段以契约合规为先）。
+    full 案件不再内嵌全量聚合——详情走 GET /v1/cases/{id}?view=full（northbound
+    invoice-case.schema.json 契约不变，openapi v1 承诺保持）；列表键集与 list 案件同构，
+    投影不再过 invoice-case.schema（allOf full 全要素约束所迫的聚合膨胀由此关闭）。
     """
-    if c.detail_level == "full":
-        return aggregate_case(session, TenantContext.of(c.instance), c.case_id)
     return {
         "caseId": c.case_id, "detail_level": c.detail_level, "status": c.status,
         "summary": c.summary, "meta": c.meta_raw, "facts": c.facts_raw,

@@ -137,18 +137,69 @@ def _absolutize_refs(schema):
 @pytest.fixture(scope="session")
 def case_validator():
     from jsonschema import Draft202012Validator
+    return Draft202012Validator(_contract_schema("invoice-case.schema.json"),
+                                 registry=_contract_registry())
+
+
+def _contract_registry():
     from referencing import Registry, Resource
     names = ["invoice-schema.json", "invoice-case.schema.json", "events.schema.json",
              "provider-spi.schema.json", "routing-config.schema.json",
-             "adapter-contract.schema.json"]
-    loaded = []
+             "adapter-contract.schema.json",
+             # M2 读面契约（CHANGELOG ⑦）
+             "dashboard-response.schema.json", "alerts-response.schema.json",
+             "case-read.schema.json"]
+    res = []
     for n in names:
-        s = _absolutize_refs(json.loads((CONTRACTS_DIR / n).read_text(encoding="utf-8")))
-        Draft202012Validator.check_schema(s)
-        loaded.append((_to_file_uri(n), s))
-    registry = Registry().with_resources([(u, Resource.from_contents(s)) for u, s in loaded])
-    case_schema = dict(loaded)[_to_file_uri("invoice-case.schema.json")]
-    return Draft202012Validator(case_schema, registry=registry)
+        s = _contract_schema(n)
+        res.append((_to_file_uri(n), Resource.from_contents(s)))
+    return Registry().with_resources(res)
+
+
+def _contract_schema(name: str):
+    from jsonschema import Draft202012Validator
+    s = _absolutize_refs(json.loads((CONTRACTS_DIR / name).read_text(encoding="utf-8")))
+    Draft202012Validator.check_schema(s)
+    return s
+
+
+@pytest.fixture(scope="session")
+def contract_registry():
+    return _contract_registry()
+
+
+def _validator_for(name: str, def_key: str | None = None):
+    from jsonschema import Draft202012Validator
+    schema = _contract_schema(name)
+    if def_key:
+        schema = dict(schema)  # $defs 分支：保留 $defs 以便内部 $ref 解析
+        schema = {**{k: schema[k] for k in schema if k in ("$defs",)}, **schema["$defs"][def_key]}
+    return Draft202012Validator(schema, registry=_contract_registry())
+
+
+@pytest.fixture(scope="session")
+def dashboard_validator():
+    return _validator_for("dashboard-response.schema.json")
+
+
+@pytest.fixture(scope="session")
+def alerts_validator():
+    return _validator_for("alerts-response.schema.json")
+
+
+@pytest.fixture(scope="session")
+def list_projection_validator():
+    return _validator_for("case-read.schema.json")  # top=listResponse
+
+
+@pytest.fixture(scope="session")
+def switcher_validator():
+    return _validator_for("case-read.schema.json", "switcherResponse")
+
+
+@pytest.fixture(scope="session")
+def exists_validator():
+    return _validator_for("case-read.schema.json", "existsResponse")
 
 
 @pytest.fixture(scope="session")

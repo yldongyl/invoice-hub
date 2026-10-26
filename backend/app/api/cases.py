@@ -1,14 +1,22 @@
 # -*- coding: utf-8 -*-
-"""案件只读 API（P02 §3 最小 API 面 · 供 M2 接线与契约测试；非完整对外 API）。
+"""案件只读 API（P02 §3 最小 API 面 → M2 WP2.1 读面收口）。
 
-WP1.7 收口：所有查询必须携带租户上下文 instance（CN|OS）——缺失 E_TENANT_MISSING→400、
-越权（数据归属实例不符）E_TENANT_MISMATCH→403。响应结构一律过 contracts Schema 校验
-（list/summary=契约合法 list 级案件形态；full=聚合逐字；evidence/timeline 项级校验由契约测试覆盖）。
+口径：
+  - WP1.7：所有查询必须携带租户上下文 instance（CN|OS）——缺失 E_TENANT_MISSING→400、
+    越权（数据归属实例不符）E_TENANT_MISMATCH→403；
+  - M2 列表瘦身（M-M1-005，CHANGELOG ⑦）：`GET /v1/cases` 行=case-read.schema
+    listProjection 投影（full 案件不再内嵌全量聚合；列表不在北向 openapi 面，无既有消费者）；
+    `?view=switcher`=case-detail 案件切换器（三 full 案：号+票种+状态，FN-8-03/FN-0-14）；
+  - 北向集成面（openapi.yaml v1 FROZEN）承诺不变：`GET /v1/cases/{id}` view=summary|full
+    均返回完整聚合（契约 allOf 所迫，R5 §5.3 双形态口径维持）并过 invoice-case.schema；
+  - evidence 项级过 $defs/evidenceEntry、timeline 项级过 events.schema（契约测试断言）；
+  - 写路径（actions/risk-challenge）已由 WP1.5 落地于 api/actions.py，全部经受控命令框架。
 """
 
 from fastapi import APIRouter, HTTPException, Query
 
 from app.services import case_repository as repo
+from app.services import dashboard as dash
 from app.services.errors import CommandError
 from app.services.persistence import get_session
 from app.services.tenant import TenantContext
@@ -35,12 +43,16 @@ def _not_found(case_id: str):
 
 @router.get("/cases")
 def list_cases(instance: str | None = Query(None, description="租户上下文 CN|OS（FN-0-11/WP1.7 强制）"),
+               view: str = Query("list", pattern="^(list|switcher)$",
+                                 description="list=列表投影（默认）；switcher=case-detail 案件切换器（三演示 full 案）"),
                status: str | None = None, keyword: str | None = None,
                risk: str | None = None, page: int = Query(1, ge=1),
                page_size: int = Query(20, ge=1, le=200)):
     ctx = _ctx(instance)
     with get_session() as session:
         try:
+            if view == "switcher":
+                return dash.get_switcher(session, ctx)
             items, total, page, page_size = repo.list_cases(
                 session, ctx, status=status, keyword=keyword,
                 risk=risk, page=page, page_size=page_size)
@@ -54,21 +66,15 @@ def get_case(case_id: str, view: str = Query("full", pattern="^(summary|full)$")
              instance: str | None = Query(None)):
     ctx = _ctx(instance)
     with get_session() as session:
-        if view == "summary":
-            try:
-                items, _, _, _ = repo.list_cases(session, ctx, keyword=None, page=1, page_size=500)
-            except CommandError as e:
-                _fail(e)
-            hit = next((i for i in items if i["caseId"] == case_id), None)
-            if hit is None:
-                _not_found(case_id)
-            return hit
         try:
             agg = repo.aggregate_case(session, ctx, case_id)
         except CommandError as e:
             _fail(e)
         if agg is None:
             _not_found(case_id)
+        # 北向 v1 承诺（openapi /v1/cases/{caseId} 200=invoice-case.schema）：
+        # summary 亦返回完整聚合（契约 allOf 禁 full 案件轻量投影——R5 §5.3 透明登记，
+        # M2 列表瘦身已满足 web 侧性能诉求，详情面维持）
         return agg
 
 
