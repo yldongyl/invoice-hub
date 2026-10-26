@@ -23,11 +23,15 @@ def _w(*parts):
 _FORBIDDEN_CI = (_w("lan", "graph"), _w("open", "ai"), _w("anth", "ropic"), _w("litell", "m"))
 _FORBIDDEN_CS = (_w("ll", "m"),)
 _SCAN_SUFFIXES = {".py", ".toml", ".md", ".json", ".txt", ".yaml", ".yml"}
+# 扫描边界=本仓自研源码（P02 验收⑥ grep 语义）；安装产物与字节码不属于 backend 源码面：
+# venv 内第三方 wheel 源码含携带 CS 违禁词子串的常见标识符（R5「匹配函数名含子串」同源问题），
+# 必须排除——P07 引入 .venv 后暴露。注：本行注释亦须避开违禁词字面（自误报纪律）。
+_EXCLUDE_DIRS = {"__pycache__", ".venv", "venv"}
 
 
 def _iter_text_files():
     for p in BACKEND_ROOT.rglob("*"):
-        if p.is_file() and p.suffix in _SCAN_SUFFIXES and "__pycache__" not in p.parts:
+        if p.is_file() and p.suffix in _SCAN_SUFFIXES and not (_EXCLUDE_DIRS & set(p.parts)):
             yield p
 
 
@@ -53,7 +57,7 @@ def test_no_agent_mcp_package_imports():
     pat = re.compile(r"^\s*(?:from|import)\s+(agent|mcp)\b")
     hits = []
     for p in BACKEND_ROOT.rglob("*.py"):
-        if "__pycache__" in p.parts:
+        if _EXCLUDE_DIRS & set(p.parts):
             continue
         for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
             if pat.match(line):
