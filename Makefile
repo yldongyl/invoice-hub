@@ -4,7 +4,7 @@
 
 PY ?= python
 
-.PHONY: seed run run-agent run-mcp run-workers test test-e2e verify-enums verify-contracts verify-ui verify smoke clean all intake-mailbox intake-dox intake-demo
+.PHONY: seed run run-agent run-mcp run-workers test test-e2e test-redline verify-enums verify-contracts verify-ui verify smoke clean all intake-mailbox intake-dox intake-demo
 
 ## 种子装载（幂等可重跑，P07 1.2）
 seed:
@@ -33,6 +33,10 @@ test:
 ## E2E 场景断言（M3 起 pytest -m scenario 承载）
 test-e2e:
 	$(PY) scripts/hub.py test-e2e
+
+## 红线回归集（P08 §1.4 · 每里程碑门禁必跑）
+test-redline:
+	$(PY) scripts/hub.py test-redline
 
 ## 通道桩手动触发（演示口径 15 分钟邮箱 Job 等效；RUNBOOK §桩边界）
 intake-mailbox:

@@ -180,4 +180,21 @@ meta.sm2 = {ok:true, receipt_no:"gm-rcpt-1043"} · runtime/gm-receipts/gm-rcpt-1
 
 ---
 
-*自检结论：**WP3.1~WP3.5 验收标准（各会话范围）全部达成**；M3 门禁整体验收待 WP3.6（E2E 场景五件套）+ P09 画面验证完成后按 P04 §3 七项收口。*
+# 续 · WP3.6（P04 · E2E 场景断言 S-M3-01~05 + 红线回归集 M3 适用项，2026-10-27 会话四）
+
+## 16. WP3.6 记录
+
+- **交付**：`backend/tests/test_scenarios_m3_core.py`（官方五场景，expect/rl 规范失败信息=P08 §2）；
+  `backend/tests/redline/test_redline_m3.py`（R-01/02/03/05 代偿/06 通过，R-04 skip 移交 M5）；
+  测试工程：pyproject redline marker、Makefile+hub `test-redline`、hub `all` 链纳入红线；台账场景号引用回填
+  （FN-1×11/FN-8×6/FN-5×5 追加注记；**FN-5-08=进行中**——AUDIT_EXPORT 入链+限时导出已交付、四维检索面移交 M5）。
+- **两处产品级修复（红线集暴露，RI-M3-013/014）**：①状态机自动放行边补置信红档闸门（低置信禁自动放行，P00 §5 硬约束，下限自 registry 解析不可配置绕过）；②edit_field 仅改写合并基准行、融合佐证/冲突注记行按 role 留存（FN-4-02 不静默取舍）。均属「断言不通过→按文档口径修实现」，非放宽断言。
+- **断言纪律**：可重复性实测（test-e2e 连续两跑 12/12；函数级隔离库+tmp monkeypatch）；池/不入池核证置于解除**前**（解除回落后再入池属 FN-0-02 正常语义）；S-M3-02 用新造件（seed 0385 为列表级、无票号证据→键不可构造，登记口径）。
+- **验证**：全量 **250 passed + 1 skipped（R-04 移交注记）**；`make test-e2e` 12/12；`make test-redline` 7+1skip；
+  verify 三脚本全绿；smoke 10/10（v0.4.4）；APP_VERSION 0.4.4-m3-wp3.6。
+- **移交登记（P08 总包）**：unit/contract 两标记对存量测试的全量铺记；`make demo-replay` 八场景脚本；docs/TESTING.md；CI 模板。R-04/R-05 完整版随 P06/M5（管理面停用拦截、agent 层写路径静态检查）。
+
+---
+
+*自检结论：**WP3.1~WP3.6 验收标准（各会话范围）全部达成，M3 六工作包后台面收口**；
+M3 门禁整体评审（P10）待 P09 画面验证（三页逐区块正式核验，含本会话 §12-V5 会签弹窗与 §15 遗留勾选清单）完成后按 P04 §3 七项执行。*

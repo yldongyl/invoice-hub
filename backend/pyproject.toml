@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "invoice-hub-backend"
-version = "0.4.3"           # 与 app.main.APP_VERSION 同步（M3 受理与写路径 WP3.1-3.3）
+version = "0.4.4"           # 与 app.main.APP_VERSION 同步（M3 受理与写路径 WP3.1-3.6）
 description = "invoice-hub 确定性核心（FastAPI，零大模型依赖 · ADR-0001/0002）"
 requires-python = ">=3.11"  # P07 1.1 声明；本仓在 Python 3.14 实测（M1 门禁报告环境行）
 dependencies = [
@@ -38,4 +38,5 @@ packages = ["app", "app.domain", "app.services", "app.api", "app.workers"]
 testpaths = ["tests"]
 markers = [
     "scenario: E2E 场景断言（make test-e2e 即 pytest -m scenario；实施规划 §7 最小场景集）",
+    "redline: 红线回归集 R-01~R-06（P08 §1.4；make test-redline=pytest -m redline，每里程碑门禁必跑）",
 ]

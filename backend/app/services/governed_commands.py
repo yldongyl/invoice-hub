@@ -235,6 +235,11 @@ def _do_edit_field(session, case, user, role, *, field, new_value, reason, opini
                                                          m.FieldEvidence.field == field)).all()
     if not rows:
         raise CommandError(E_FIELD_NOT_FOUND, f"字段 {field} 不在案件证据链（可修正字段=已识别字段）", http=422)
+    # 仅改写「合并基准行」：融合佐证/冲突未采信注记行（evidence.role）原样留存——
+    # FN-4-02 双方证据不静默取舍；FN-8-05 原值保留的载体即被改写的基准行 raw_text。
+    rows = [r for r in rows if (r.evidence_raw.get("evidence") or {}).get("role") is None] or list(
+        session.scalars(select(m.FieldEvidence).where(m.FieldEvidence.case_id == case.case_id,
+                                                      m.FieldEvidence.field == field)))
     reg = get_registry()
     reg.validate("field_source", "manual", where="edit_field")
     results = []

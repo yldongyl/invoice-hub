@@ -52,3 +52,10 @@
 |---|---|---|---|
 | RI-M3-011 | 页面接线标记测失败：`M3_GATE not in t` 断言被新注释里的「M3_GATE」字样再次命中 | 注释文案改中性表述（门禁注记退役记录不含字面量）；接线块自加 `data-ihub-wp35` 运行时状态标记供无头断言 | 238 passed + Edge 冒烟 live-ok×3 |
 | RI-M3-012 | 工作台批量弹窗无处置意见输入（case-detail 有） | **原型口径保持**（ui-design 只读，V4 裁决）：不加输入框，服务端按 FN-0-08 规则落「（未填写处置意见）」；登记非缺陷差异供 P09 勾选 | 自检 §12-V4 |
+
+## M3-WP3.6 会话缺陷记录（2026-10-27 · 均已闭）
+
+| 编号 | 症状 | 根因与修复 | 回归证据 |
+|---|---|---|---|
+| RI-M3-013 | R-01 行为用例首跑即失败：conf 70 + 全 PASSED 案件 auto_flow 产出 ['NEEDS_REVIEW','RESOLVED'] | **状态机红线缺口（M1 遗留实现）**：evaluate 的 NEEDS_REVIEW/INVESTIGATING→RESOLVED「自动路径全 PASSED」边未校验置信度红档（<80 强制人工，P00 §5）——低置信件经自动边入队后被同一自动边直达 RESOLVED。修复：新增 `_auto_release_floor()`（从 registry「<80%」带码解析下限，非配置项、不可绕过），evaluate 在该边前设闸 | R-01 通过（行为+边来源走查+源码含闸断言）；全量 250 passed（test_state_machine 既有用例 conf99 不受影响） |
+| RI-M3-014 | S-M3-04 冲突修正后「OCR 未采信行」消失（两条 evidence 均变 manual） | edit_field 按 field 匹配覆写**全部**同名字段行——把融合留存的佐证/冲突注记行一并改写，违背 FN-4-02「双方证据留存不静默取舍」。修复：fusion 注记行加 `evidence.role`（cross_check/conflict_non_adopted）标记，_do_edit_field 仅改写无 role 的合并基准行（无 role 数据全行覆写保持向后兼容） | S-M3-04 通过（基准行 5650→5680 原值保留 + ocr 行留存）；M1 edit_field 既有用例绿 |

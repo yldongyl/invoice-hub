@@ -12,6 +12,7 @@
   - 断点续跑钩子：查验超时→authenticity NOT_VERIFIED→workers/retry 单独排定重试任务，不重跑识别。
 """
 
+import re
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -189,6 +190,17 @@ def _thresholds(session):
     return float(thr) * 100, float(tol)
 
 
+def _auto_release_floor():
+    """自动放行置信度下限（R-01 红线，P00 §5）：置信度 <80 红档强制人工、禁止自动放行——
+    下限自 enum-registry.confidence_band「<80%」编码文本解析，不可被配置绕过（产品红线非配置项）。"""
+    for item in get_registry().category_items("confidence_band"):
+        if item["code"].startswith("<"):
+            nums = [int(x) for x in re.findall(r"\d+", item["code"])]
+            if nums:
+                return nums[0]
+    return None
+
+
 def evaluate(session, case_id: str, *, conflict: bool = False, dedup_hit: bool = False) -> list[dict]:
     """按 FN-0-02 触发条件返回当前态可走的自动边（人工边 release/return/unblock 由命令层触发）。"""
     case = get_case(session, case_id)
@@ -213,7 +225,11 @@ def evaluate(session, case_id: str, *, conflict: bool = False, dedup_hit: bool =
         if variance is not None and abs(variance) > tol and st == STATUS.NEEDS_REVIEW:
             out.append({"to": "INVESTIGATING", "reason": f"金额差异 {variance} > 调查容差 ±{tol}"})
         elif set(results.values()) == {"PASSED"} and len(results) == 4:
-            out.append({"to": "RESOLVED", "reason": "自动路径全部 Checks 通过（FN-0-02 表 4 号边）"})
+            floor = _auto_release_floor()
+            if floor is not None and conf < floor:
+                pass    # R-01 红线：低置信（<80 红档）禁止自动放行——即使 Checks 全 PASSED 也只等人工处置
+            else:
+                out.append({"to": "RESOLVED", "reason": "自动路径全部 Checks 通过（FN-0-02 表 4 号边）"})
     elif st == STATUS.BLOCKED:
         out.append({"to": None, "reason": "解除拦截须双人会签（复核员+管理员），经受控命令 unblock"})
     return out

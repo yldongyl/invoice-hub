@@ -10,6 +10,7 @@
   run-workers     workers 占位（受理流水线/重试/归档随 backend 进程内钩子，独立进程属 M3+）
   test            全部测试（单元+契约）
   test-e2e        E2E 场景断言（pytest -m scenario；最小场景集随 M3 建立）
+  test-redline    红线回归集 R-01~R-06（pytest -m redline；P08 §1.4 每里程碑必跑）
   intake:poll-mailbox   邮箱通道桩手动触发（演示口径 15 分钟 Job 等效，RUNBOOK §桩边界）
   intake:poll-dox       SAP DOX 桥接桩手动触发（目录投递）
   intake:demo-drop      投放演示信箱/DOX 样例件（XML 发票+非发票+UBL+Order Response）
@@ -87,6 +88,11 @@ def cmd_test_e2e(a):
     return _run([sys.executable, "-m", "pytest", "-q", "-m", "scenario"])
 
 
+def cmd_test_redline(a):
+    # 红线回归集 R-01~R-06（P08 §1.4）：每里程碑门禁必跑；本里程碑不适用项标 skip 并注明移交里程碑
+    return _run([sys.executable, "-m", "pytest", "-q", "-m", "redline"])
+
+
 def cmd_intake_poll_mailbox(a):
     return _run([sys.executable, "-m", "app.workers.jobs_cli", "mailbox"])
 
@@ -141,7 +147,7 @@ def main():
     sub.add_parser("seed")
     p = sub.add_parser("run"); p.add_argument("--host", default="127.0.0.1"); p.add_argument("--port", type=int, default=8000); p.add_argument("--reload", action="store_true")
     sub.add_parser("run-agent"); sub.add_parser("run-mcp"); sub.add_parser("run-workers")
-    sub.add_parser("test"); sub.add_parser("test-e2e")
+    sub.add_parser("test"); sub.add_parser("test-e2e"); sub.add_parser("test-redline")
     sub.add_parser("verify:enums"); sub.add_parser("verify:contracts"); sub.add_parser("verify:ui")
     sub.add_parser("verify")
     p = sub.add_parser("smoke"); p.add_argument("--base", default="http://127.0.0.1:8000")
@@ -159,7 +165,7 @@ def main():
                 return rc
         return 0
     if a.cmd == "all":
-        for name in ("clean", "seed", "verify", "test"):
+        for name in ("clean", "seed", "verify", "test", "test-redline"):
             rc = main_one(name, a)
             if rc:
                 print(f"✗ {name} 失败（exit {rc}）"); return rc
@@ -172,6 +178,7 @@ def main_one(name, a):
     return {
         "seed": cmd_seed, "run": cmd_run, "run-agent": cmd_run_agent, "run-mcp": cmd_run_mcp,
         "run-workers": cmd_run_workers, "test": cmd_test, "test-e2e": cmd_test_e2e,
+        "test-redline": cmd_test_redline,
         "verify:enums": cmd_verify_enums, "verify:contracts": cmd_verify_contracts,
         "verify:ui": cmd_verify_ui, "smoke": cmd_smoke, "clean": cmd_clean,
         "intake:poll-mailbox": cmd_intake_poll_mailbox, "intake:poll-dox": cmd_intake_poll_dox,

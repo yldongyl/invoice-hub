@@ -60,7 +60,8 @@ def merge(session, case: m.Case, ocr_values: dict) -> dict:
                               "evidence": {"page": 1, "bbox": "—（stub 无坐标）",
                                            "raw_text": f"OCR 值 {ov} 与 XML 直读一致（差 ≤ 容差 {tol}）",
                                            "rule": "cross_check ✓", "model_version": "ocr stub（演示）",
-                                           "provider": "自托管 OCR-VLM（SPI stub · 演示口径）"}}))
+                                           "provider": "自托管 OCR-VLM（SPI stub · 演示口径）",
+                                           "role": "cross_check"}}))   # 佐证注记行（非合并基准，edit_field 不覆写）
         else:
             conflicts.append({"field": f, "xml": xv, "ocr": ov, "diff": None if diff == float("inf") else diff})
             # 采信对象=policy.priority 首个来源（配置化——默认 xml_direct 结构化原件优先；
@@ -77,7 +78,8 @@ def merge(session, case: m.Case, ocr_values: dict) -> dict:
                                            "raw_text": f"OCR 值 {ov} vs XML 直读 {xv} · 超容差 {tol}",
                                            "rule": f"cross_check ✗（冲突留证 · 采信={adopted}（结构化原件优先，配置化））",
                                            "model_version": "ocr stub（演示）",
-                                           "provider": "自托管 OCR-VLM（SPI stub · 演示口径）"}}))
+                                           "provider": "自托管 OCR-VLM（SPI stub · 演示口径）",
+                                           "role": "conflict_non_adopted"}}))   # 冲突未采信留存行（FN-4-02 不静默取舍）
     v = state_machine.component_version(session, "router-policy")
     if consistent:
         d = "OCR 交叉验证（异源互证）→ 一致"

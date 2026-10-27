@@ -18,7 +18,7 @@ from app.api import (actions as actions_api, cases as cases_api, dashboard as da
 from app.domain.registry import get_registry
 from app.services import persistence
 
-APP_VERSION = "0.4.3-m3-wp3.4-3.5"
+APP_VERSION = "0.4.4-m3-wp3.6"
 # P03 WP2.3 部署形态：backend 同源静态托管 web/（单端口，免 CORS）；
 # web/ = ui-design 12 页接线副本（ADR-0003），根路径重定向到总览仪表盘（P07 RUNBOOK 入口）
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
