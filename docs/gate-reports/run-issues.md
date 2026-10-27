@@ -45,3 +45,10 @@
 | RI-M3-009 | enum 纪律门禁拦截 `intake_pipeline.py: 硬编码状态比较 BLOCKED` | 合规链接入时写了字面量比较；改 `state_machine.STATUS.BLOCKED` 引用（门禁有效，属预期拦截） | test_dependency_discipline 全绿 |
 | RI-M3-010 | OS 重复票场景未命中（BLOCKED 断言失败） | **测试助手缺陷**：accept() 第二次调用漏传 instance=OS，副本件落入 CN 域分池——恰好反证四隔离④分池正确；测试参数补全 | test_dedup_os_key / S-M3-CMP-02 通过 |
 | RI-M3-011 | 走查中 `/v1/alerts` 500（运行期红线告警行） | WP3.3 告警生成初版按分发级词汇（alert_level P0·红线）写 raw.level 且缺 evidence 要素，与 FN-5-09 读侧契约（展示级 danger/warning + evidence 必备，M2 builder 强制违例 500）不兼容。修复：raw.level=展示级 danger、分发级 P0·红线 存 raw.sev（registry 引用校验）、补 evidence 要素；S-M3-CMP-02/03 增读侧兼容断言（builder 消费运行期告警） | 224 passed + 实机 /v1/alerts 200 含「重复票红线拦截：INV-CN-2026-0389」 |
+
+## M3-WP3.4/3.5 会话记录（2026-10-27 · 均已闭/按口径保持）
+
+| 编号 | 症状 | 根因与处置 | 回归证据 |
+|---|---|---|---|
+| RI-M3-011 | 页面接线标记测失败：`M3_GATE not in t` 断言被新注释里的「M3_GATE」字样再次命中 | 注释文案改中性表述（门禁注记退役记录不含字面量）；接线块自加 `data-ihub-wp35` 运行时状态标记供无头断言 | 238 passed + Edge 冒烟 live-ok×3 |
+| RI-M3-012 | 工作台批量弹窗无处置意见输入（case-detail 有） | **原型口径保持**（ui-design 只读，V4 裁决）：不加输入框，服务端按 FN-0-08 规则落「（未填写处置意见）」；登记非缺陷差异供 P09 勾选 | 自检 §12-V4 |

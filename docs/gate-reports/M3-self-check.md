@@ -140,4 +140,44 @@ meta.sm2 = {ok:true, receipt_no:"gm-rcpt-1043"} · runtime/gm-receipts/gm-rcpt-1
 
 ---
 
-*自检结论：**WP3.1+WP3.2+WP3.3 验收标准（各会话范围）全部达成**；M3 门禁整体验收待 WP3.4~3.6 完成后按 P04 §3 七项执行（含 workbench/case-detail 画面验证与 S-M3-01~05 全量场景）。*
+# 续 · WP3.4–WP3.5（P04 · 工作台 API 与队列 + web 接线三页，2026-10-27 会话三）
+
+> 范围经用户确认 = **仅 WP3.4+WP3.5**（WP3.6 E2E 场景包不实施；P09 正式画面核验留后续会话）。
+> 前置：WP3.1~3.3 已交付（`16a6423`/`08942b0`/`184fc00`/`f61c01e`/`299c628`/`09296c7`）。提交：WP3.4=`09296c7`；WP3.5 与其收工随本节入账。
+
+## 12. WP3.4/3.5 口径裁决与实现注记
+
+| # | 裁决点 | 结论 | 登记 |
+|---|---|---|---|
+| V1 | 四维筛选的「地区维」 | =**租户实例数据源切换**（CN 中国/APAC 新加坡 ↔ instance CN/OS，四隔离①服务端过滤），非纯客户端切片；「全部地区」=双实例合并拉取；关键词/状态/风险三维服务端参数化（risk=any/none 扩展 `list_cases`） | workbench 接线头注 |
+| V2 | 队列「待复核」计数 | pending_review=NEEDS_REVIEW+INVESTIGATING（CON-11 队列态合计）；**live 真值≠原型静态 mock**（实测 CN3+OS2=5 vs 原型 9）——接线页以服务端为准，P09 按此勾选 | M3 自检走查记录 |
+| V3 | 五要素弹窗文案 | 以**原型文案为呈现基准**（ui-design 只读）；服务端 risk_text 作为补充注入（case-detail 保持原型原文，workbench 认领/放行 warn 原型逐字）；本人勾选 label 全站含「Agent / LLM 建议不自动执行任何业务写操作」 | §14 走查 |
+| V4 | 批量操作弹窗无处置意见输入 | 原型 workbench 弹窗即无 textarea——**保持原型口径不加**；opinion 服务端缺省落「（未填写处置意见）」（FN-0-08 要素④ 规则） | run-issues RI-M3-012 |
+| V5 | BLOCKED 双人解除入口 | 原型无会签控件（仅文案）——接线层新增「⚖ 解除拦截（双人会签）」弹窗（会签人下拉=GET /v1/workbench/co-signers，仅 BLOCKED 状态显隐，ui-design 零改动），后端校验 M1 已实装全序复用 | FN-8-06 台账行 |
+| V6 | 导出内容与行数 | filters 携带当前筛选三维+选择集快照留痕；CSV=服务端筛选结果权威（选择集为数量参考）；rows=申报值、rows_exported=权威值入 toast | workbench.batchAct 注记 |
+| V7 | intake 步骤动画 | 上传受理为同步完成（演示时延<渲染节奏）——动画按**真实步骤结果**逐格回放（pl-desc=detail.d/skipped_reason，图标 ✔/⊘/✖）；真异步进度轮询/SSE 留 M4 Provider 时延场景 | intake 接线头注 |
+| V8 | M2 门禁注记退役 | case-detail「受控写待 M3 激活」M3_GATE 注记与提交桩移除（P03 §0 用户裁决的 M3 接续条件已达成），写路径真实接线；demo-mode 回退保留原型本地行为（本地事件 push，不连库） | test_api_web 标记更新 |
+| V9 | 运行时验证载体 | 无 Playwright 环境（RI-M2-005 延续）——本会话用 Edge headless --dump-dom + `data-ihub-wp35` 状态标记断言三页 live-ok/行渲染/队列计数/file:// 回退；正式逐区块截图核验留 P09 | §14 |
+
+## 13. 交付清单（按提交）
+
+| 提交 | 工作包 | 内容 |
+|---|---|---|
+| `09296c7` | WP3.4 | workbench.py（queue/CSV/ExportTicket/co-signers）+api/workbench.py 三端点+`/v1/audit/actions/export`；governed advice_reject 动作+export 发放链改造；`list_cases` risk=any/none；models ExportTicket；测试 12 项；APP_VERSION 0.4.2 |
+| （本包） | WP3.5 | api-client.js +postJSON/postForm/ACTOR（身份演示桩注记）；case-detail 写路径激活（Action/修正/AI 拒绝留痕+置灰/双人解除弹窗/演示回退）；agent-workbench 队列侧接线（四维+队列头/认领与放行五要素链/跳过明细/导出限时下载/详情认领行）；invoice-intake 全页接线（KPI/渠道 toast 真值/规则徽章/上传五要素+真实步骤回放/批次明细+断点续跑按钮）；test_api_web 标记更新+新增 workbench/intake 两测；ui-consistency-checklist M3 刷新；0.4.3 |
+
+## 14. 验证记录（本会话实测）
+
+- 全量 **238 passed**（+12 WP3.4 +2 页面接线标记测；2 项存量 case-detail 标记断言按 V8 更新）；`pytest -m scenario` 7 项回归绿（未新增场景，遵守「不实施 E2E 场景工作包」）。
+- verify 三脚本全绿：枚举 142/142、契约 40 项、种子↔页面 41 组（web 接线不改 seeds/ui-design）。
+- node --check 三页全部内联脚本语法通过；Edge headless 运行时：三页 live 态 `data-ihub-wp35=live-ok`；workbench 渲染 NEEDS_REVIEW 4 行（0387/0384/0381/0123）+队列「待复核 5」；intake 徽章/批次列表 live 装载；case-detail 0387 full 渲染无异常；**file:// 独立演示态回退 `demo` 在位**（demo-mode 纪律）。
+- smoke 干净态 10/10 PASS（v0.4.3）。
+
+## 15. WP3.4/3.5 收工检查单与遗留
+
+- [x] 测试全通过（含受影响页面标记测）；[x] 枚举/seed 一致性保持（零新增枚举）；[x] 依赖纪律：web 仅消费 REST（api-client 单点）+ui-design 零改动+backend 无新依赖（gmssl 已入账）；写路径全部经受控框架（含 advice_reject/新导出链）；[x] 台账 FN-8-01/02/04~07 六行「待验收」+括注（FN-8-03 维持待验收）；[x] 文档回写：CHANGELOG 无契约变更（新端点属内部面，同 M2 ⑦/⑧ 口径不登北向清单）、ui-consistency-checklist 刷新、run-issues RI-M3-012（弹窗无处置输入=原型口径保持，非缺陷登记）。
+- **遗留（P09/后续）**：①三页正式逐区块截图核验（五要素弹窗对照/步骤回放视觉/导出文件名/会签下拉/解除按钮显隐）；②FN-8-15 人工查验入口=CON-13 并入 case-detail 操作区属后续；③队列「我的认领计数」待 M5 会话身份；④S-M3-01（放行→RESOLVED 全链留痕场景）可在 WP3.6 以 HTTP 链直接落地（本会话 API 面已齐）。
+
+---
+
+*自检结论：**WP3.1~WP3.5 验收标准（各会话范围）全部达成**；M3 门禁整体验收待 WP3.6（E2E 场景五件套）+ P09 画面验证完成后按 P04 §3 七项收口。*
