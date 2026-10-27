@@ -7,7 +7,7 @@ enum-registry.json ↔ Excel Sheet08《枚举字典》逐行一致性校验（M0
   - 每个 values 条目的 code / label / color_raw / note 四字段，与 Sheet08 的
     「值 / 代码」「标签 / 含义」「颜色 / 级别」「备注」四列逐字一致；
   - 类别顺序与条目顺序均须一致（逐行对齐，不是集合比对）；
-  - Sheet08 共 120 行数据（第 5–124 行；v1.1.0 增补 link_type 5 行），注册表 categories 须为 20 类、合计 120 值；
+  - Sheet08 共 142 行数据（第 5–146 行；v1.1.0 增补 link_type 5 行；v1.2.0 增补受理域 5 类 22 行），注册表 categories 须为 25 类、合计 142 值；
   - color（语义 token）、pattern、actor、access、machine、min/max、enabled_default、level 等
     为注册表附加的机器可读字段，不参与逐字比对。
 
@@ -53,10 +53,16 @@ CATEGORY_MAP = {
     "映射来源三分类": "mapping_source",
     "编号规则": "id_format",
     "Link 类型": "link_type",
+    # ── v1.2.0 M3 受理域增补（顺序必须与 registry categories 追加顺序一致）──
+    "接入渠道 channel": "intake_channel",
+    "载体分流路径": "carrier_route",
+    "流水线步骤态": "pipeline_step_status",
+    "文件受理处置": "intake_file_disposition",
+    "非发票文档类型": "non_invoice_doc_type",
 }
 
 DATA_START_ROW = 5  # 第 1–2 行说明、第 3 行空、第 4 行表头
-EXPECTED_TOTAL = 120
+EXPECTED_TOTAL = 142
 
 
 def norm(v):

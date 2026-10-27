@@ -145,11 +145,12 @@ def load_all(session, seeds_dir: Path | None = None):
     counts["evidence"] = sum(len(c.get("evidence") or []) for c in data["cases"])
     counts["timeline"] = sum(len(c.get("timeline") or []) for c in data["cases"])
 
-    # ---- batches（接口位 FN-1-06；含 known_page_discrepancies 保留）----
+    # ---- batches（FN-1-06；含 known_page_discrepancies 保留；M3 起渠道写入即校验）----
     data = jl("batches.json")
     for b in data["batches"]:
         st = BATCH_STATUS_ALIAS.get(b["status"], b["status"])
         reg.validate("batch_status", st, where=f"batch {b['id']}")
+        reg.validate("intake_channel", b["channel"], where=f"batch {b['id']}.channel")
         if not re.match(reg.id_pattern("批次号"), b["id"]):
             raise EnumViolation(f"批次号 {b['id']} 不符 id_format.pattern")
         session.add(m.Batch(batch_id=b["id"], channel=b["channel"], instance_display=b["instance"],
@@ -210,6 +211,32 @@ def load_all(session, seeds_dir: Path | None = None):
                                     payload=item, diff_json=None, updated_by="seed-loader",
                                     updated_at=data.get("version"), opinion=None))
     counts["asset_revisions"] = len(data["items"])
+
+    # ---- channels（M3 WP3.2 · FN-1-01~11：渠道配置基线 + 受理规则版本资产 + KPI/渠道今日锚点）----
+    data = jl("channels.json")
+    for ch in data["channels"]:
+        reg.validate("intake_channel", ch["channel"], where=f"channels[{ch['channel']}]")
+        key = f"channel:{ch['channel']}"
+        session.add(m.ConfigItem(scope="default", key=key, label=f"{ch['channel']} 渠道配置",
+                                 value_raw=ch["config"], state="published", version=ch["version_base"]))
+        session.add(m.AssetRevision(asset_type="channel_config", key=key, version=ch["version_base"],
+                                    state="published", payload=ch["config"], diff_json=None,
+                                    updated_by="seed-loader", updated_at=ch["version_base"],
+                                    opinion=None))
+    counts["channel_configs"] = len(data["channels"])
+    ir = data["intake_rules"]
+    session.add(m.AssetRevision(asset_type="intake_rules", key="intake_rules", version=ir["version"],
+                                state="published", payload=ir["payload"], diff_json=None,
+                                updated_by="seed-loader", updated_at=ir["version"], opinion=None))
+    display = [{"channel": c["channel"], "enabled": c["enabled"],
+                "status_display": c["status_display"],
+                "display": c.get("mailbox") or c.get("endpoint") or c.get("operator")}
+               for c in data["channels"]]
+    session.add(m.SeedMeta(name="intake_kpi_baseline",
+                           payload={"today_counters": data["today_counters"],
+                                    "kpi_baseline": data["kpi_baseline"],
+                                    "channels_display": display}))
+    counts["intake_rules_revisions"] = 1
 
     # ---- users_roles（RBAC 桩矩阵）----
     data = jl("users_roles.json")

@@ -19,7 +19,7 @@ def test_counts(session):
     assert session.scalar(select(func.count()).select_from(m.Batch)) == 9
     assert session.scalar(select(func.count()).select_from(m.FileIntake)) == 19
     assert session.scalar(select(func.count()).select_from(m.AuditBlock)) == 15
-    assert session.scalar(select(func.count()).select_from(m.RuleCatalogEntry)) == 20
+    assert session.scalar(select(func.count()).select_from(m.RuleCatalogEntry)) == 22
     assert session.scalar(select(func.count()).select_from(m.Provider)) == 6
     assert session.scalar(select(func.count()).select_from(m.ComponentVersion)) == 19
     # M2 新增装载：适配状态条 5 条（seeds/adapters.json）；页面差异登记入 SeedMeta

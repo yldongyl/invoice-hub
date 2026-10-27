@@ -10,7 +10,7 @@ from app.services import config_center as cc
 
 def test_config_items_loaded(session):
     n = len(list(session.scalars(select(m.ConfigItem).where(m.ConfigItem.scope == "default"))))
-    assert n == 8  # 6 配置项 + __sla_targets + __asset_versions
+    assert n == 12  # 6 配置项 + __sla_targets + __asset_versions + 4 渠道配置（M3 channels.json，FN-1-11）
     assert all(r.state == "published" for r in session.scalars(select(m.ConfigItem)))
 
 

@@ -1,0 +1,250 @@
+{
+  "version": "1.0.0",
+  "status": "渠道配置与受理基线（M3 WP3.2 · FN-1-01~04/09/10/11）",
+  "source": "ui-design/invoice-intake.html 渠道卡+配置项 toast 清单（逐字口径）+ 清单 FN-1-01~04/08/09/11 + seeds/config.json sla_targets + 页面 KPI 条/渠道卡「今日接收」锚点",
+  "note": "凭证类配置一律 KMS 托管不回显（演示桩：掩码字符串，TODO(FN-9-10 M5)）；渠道配置变更=受控写（governed publish，asset_type=channel_config，复用 versioning 基座 v{日期}.{序号}）；邮箱 Job 默认 15 分钟拉取（FN-1-01）——演示口径以 RUNBOOK 手动触发等效（本地信箱目录 runtime/mailbox/inbox）；SAP DOX 桥接桩=目录投递（runtime/dox/inbox），Peppol/UBL 传输信封校验与参与方 ID 核对按本文件配置执行（TODO(H30) 余项）；today_counters/kpi_baseline 为页面同源锚点（G-M0-001 快照源口径），运行期增量由 KPI API 实算合并。",
+  "channels": [
+    {
+      "channel": "供应商邮箱",
+      "enabled": true,
+      "status_display": "运行中",
+      "version_base": "v2026-10-20.1",
+      "mailbox": "ap-invoices@lanwu-procurement.com",
+      "instance_scope": [
+        "CN"
+      ],
+      "config": {
+        "poll_interval_minutes": 15,
+        "sender_domain_whitelist": [
+          "lanwu-procurement.com",
+          "supplier-partners.com",
+          "vendor.example.com"
+        ],
+        "attachment_type_whitelist": [
+          "xml",
+          "ofd",
+          "pdf",
+          "jpg",
+          "jpeg",
+          "png"
+        ],
+        "max_attachment_size_mb": 20,
+        "return_mail_template": "非发票附件自动退回通知 · 默认模板（可配）",
+        "dox_bridge_enabled": true,
+        "receipt_notify": "退回邮件通知供应商 + 平台批次注记（演示桩通道）"
+      }
+    },
+    {
+      "channel": "API 集成",
+      "enabled": true,
+      "status_display": "运行中",
+      "version_base": "v2026-10-20.1",
+      "endpoint": "POST /v1/invoices:recognize",
+      "instance_scope": [
+        "CN",
+        "OS"
+      ],
+      "config": {
+        "appkey_credential": "***（KMS 托管 · 界面不回显 · 演示桩）***",
+        "signature_secret": "***（HMAC-SHA256 演示密钥 · KMS 托管不回显）***",
+        "signature_demo_secret_plain": "invoice-hub-demo-webhook-secret",
+        "rate_limit_qps": 50,
+        "sync_fast_path_enabled": true,
+        "webhook_default_url": "https://erp.customer.com/hooks/invoice-case",
+        "webhook_retry_max": 8,
+        "idempotent_key_ttl_days": 7
+      }
+    },
+    {
+      "channel": "门户上传",
+      "enabled": true,
+      "status_display": "运行中",
+      "version_base": "v2026-10-20.1",
+      "operator": "采购共享中心坐席 · 供应商门户",
+      "instance_scope": [
+        "CN",
+        "OS"
+      ],
+      "config": {
+        "allowed_types": [
+          "xml",
+          "ofd",
+          "pdf",
+          "jpg",
+          "jpeg",
+          "png"
+        ],
+        "max_file_size_mb": 20,
+        "max_batch_files": 50,
+        "upload_perm_groups": [
+          "管理员",
+          "运营"
+        ],
+        "dedup_policy": "同名同大小去重（FN-1-03）",
+        "receipt_notify": "受理回执实时返回批次号"
+      }
+    },
+    {
+      "channel": "SAP DOX",
+      "enabled": true,
+      "status_display": "运行中",
+      "version_base": "v2026-10-20.1",
+      "endpoint": "SAP Document Exchange 桥接（海外 · 新加坡）",
+      "instance_scope": [
+        "OS"
+      ],
+      "config": {
+        "dox_tenant_endpoint": "https://dox.example.sap/tenants/lanwu-sg（演示桩）",
+        "participant_id": "0130:SG-LANWU-APAC（参与方 ID 核对基准）",
+        "peppol_ap_cert": "***（Peppol AP 证书 · KMS 托管不回显 · 演示桩）***",
+        "envelope_check_level": "strict（Peppol/UBL 传输信封校验）",
+        "poll_interval_minutes": 30,
+        "retry_max": 3,
+        "return_doc_types": [
+          "Order Response",
+          "对账单"
+        ]
+      }
+    }
+  ],
+  "today_counters": {
+    "供应商邮箱": {
+      "received": 63,
+      "filtered_return": 5
+    },
+    "API 集成": {
+      "received": 412,
+      "sync_p95_s": 2.4
+    },
+    "门户上传": {
+      "received": 37,
+      "filtered_return": 2
+    },
+    "SAP DOX": {
+      "received": 28,
+      "filtered_return": 3
+    }
+  },
+  "kpi_baseline": {
+    "as_of": "12:40",
+    "daily_received_total": 540,
+    "filtered_by_doc_type": {
+      "合同": 9,
+      "对账单": 8,
+      "报价单": 6
+    },
+    "manual_sort_pending": {
+      "total": 7,
+      "encrypted_pdf": 2
+    },
+    "success_rate_pct": 98.7,
+    "success_rate_caliber": "受理登记成功 / 接入总量（FN-1-09 页面口径）",
+    "avg_latency_s": 1.8,
+    "p95_latency_s": 3.6,
+    "latency_caliber": "接入 → 摘要登记，不含识别耗时（FN-1-09）",
+    "hourly_series": [
+      {
+        "hour": "08",
+        "count": 30
+      },
+      {
+        "hour": "09",
+        "count": 40
+      },
+      {
+        "hour": "10",
+        "count": 50
+      },
+      {
+        "hour": "11",
+        "count": 60
+      },
+      {
+        "hour": "12",
+        "count": 55
+      },
+      {
+        "hour": "13",
+        "count": 45
+      },
+      {
+        "hour": "14",
+        "count": 50
+      },
+      {
+        "hour": "15",
+        "count": 58
+      },
+      {
+        "hour": "16",
+        "count": 50
+      },
+      {
+        "hour": "17",
+        "count": 46
+      },
+      {
+        "hour": "18",
+        "count": 56
+      }
+    ],
+    "series_note": "今日分时接入迷你柱（08–13 时展示窗口为页面口径）；合计=540 与渠道卡四数之和一致（63+412+37+28）"
+  },
+  "intake_rules": {
+    "version": "v2026-10-20.2",
+    "state": "published",
+    "note": "受理规则版本化资产（FN-1-10 · 复用 FN-0-12 治理框架；Header 徽章「受理规则版本 v2026-10-20.2 · 已发布」同源）；过滤/分流/重试三段载荷=规则引擎可执行条款（确定性判断，非模型推断，FN-1-05）",
+    "payload": {
+      "non_invoice_filter": {
+        "rule_id": "非发票过滤",
+        "machine_id": "non_invoice_doc_filter",
+        "keywords_by_type": {
+          "合同": [
+            "合同",
+            "服务协议",
+            "框架协议",
+            "contract",
+            "agreement"
+          ],
+          "对账单": [
+            "对账单",
+            "对账",
+            "reconciliation",
+            "statement of account"
+          ],
+          "报价单": [
+            "报价单",
+            "报价",
+            "quotation",
+            "quote"
+          ],
+          "Order Response": [
+            "order response",
+            "订单回执",
+            "orderresponse"
+          ]
+        },
+        "action_on_hit": "退回 + 通知留痕 + 可申诉重提标记（FN-1-05②），不入发票池"
+      },
+      "carrier_routing": {
+        "rule_id": "载体检测分流",
+        "machine_id": "carrier_route_detect",
+        "map": {
+          "xml": "L1_xml_direct",
+          "ofd": "L1_ofd_direct",
+          "image": "L2_ocr_vlm"
+        },
+        "pdf_policy": "文本层探测：含可读文本层→L1_pdf_text；/Encrypt→L4_manual_review（加密件回执索取）；无文本层→L2_ocr_vlm（扫描件路由 stub Provider）",
+        "corrupted_policy": "文件头/结构损坏→L4_manual_review（人工分拣+向来源渠道回执）",
+        "min_outbound_note": "能直读的不送 OCR（数据最小外发，FN-1-08/5-08）；直读路径外发台账必须为零"
+      },
+      "retry_policy": {
+        "rule_id": "失败重试与断点续跑",
+        "file_step_retry_max": 3,
+        "file_step_retry_note": "单文件失败只重试相关步骤，不重跑已完成识别（FN-1-07）",
+        "batch_checkpoint_resume": true,
+        "batch_resume_note": "Job 中断从最后成功检查点继续；已登记摘要（intake_ledger）的文件不重复受理（摘要幂等）"
+      }
+    }
+  }
+}

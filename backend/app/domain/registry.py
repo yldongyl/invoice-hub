@@ -22,7 +22,7 @@ class EnumViolation(ValueError):
 
 
 class EnumRegistry:
-    """contracts/enum-registry.json 的只读视图（19 类 / 115 值，v1.0.0 冻结）。"""
+    """contracts/enum-registry.json 的只读视图（25 类 / 142 值，v1.2.0；受理域 5 类为 M3 增补）。"""
 
     def __init__(self, data: dict):
         self._data = data

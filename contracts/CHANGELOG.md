@@ -51,6 +51,12 @@
 - **内容**：① **link_type 增补**（关闭 M1 门禁缺陷 **M-M1-002**）：五类关系词表取自清单 FN-0-04 原文（匹配/收货/来自/冲减/包含），code/label/color_raw/note 四字段与 Sheet08 追加行逐字（check_enums 120/120 通过）；domain 层由硬编码常量改为 registry 引用，装载即校验。② **M2 内部读面响应契约**（FN-8-03/11 · P03 WP2.1/2.2）：dashboard 聚合（KPI 四卡含红线对照真算/环形/趋势/Top5 含逐案交叉核算与豁免标注/告警×3/适配状态条/核算元数据）、alerts 读侧（FN-5-09：level danger/warning 展示级 ⊆ color_tokens 词表，与分发级 P0-P2 分轨；AI 建议必含人工确认约束为服务侧真实校验）、case-read 投影（列表 listProjection 瘦身关闭 **M-M1-005** 内部面、view=switcher、exists 深链校验含 FN-0-14 tab 词汇 {log|sla|arch} 内联注记）。北向集成面（FN-A-02，openapi.yaml）**零改动**——详情 view=summary/full 仍过 invoice-case.schema.json 全量契约；`GET /v1/cases` 列表不在北向清单内，其 full 案件形态由全量聚合瘦身为投影属内部面首次接线前的形态收敛，无既有消费者。③ **adapters.json 种子**（§4.3 后台数据契约「Adapter 状态清单」）：dashboard 底部状态条 5 行逐字入库（status_code ∈ registry.adapter_status 三值，glyph 服务端派生）——新增 seed 文件非既冻结数据修改。④ 聚合口径（用户裁决 2026-10-26）：历史累计基线以 kpi_snapshots 表为权威源，可核算项（Top5 对照/红线布尔/donut 合计/live 计数/AI 标注）由 cases/alerts/adapters 表真算，禁文件透传与硬编码。
 - **依据**：docs/gate-reports/M1-gate-report.md §9（M-M1-002/005 处置=M2）；清单 FN-0-04/FN-8-03/FN-8-11/FN-5-09/FN-0-14/§4.3；P03 WP2.1/2.2。
 
+### ⑧ 2026-10-27 · COMPAT（v1.2.0） · M3 受理域枚举增补：渠道/载体/流水线态/文件处置/非发票细分 5 类 22 值
+- **影响文件**：`enum-registry.json`（v1.1.0→v1.2.0，新增 `intake_channel` 4 值、`carrier_route` 5 值、`pipeline_step_status` 5 值、`intake_file_disposition` 4 值、`non_invoice_doc_type` 4 值）、Excel `08-枚举字典`（同步追加 22 行，120→142 行，第 125–146 行）、`tools/check_enums.py`（类别映射 20→25、EXPECTED_TOTAL 120→142）、`backend/app/domain/registry.py`（文档注释）。
+- **内容**：P04 WP3.1/3.2 受理流水线与通道批次实装所需词表入注册表（依赖纪律④：运行期渠道/载体/步骤态/文件处置写入即校验）。①`intake_channel` 四值逐字沿用 seeds/batches.json 与 intake 页渠道卡/筛选器词汇（供应商邮箱/API 集成/门户上传/SAP DOX）——不另造机器码，页面↔种子↔运行库三方同源；②`carrier_route` 码值取自清单 FN-2-14 recognition_path 词表子集（L1_xml_direct/L1_ofd_direct/L1_pdf_text/L2_ocr_vlm/L4_manual_review），`L3_vlm_fallback` 属 M4 编排域，届时按本条同机制增补；③`pipeline_step_status`/`intake_file_disposition` 为流水线机器态（FN-1-05 步骤级持久化、FN-1-06 文件明细、FN-1-07 断点续跑检查点），非 UI 徽章、不入色板；④`non_invoice_doc_type` 前三种逐字=intake KPI 卡细分词汇（合同/对账单/报价单），`Order Response` 源=FN-1-04 DOX 通道原文。北向集成面（openapi.yaml）**零改动**；M3 新增内部面端点（intake 上传/批次/KPI/渠道配置/规则版本/Job 触发）属内部读面与受控写面，不入北向 FROZEN 清单（与 M2 ⑦ 同口径：先例 dashboard/alerts 亦未入 openapi.yaml）。
+- **随登记裁决**：受控写动作词汇新增 `intake`（受理提交，FN-1-08 五要素），权限位「受理提交」为 RBAC 矩阵第 8 位（FN-9-02 明示「基线，可版本化变更；矩阵编辑=高风险变更」；users_roles.json 同步增补，管理员/运营=1，复核员/审计只读=0；M5 RBAC 实装时以矩阵版本化机制承接）。属命令/权限词汇而非徽章枚举，不入 Sheet08（与 permissions 既有的 users_roles 承载一致）。
+- **依据**：清单 §3.1 FN-1-01~07/1-08、FN-2-14、FN-9-02；P04 §1/§2 WP3.1-3.2；docs/adr/0004（矩阵桩边界）。
+
 ---
 
 ## TODO 未决项登记（冻结不阻塞，实现标注纪律）

@@ -1,13 +1,14 @@
 {
-  "version": "1.1.0",
-  "status": "v1 · FROZEN（M0，2026-10-25 随 CON 决议冻结；v1.1.0 M2 兼容增补 link_type）",
-  "description": "全站枚举注册表——Excel Sheet08《枚举字典》全 120 行机器可读化（v1.1.0 含 M2 增补 link_type 5 行），唯一实现依据（CON-B1）。禁止硬编码字面量、禁止造词；前后端徽章与本表同源（FN-0-15）。每个 values 条目的 code/label/color_raw/note 四字段与 Sheet08 的「值/代码、标签/含义、颜色/级别、备注」四列逐字一致，由 tools/check_enums.py 逐行比对；color 为语义色板 token（见 ui-design/design-system.md §2），为附加字段不参与逐字比对；个别类别附机器字段（如 actor/enabled/access/pattern/min-max），亦为附加。",
-  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx · Sheet08 枚举字典（120 行数据，第 5–124 行）· 上游口径：清单 MD §2 / 附录 A.4 / FN-0-10 / FN-0-13；link_type 类别上游=清单 §2.2 FN-0-04 原文",
+  "version": "1.2.0",
+  "status": "v1 · FROZEN（M0，2026-10-25 随 CON 决议冻结；v1.1.0 M2 兼容增补 link_type；v1.2.0 M3 兼容增补受理域 5 类 22 值）",
+  "description": "全站枚举注册表——Excel Sheet08《枚举字典》全 142 行机器可读化（v1.1.0 含 M2 增补 link_type 5 行；v1.2.0 含 M3 增补 intake_channel/carrier_route/pipeline_step_status/intake_file_disposition/non_invoice_doc_type 5 类 22 行），唯一实现依据（CON-B1）。禁止硬编码字面量、禁止造词；前后端徽章与本表同源（FN-0-15）。每个 values 条目的 code/label/color_raw/note 四字段与 Sheet08 的「值/代码、标签/含义、颜色/级别、备注」四列逐字一致，由 tools/check_enums.py 逐行比对；color 为语义色板 token（见 ui-design/design-system.md §2），为附加字段不参与逐字比对；个别类别附机器字段（如 actor/enabled/access/pattern/min-max），亦为附加。",
+  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx · Sheet08 枚举字典（142 行数据，第 5–146 行）· 上游口径：清单 MD §2 / 附录 A.4 / FN-0-10 / FN-0-13；link_type 类别上游=清单 §2.2 FN-0-04 原文；受理域 5 类上游=清单 §3.1 FN-1-01~06 与 §3.2 FN-2-14 recognition_path 词表（v1.2.0 增补，FN-A-07 兼容登记见 contracts/CHANGELOG.md ⑧）",
   "notes": [
     "置信度中档上界按清单 FN-0-06/Sheet08 取 80–94%（design-system.md §3 所写 80–95% 为笔误，裁决见 docs/adr/0004 附#2）",
     "字段来源六枚举为全站唯一口径；SPI/Provider 侧细粒度词表按 docs/adr/0004 附#1 归一映射（pdf_text→xml_direct、vlm→model、verify_api→webhook），映射表见 contracts/field-alias.md",
     "案件状态/来源/结果/主体四类徽章配色全站唯一（FN-0-15）；状态流转（state_transition）与四校验项（check_item）为 Sheet08 规则型类别，非取值枚举",
-    "link_type（v1.1.0 增补）：五类 Link 关系词表取自清单 FN-0-04 原文（匹配/收货/来自/冲减/包含），关闭 M1 门禁缺陷 M-M1-002（原硬编码于 domain/models.py）；Excel Sheet08 同步追加 5 行，FN-A-07 兼容登记见 contracts/CHANGELOG.md ⑦"
+    "link_type（v1.1.0 增补）：五类 Link 关系词表取自清单 FN-0-04 原文（匹配/收货/来自/冲减/包含），关闭 M1 门禁缺陷 M-M1-002（原硬编码于 domain/models.py）；Excel Sheet08 同步追加 5 行，FN-A-07 兼容登记见 contracts/CHANGELOG.md ⑦",
+    "受理域 5 类（v1.2.0 增补）：intake_channel 四值逐字沿用 seeds/batches.json 与 intake 页渠道卡/筛选器词汇（不另造机器码，运行期渠道写入即校验）；carrier_route 码值取自 FN-2-14 recognition_path 词表子集（L3_vlm_fallback 属 M4 编排域，届时按 FN-A-07 增补）；pipeline_step_status/intake_file_disposition 为受理流水线机器态（FN-1-05/06 步骤级持久化与断点续跑，非 UI 徽章）；non_invoice_doc_type 前三种逐字=intake KPI 卡「合同 9 · 对账单 8 · 报价单 6」细分词汇，Order Response=intake 渠道卡④/FN-1-04 原文；Excel Sheet08 追加 22 行（第 125–146 行），FN-A-07 兼容登记见 contracts/CHANGELOG.md ⑧"
   ],
   "color_tokens": {
     "primary": "蓝 #165DFF",
@@ -256,6 +257,58 @@
         { "code": "来自", "label": "发票—来自→供应商", "color_raw": "—", "note": "supplier + supplier_id（SUP-NNNNN）" },
         { "code": "冲减", "label": "红字票/CN—冲减→原票", "color_raw": "—", "note": "relation ∈ 契约内联（NONE/CANDIDATE/OFFSET_OUT/OFFSET_IN）" },
         { "code": "包含", "label": "案件—包含→原件与附件", "color_raw": "—", "note": "原件/附件引用（file/source_xml）" }
+      ]
+    },
+    "intake_channel": {
+      "s08_category": "接入渠道 channel",
+      "desc": "四渠道接入词汇（FN-1-01~04 · intake 渠道卡与批次筛选器同源；邮箱/DOX 为演示口径桩）",
+      "values": [
+        { "code": "供应商邮箱", "label": "专用邮箱定时 Job（默认 15 分钟）", "color_raw": "—", "note": "FN-1-01 · 本地信箱模拟（RUNBOOK 手动触发）" },
+        { "code": "API 集成", "label": "POST /v1/invoices:recognize", "color_raw": "—", "note": "FN-1-02 · FN-A-01 契约；同步直读快速路径 P95<3s" },
+        { "code": "门户上传", "label": "门户手工上传（拖拽/批量）", "color_raw": "—", "note": "FN-1-03 · 受控提交五要素（FN-1-08/0-08）" },
+        { "code": "SAP DOX", "label": "SAP DOX 桥接（海外）", "color_raw": "—", "note": "FN-1-04 · DOX 目录投递桩；TODO(H30) 余项" }
+      ]
+    },
+    "carrier_route": {
+      "s08_category": "载体分流路径",
+      "desc": "受理流水线③载体检测分流机器码（FN-1-05③ · 词表源=FN-2-14 recognition_path；L3_vlm_fallback 属 M4 增补）",
+      "values": [
+        { "code": "L1_xml_direct", "label": "XML 原件 → 结构化直读", "color_raw": "蓝", "color": "primary", "note": "平台内置解析（非 Provider 非 OCR）" },
+        { "code": "L1_ofd_direct", "label": "OFD 解包 → 直读", "color_raw": "蓝", "color": "primary", "note": "演示口径：zip 解包读元数据" },
+        { "code": "L1_pdf_text", "label": "PDF 原生文本层 → 直读", "color_raw": "蓝", "color": "primary", "note": "文本层判据=规则引擎确定性探测" },
+        { "code": "L2_ocr_vlm", "label": "纸质扫描/图片 → OCR 路由", "color_raw": "紫", "color": "purple", "note": "M4 前走 stub Provider（外发登记台账）" },
+        { "code": "L4_manual_review", "label": "加密件/损坏件 → 人工分拣", "color_raw": "橙", "color": "warning", "note": "向来源渠道回执索取（FN-1-05③）" }
+      ]
+    },
+    "pipeline_step_status": {
+      "s08_category": "流水线步骤态",
+      "desc": "五步受理流水线步骤级状态持久化取值（FN-1-05 · 断点续跑检查点依据；机器态非 UI 徽章）",
+      "values": [
+        { "code": "PENDING", "label": "待执行", "color_raw": "—", "note": "步骤已登记未开始" },
+        { "code": "RUNNING", "label": "执行中", "color_raw": "—", "note": "断点续跑从此态重启" },
+        { "code": "DONE", "label": "已完成", "color_raw": "—", "note": "重跑跳过（不重复受理/识别不重跑）" },
+        { "code": "FAILED", "label": "失败", "color_raw": "—", "note": "文件级只重试相关步骤（FN-1-07）" },
+        { "code": "SKIPPED", "label": "跳过", "color_raw": "—", "note": "非发票退回/前置失败连带跳过" }
+      ]
+    },
+    "intake_file_disposition": {
+      "s08_category": "文件受理处置",
+      "desc": "批次文件级受理处置结果（FN-1-05/06 文件明细口径；机器态非 UI 徽章）",
+      "values": [
+        { "code": "ACCEPTED", "label": "受理成功·派生案件", "color_raw": "—", "note": "案件号深链+状态快照（FN-1-06）" },
+        { "code": "FILTERED", "label": "非发票过滤·退回", "color_raw": "—", "note": "退回+通知留痕+可申诉重提（FN-1-05②）" },
+        { "code": "MANUAL_SORT", "label": "转人工分拣", "color_raw": "—", "note": "加密/损坏件 · KPI 待人工分拣计数口径（FN-1-09）" },
+        { "code": "FAILED", "label": "受理失败", "color_raw": "—", "note": "异常隔离不阻断批次（FN-1-06/07）" }
+      ]
+    },
+    "non_invoice_doc_type": {
+      "s08_category": "非发票文档类型",
+      "desc": "非发票过滤规则引擎判定细分（FN-1-05② · KPI 卡「合同/对账单/报价单」细分同源；Order Response=FN-1-04 DOX 原文）",
+      "values": [
+        { "code": "合同", "label": "合同类文档", "color_raw": "橙", "color": "warning", "note": "命中退回+通知供应商" },
+        { "code": "对账单", "label": "对账类文档", "color_raw": "橙", "color": "warning", "note": "含 DOX 对账类" },
+        { "code": "报价单", "label": "报价类文档", "color_raw": "橙", "color": "warning", "note": "命中退回+通知" },
+        { "code": "Order Response", "label": "订单回执（DOX）", "color_raw": "橙", "color": "warning", "note": "FN-1-04 海外通道自动退回" }
       ]
     }
   }

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.0",
-  "status": "规则标识目录（清单附录 C · FN-3-05 规则命中解释与 FN-0-12 规则注册制基线；M1 起规则引擎按此注册制落地，未注册规则标识=缺陷）",
-  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx Sheet09（附录 C 段 20 条）+ 清单附录 C",
-  "note": "rule 字段值与版本留痕入证据（如 amount_tax_sum_check ✓）；中文名条目（行级勾稽/查重规则/容差判定/红线策略）为清单口径的族级标识，机器 rule_id 由 M1 注册时定义并兼容登记（enum-registry 不含规则字典，Sheet08 无此类，不造词冻结）。（M1 WP1.6 已按本 note 授权登记四条 machine_id：line_amount_sum_check/dedup_business_key/tolerance_check/redline_policy，其余 16 条与附录 C 逐字一致）",
+  "version": "1.1.0",
+  "status": "规则标识目录（清单附录 C · FN-3-05 规则命中解释与 FN-0-12 规则注册制基线；M1 起规则引擎按此注册制落地，未注册规则标识=缺陷；v1.1.0 M3 增补受理流水线两条确定性条款）",
+  "source": "采购平台票据智能与合规中台-细化功能清单.xlsx Sheet09（附录 C 段 20 条，逐字保留）+ 清单附录 C + M3 增补 2 条（上游=清单 §3.1 FN-1-05②③ 原文，登记见 contracts/CHANGELOG.md ⑧）",
+  "note": "rule 字段值与版本留痕入证据（如 amount_tax_sum_check ✓）；中文名条目（行级勾稽/查重规则/容差判定/红线策略/非发票过滤/载体检测分流）为清单口径的族级标识，机器 rule_id 由 M1 注册时定义并兼容登记（enum-registry 不含规则字典，Sheet08 无此类，不造词冻结）。（M1 WP1.6 已按本 note 授权登记四条 machine_id：line_amount_sum_check/dedup_business_key/tolerance_check/redline_policy，其余 16 条与附录 C 逐字一致；M3 WP3.1 增补 non_invoice_doc_filter/carrier_route_detect 两条=intake_rules 版本化资产的可执行条款，非附录 C 冻结集扩充，来源与载荷见 seeds/channels.json）",
   "rules": [
     {
       "rule_id": "invoice_no_format_check",
@@ -111,6 +111,20 @@
       "ref_version": null,
       "machine_id_pending": false,
       "machine_id": "redline_policy"
+    },
+    {
+      "rule_id": "非发票过滤",
+      "usage": "受理流水线②：合同/对账单/报价单/Order Response 特征判定（关键词规则，载荷=intake_rules 资产 payload，FN-1-05②）",
+      "ref_version": "intake_rules v2026-10-20.2",
+      "machine_id_pending": false,
+      "machine_id": "non_invoice_doc_filter"
+    },
+    {
+      "rule_id": "载体检测分流",
+      "usage": "受理流水线③：文件头/载体探测→直读/OCR 路由/人工分拣（码值=enum-registry.carrier_route，FN-1-05③/FN-2-14）",
+      "ref_version": "intake_rules v2026-10-20.2",
+      "machine_id_pending": false,
+      "machine_id": "carrier_route_detect"
     }
   ],
   "related_versions": "规则载体组件版本见 versions.json（dedup-rule v2.3 / po-infer-rule v1.8 / link-infer / link-check v1.1 / case-machine v2.2）"
