@@ -133,23 +133,27 @@ class ObjectLink(Base):
 
 
 class Batch(Base):
-    """批次（接口位 FN-1-06；BT-YYYYMMDD-NNN）。"""
+    """批次（FN-1-06；BT-YYYYMMDD-NNN；M3 WP3.2 激活业务行为）。"""
 
     __tablename__ = "batches"
 
     batch_id: Mapped[str] = mapped_column(String(16), primary_key=True)
-    channel: Mapped[str] = mapped_column(String(20))
+    channel: Mapped[str] = mapped_column(String(20))                 # enum-registry.intake_channel
     instance_display: Mapped[str] = mapped_column(String(10))       # 页面口径 中国/海外
     files: Mapped[int] = mapped_column(Integer)
-    status: Mapped[str] = mapped_column(String(20))                 # batch_status 枚举
+    status: Mapped[str] = mapped_column(String(20))                 # batch_status 枚举（存储态为合并前词汇，读侧归一）
     ok: Mapped[int] = mapped_column(Integer)
     err: Mapped[int] = mapped_column(Integer)
     filtered: Mapped[int] = mapped_column(Integer)
     time: Mapped[str] = mapped_column(String(10))
+    # —— M3 运行期列（seed 行为 null；断点续跑检查点与 KPI 时延数据源）——
+    created_ts: Mapped[str | None] = mapped_column(String(30))      # 批次受理时刻（ISO）
+    instance: Mapped[str | None] = mapped_column(String(2))         # CN|OS（运行期批次租户归属）
+    trace_id: Mapped[str | None] = mapped_column(String(12))
 
 
 class FileIntake(Base):
-    """批次文件级受理明细（接口位；case 引用空=非发票/待生成）。"""
+    """批次文件级受理明细（FN-1-06；M3 运行期激活：摘要/载体/处置/时延列）。"""
 
     __tablename__ = "file_intake"
 
@@ -161,6 +165,99 @@ class FileIntake(Base):
     status_snapshot: Mapped[str | None] = mapped_column(String(20))
     conf: Mapped[int | None] = mapped_column(Integer)
     intake_raw: Mapped[dict] = mapped_column(JSON)
+    # —— M3 运行期列（seed 节选行为 null）——
+    sha256: Mapped[str | None] = mapped_column(String(64), index=True)   # 原件摘要（id_format.原件摘要）
+    mime_type: Mapped[str | None] = mapped_column(String(60))
+    disposition: Mapped[str | None] = mapped_column(String(20))          # intake_file_disposition 枚举
+    carrier_route: Mapped[str | None] = mapped_column(String(20))        # carrier_route 枚举
+    doc_type: Mapped[str | None] = mapped_column(String(30))             # non_invoice_doc_type（FILTERED 时）
+    local_path: Mapped[str | None] = mapped_column(String(200))          # 对象存储本地目录（ADR-0002 PoC）
+    accepted_ts: Mapped[str | None] = mapped_column(String(30))          # 接入时刻（KPI 时延起点）
+    digest_ts: Mapped[str | None] = mapped_column(String(30))            # 摘要登记时刻（④完成）
+    note: Mapped[str | None] = mapped_column(Text)
+
+
+class IntakeLedger(Base):
+    """原件摘要登记台账（FN-1-05④ 受理即登记；CON-05 业务层幂等键=sha256+target_doc_ref，
+    同摘要+同目标单据不重复受理——409 返回既有案件）。"""
+
+    __tablename__ = "intake_ledger"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    target_doc_ref: Mapped[str | None] = mapped_column(String(60))
+    batch_id: Mapped[str] = mapped_column(String(16), index=True)
+    file_seq: Mapped[int] = mapped_column(Integer)
+    case_id: Mapped[str | None] = mapped_column(String(20), index=True)
+    channel: Mapped[str] = mapped_column(String(20))                    # intake_channel 枚举
+    instance: Mapped[str] = mapped_column(String(2))
+    trace_id: Mapped[str | None] = mapped_column(String(12))
+    accepted_at: Mapped[str] = mapped_column(String(30))
+    __table_args__ = (UniqueConstraint("sha256", "target_doc_ref", name="uq_intake_business_key"),)
+
+
+class RequestIdLedger(Base):
+    """传输层幂等台账（X-Request-Id，与业务层摘要键分离——CON-05/06；有效期=渠道配置幂等键 TTL）。"""
+
+    __tablename__ = "request_id_ledger"
+
+    request_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    case_id: Mapped[str | None] = mapped_column(String(20))
+    batch_id: Mapped[str | None] = mapped_column(String(16))
+    instance: Mapped[str | None] = mapped_column(String(2))
+    response_raw: Mapped[dict | None] = mapped_column(JSON)             # 首发响应快照（重放同形返回）
+    created_at: Mapped[str] = mapped_column(String(30))
+    expires_at: Mapped[str] = mapped_column(String(30))
+
+
+class FileStep(Base):
+    """五步流水线步骤级状态持久化（FN-1-05 · 断点续跑检查点：每步一行，重跑仅续做未 DONE 步骤）。"""
+
+    __tablename__ = "file_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    batch_id: Mapped[str] = mapped_column(String(16), index=True)
+    file_seq: Mapped[int] = mapped_column(Integer)
+    step_no: Mapped[int] = mapped_column(Integer)                       # 1..5（流水线步序）
+    status: Mapped[str] = mapped_column(String(12))                     # pipeline_step_status 枚举
+    detail_raw: Mapped[dict | None] = mapped_column(JSON)               # 步骤结果快照（规则命中/载体/摘要/案件号）
+    ts: Mapped[str] = mapped_column(String(30))
+    __table_args__ = (UniqueConstraint("batch_id", "file_seq", "step_no", name="uq_file_step"),)
+
+
+class EgressLog(Base):
+    """数据最小外发台账（FN-5-08 演示口径：每次向 Provider/外部通道的载荷外发登记一行；
+    直读路径必须零记录——E2E 断言「外发记录为零」的对照表）。"""
+
+    __tablename__ = "egress_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ts: Mapped[str] = mapped_column(String(30))
+    batch_id: Mapped[str | None] = mapped_column(String(16), index=True)
+    file_seq: Mapped[int | None] = mapped_column(Integer)
+    case_id: Mapped[str | None] = mapped_column(String(20))
+    provider_id: Mapped[str] = mapped_column(String(60))                # stub Provider 标识（M4 实装同源）
+    purpose: Mapped[str] = mapped_column(String(30))                    # recognize/verify/webhook…
+    payload_digest: Mapped[str | None] = mapped_column(String(64))      # 外发内容 SHA-256（最小化：只发必要字段）
+    bytes_out: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str | None] = mapped_column(Text)                      # 演示口径注记
+
+
+class WebhookDelivery(Base):
+    """Webhook 回调登记（FN-A-03 · 演示口径：本地 outbox 落盘替代真实外呼；
+    消费方非 2xx 指数退避重试 ≤8 次=sla_targets.webhook_retry_max，消费者属 M4+）。"""
+
+    __tablename__ = "webhook_deliveries"
+
+    event_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    event: Mapped[str] = mapped_column(String(30))                      # webhook_event 枚举
+    case_id: Mapped[str] = mapped_column(String(20), index=True)
+    delivered_to: Mapped[str | None] = mapped_column(String(200))       # callback_url（桩：落 outbox 文件）
+    payload_raw: Mapped[dict] = mapped_column(JSON)
+    signature: Mapped[str | None] = mapped_column(String(80))           # sha256=<hex>（HMAC 演示密钥）
+    attempts: Mapped[int] = mapped_column(Integer, default=1)
+    state: Mapped[str] = mapped_column(String(12), default="queued")    # queued/delivered（演示桩即 outbox=已投递）
+    ts: Mapped[str] = mapped_column(String(30))
 
 
 class Provider(Base):

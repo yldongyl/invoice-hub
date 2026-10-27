@@ -22,12 +22,13 @@ _EPS = 1e-9   # 十进制金额的二进制浮点表示误差容许（边界语�
 from app.domain.registry import EnumViolation, get_registry
 from app.services.errors import (E_RULE_NOT_IMPLEMENTED, E_RULE_NOT_REGISTERED, CommandError)
 
-# 本阶段实装集（P02 WP1.6 点名 13 条；机器 id 用 catalog 登记值）
+# 实装集（P02 WP1.6 点名 13 条 + M3 WP3.1 受理流水线 2 条；机器 id 用 catalog 登记值）
 IMPLEMENTED = {
     "amount_tax_sum_check", "amount_sum_check", "line_amount_sum_check",
     "invoice_no_format_check", "date_valid_range", "supplier_master_match",
     "tax_id_checksum", "buyer_entity_match", "currency_iso_check",
     "sg_uen_format_check", "tolerance_check", "redline_policy", "dedup_business_key",
+    "non_invoice_doc_filter", "carrier_route_detect",      # M3 WP3.1（FN-1-05②③，v1.1.0 规则目录增补）
 }
 
 # —— 校验结果值一律取自 enum-registry.check_result（引用不造词）——
@@ -265,6 +266,61 @@ def dedup_business_key(ctx: dict) -> dict:
     return out("dedup_business_key", PASSED, f"OS 查重键=号码+价税合计+供应商：{key}")
 
 
+# ───────────────────────── M3 受理流水线确定性条款（FN-1-05②③ · WP3.1） ─────────────────────────
+
+def non_invoice_doc_filter(ctx: dict) -> dict:
+    """②非发票过滤：合同/对账单/报价单/Order Response 特征判定（关键词=版本化受理规则载荷）。
+    result 语义（check_result 四值复用）：FAILED=命中非发票特征（该文档不是发票）；
+    PASSED=未命中，进入发票受理。附 doc_type 输出命中细分（enum-registry.non_invoice_doc_type）。"""
+    reg = get_registry()
+    kws = ctx.get("keywords_by_type") or {}
+    hay = " ".join(str(ctx.get(k) or "") for k in ("filename", "text_head")).lower()
+    # 类型名也过枚举校验（载荷漂移即违例，禁止造词）
+    allowed = reg.code_set("non_invoice_doc_type")
+    for dtype, words in sorted(kws.items()):
+        if dtype not in allowed:
+            raise EnumViolation(f"非发票类型 {dtype!r} 不在 non_invoice_doc_type 取值域")
+        for w in sorted(words, key=len, reverse=True):        # 长词优先，避免「对账单」被「对账」遮蔽后歧义
+            if str(w).lower() in hay:
+                return {"rule_id": "non_invoice_doc_filter", "result": FAILED,
+                        "note": f"命中 {dtype} 特征关键词「{w}」→ 退回+通知留痕（可申诉重提，FN-1-05②）",
+                        "doc_type": dtype}
+    return {"rule_id": "non_invoice_doc_filter", "result": PASSED,
+            "note": "未命中合同/对账单/报价单/Order Response 特征 → 判定为供应商采购发票候选",
+            "doc_type": None}
+
+
+def carrier_route_detect(ctx: dict) -> dict:
+    """③载体检测分流：魔数/结构探测 → carrier_route 枚举（确定性判断；能直读的不送 OCR）。
+    附 route 输出 = enum-registry.carrier_route 码值（FN-2-14 recognition_path 子集）。"""
+    reg = get_registry()
+    kind = ctx.get("kind")
+    flags = ctx.get("flags") or {}
+    if kind == "corrupt" or not flags.get("header_ok"):
+        route, why = "L4_manual_review", "文件头/结构损坏 → 人工分拣并向来源渠道回执索取（FN-1-05③）"
+    elif kind == "xml":
+        route = "L1_xml_direct"
+        why = "XML 原件 → 结构化直读（平台内置解析，免 Provider 免 OCR）"
+        if not flags.get("xml_parseable"):
+            route, why = "L4_manual_review", "XML 声明但不可解析（结构损坏）→ 人工分拣"
+    elif kind == "ofd":
+        route = "L1_ofd_direct"
+        why = "OFD 原件（zip 容器）→ 解包直读（演示口径：内嵌 XML 抽取；完整解包归 FN-2-01/M4）"
+    elif kind == "pdf":
+        if flags.get("pdf_encrypt"):
+            route, why = "L4_manual_review", "加密 PDF · 无法机读 → 人工分拣，向来源渠道回执索取未加密件"
+        elif flags.get("has_text_layer"):
+            route, why = "L1_pdf_text", "PDF 原生文本层 → 直读（数据最小外发：不送 OCR）"
+        else:
+            route, why = "L2_ocr_vlm", "PDF 无文本层（扫描件）→ OCR 路由（M4 前走 stub Provider）"
+    elif kind == "image":
+        route, why = "L2_ocr_vlm", "扫描/图片载体 → OCR 路由（M4 前走 stub Provider）"
+    else:
+        route, why = "L4_manual_review", f"未识别载体 {kind!r} → 人工分拣"
+    reg.validate("carrier_route", route, where="carrier_route_detect")
+    return out("carrier_route_detect", PASSED, why) | {"route": route}
+
+
 RULES = {
     "amount_tax_sum_check": amount_tax_sum_check,
     "amount_sum_check": amount_sum_check,
@@ -279,6 +335,8 @@ RULES = {
     "tolerance_check": tolerance_check,
     "redline_policy": redline_policy,
     "dedup_business_key": dedup_business_key,
+    "non_invoice_doc_filter": non_invoice_doc_filter,
+    "carrier_route_detect": carrier_route_detect,
 }
 
 
