@@ -71,3 +71,17 @@ make seed && make run
 形态③：file:// 双击 web/dashboard-overview.html 与 case-detail.html → 同形态②（RUNBOOK §3）
 浏览器④：case-detail?case=INV-CN-2026-0379 直达；?case=INV-CN-2026-9999 → 红色 banner 回退 0387；切换器三案；行点击/告警展开/原件定位/双 Tab/深色逐一勾 §1-§2
 ```
+
+## M3-WP3.5 刷新（2026-10-27，接线代码面自查；正式浏览器逐区块核验留 P09 会话执行）
+
+- 接线页新增：`invoice-intake.html`（KPI/渠道卡/⚙ toast/规则徽章/上传五要素+真实步骤回放/批次+断点续跑按钮）、
+  `agent-workbench.html`（队列侧：四维筛选服务端化、地区维=实例切换、单/批认领与放行、导出限时链接、
+  详情卡认领行）；`case-detail.html`（写路径激活：Action/修正/AI 拒绝留痕/双人解除弹窗——§4-1 的
+  「M3 接线后恢复行为一致」兑现，M3_GATE 注记退役）。
+- ZERO-DIFF 台账更新：接线页=5（dashboard/case-detail/login*/intake/workbench；*login 存 §4-4 例外）；
+  其余 7 页维持与原型零差异（matching/provider/adapter/audit/admin/api-portal/demo-landing）。
+- 运行时冒烟（Edge headless，本会话）：三页 live 态 `data-ihub-wp35="live-ok"`，workbench 渲染 4 NEEDS_REVIEW
+  行、队列计数「待复核 5」（=3+1 NEEDS_REVIEW +1 INVESTIGATING，运行期真值口径≠原型 mock 静态 9，live 以服务端为准）；
+  file:// 态回退 `demo`。toast 文案含「已写入不可篡改时间线/审计日志」全局口径。
+- 待 P09 正式核验项：五要素弹窗逐字对照（风险提示文案以原型为基准、服务端 risk_text 同源语义）、
+  intake 步骤回放视觉节奏、导出下载文件名、会签人下拉、解除按钮 BLOCKED 显隐。

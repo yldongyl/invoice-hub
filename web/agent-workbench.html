@@ -485,6 +485,164 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAct(); });
 
 renderTable();
 </script>
+<script src="js/api-client.js"></script>
+<script src="js/demo-mode.js"></script>
+<script>
+/* ═══════════════ M3 WP3.5 接线：队列侧 REST 取数 + 受控写命令（P04） ═══════════════
+ * 口径：
+ *  - 四维筛选——关键词/状态/风险=服务端过滤（keyword/status/risk=any|none）；
+ *    地区维=租户实例数据源切换（四隔离① CN/APAC→CN/OS），「全部地区」双实例合并拉取；
+ *  - 认领/放行（单/批量）全部经 risk-challenge → /actions/*（后端五要素全序 M1 WP1.5；
+ *    BLOCKED 跳过明细由服务端 skipped 返回，toast 列 id）；
+ *  - 导出 CSV=受控 export（AUDIT_EXPORT 入链头→24h 限时链接→下载）；
+ *  - 执行后整表重载（时间线以服务端为准，弹窗文案保持原型基准）；
+ *  - demo-mode（未连接后台/file://）回退原型本地行为（renderTable/WB/confirmAct 原型逻辑保留为 fallback）。
+ * ui-design 只读不改（ADR-0003），本页为接线副本（依赖纪律③）。 */
+let WB_INSTS = ['CN', 'OS'];                     // 当前数据源实例集（地区维驱动）
+const WB_RISK_DANGER = ['重复票', 'SM2 验签失败'];
+function wbMap(it){
+  const meta = it.meta || {};
+  const region = (meta.region || '').startsWith('CN') ? 'CN 中国'
+               : (meta.region || '').startsWith('SG') ? 'APAC 新加坡' : (meta.region || '');
+  const rl = meta.risk_label || null;
+  return { id: it.caseId, sup: meta.supplier || '—', amt: meta.amount_display || (it.facts || {}).invoiceAmount,
+           region, risk: rl ? { t: rl, c: WB_RISK_DANGER.includes(rl) ? 'danger' : 'warning' } : null,
+           status: it.status, conf: (meta.confidence == null ? 0 : meta.confidence),
+           provider: meta.provider || '—', type: meta.type || '', summary: it.summary || '',
+           claimed: meta.claimed_by || null, claimed_at: meta.claimed_at || null };
+}
+async function wbFetchOne(inst){
+  const st = document.getElementById('f-status').value;
+  const kw = document.getElementById('f-kw').value.trim();
+  const rk = document.getElementById('f-risk').value;
+  const params = { instance: inst, page_size: 200 };
+  if (st) params.status = st;
+  if (kw) params.keyword = kw;
+  if (rk === 'risk') params.risk = 'any'; else if (rk === 'none') params.risk = 'none';
+  const r = await IHUB_API.getJSON('/v1/cases', params);
+  return r.items.map(wbMap);
+}
+async function wbReload(){
+  if (!IHUB_API.IS_FILE && IHUB_DEMO.isLive()) {
+    try {
+      const groups = await Promise.all(WB_INSTS.map(wbFetchOne));
+      const rows = groups.flat();
+      WB.length = 0; rows.forEach(r => WB.push(r));
+      selected.forEach(id => { if (!WB.find(c => c.id === id)) selected.delete(id); });
+      const qs = await Promise.all(WB_INSTS.map(i => IHUB_API.getJSON('/v1/workbench/queue', { instance: i })));
+      const label = WB_INSTS.length === 1 ? qs[0].queue : qs.map(q => q.queue).join(' + ');
+      const pending = qs.reduce((a, q) => a + q.pending_review, 0);
+      const hdr = document.querySelector('header b.text-warning');
+      if (hdr) hdr.parentElement.innerHTML = `队列：${label} · 待复核 <b class="text-warning num">${pending}</b>`;
+      renderTable();
+      return;
+    } catch (e) { console.warn('队列取数失败，回退内嵌 mock 渲染：', e.message || e); }
+  }
+  renderTable();
+}
+/* 地区维=数据源切换（其余三维服务端过滤+客户端一致性由同源保证） */
+const _wbRenderTable = window.renderTable;
+window.renderTable = function(){
+  const rg = document.getElementById('f-region').value;
+  const insts = rg === 'CN 中国' ? ['CN'] : rg === 'APAC 新加坡' ? ['OS'] : ['CN', 'OS'];
+  if (IHUB_DEMO.isLive && IHUB_DEMO.isLive() && (insts.length !== WB_INSTS.length || insts[0] !== WB_INSTS[0])) {
+    WB_INSTS = insts; wbReload(); return;
+  }
+  _wbRenderTable();
+};
+/* 详情卡：追加认领子态展示（原型 dl 之后注入，服务端 claimed_by/at 字段） */
+const _wbOpenCase = window.openCase;
+window.openCase = function(id, from){
+  _wbOpenCase(id, from);
+  const c = WB.find(x => x.id === id);
+  const dl = document.querySelector('#detail-body dl');
+  if (c && c.claimed && dl && !document.getElementById('wb-claimed-row')) {
+    dl.insertAdjacentHTML('beforeend',
+      `<div id="wb-claimed-row" class="flex gap-2 items-start"><dt class="w-14 shrink-0 text-ink-3 dark:text-gray-500">认领</dt><dd class="flex-1 text-[11.5px] text-ink-2 dark:text-gray-400">${c.claimed}${c.claimed_at ? ' · ' + c.claimed_at : ''}（锁定+SLA 计时）</dd></div>`);
+  }
+};
+/* 受控执行链：单案/批量按目标实例分组走 risk-challenge→actions；BLOCKED 跳过明细列 id */
+function wbInstOf(id){ return id.startsWith('INV-CN') ? 'CN' : 'OS'; }
+async function wbExecControlled(act, ids){
+  const byInst = {};
+  ids.forEach(id => { (byInst[wbInstOf(id)] = byInst[wbInstOf(id)] || []).push(id); });
+  const actor = IHUB_API.ACTOR.reviewer;
+  const label = act === '放行' ? 'batch_release' : 'batch_claim';
+  const single = ids.length === 1;
+  const results = [];
+  for (const inst of Object.keys(byInst)) {
+    const group = byInst[inst];
+    if (single) {
+      const ch = await IHUB_API.postJSON(`/v1/cases/${group[0]}/risk-challenge`, { actor, instance: inst, action: act === '放行' ? 'release' : 'claim' });
+      const out = await IHUB_API.postJSON(`/v1/cases/${group[0]}/actions/${act === '放行' ? 'release' : 'claim'}`,
+        { actor, instance: inst, token: ch.token, self_confirmed: true });
+      results.push({ out, skipped: [], group });
+    } else {
+      const action = act === '放行' ? 'batch_release' : 'batch_claim';
+      const ch = await IHUB_API.postJSON('/v1/batch/risk-challenge', { actor, instance: inst, action, case_ids: group });
+      const out = await IHUB_API.postJSON(`/v1/batch/actions/${action}`,
+        { actor, instance: inst, token: ch.token, self_confirmed: true, case_ids: group });
+      results.push({ out, skipped: out.skipped || [], group });
+    }
+  }
+  return results;
+}
+const _wbConfirmAct = window.confirmAct;
+window.confirmAct = function(){
+  if (!IHUB_DEMO.isLive()) { _wbConfirmAct(); return; }
+  const { act, scope } = pendingAct;
+  const ids = typeof scope === 'string' ? [scope] : scope;
+  const n = ids.length;
+  const btn = document.getElementById('act-ok'); btn.disabled = true;
+  wbExecControlled(act, ids).then(rs => {
+    closeAct(); clearSel();
+    const skipped = rs.flatMap(r => r.skipped);
+    wbReload();
+    const skipMsg = skipped.length
+      ? `（跳过 ${skipped.length} 件：${skipped.map(s => `${s.caseId}·${s.reason}`).join('；')}）` : '';
+    toast(`✓ 已执行「${act}」× ${n - skipped.length} · 操作人王莉 · 已写入不可篡改案件时间线${skipMsg || (act === '放行' ? '（BLOCKED 案件不可批量放行，需单独解除拦截）' : '')}`);
+    if (skipped.length) setTimeout(() => toast(`⚠ ${skipped.length} 个案件被跳过：${skipped.map(s => s.caseId).join('、')}（BLOCKED 解除须单独走双人会签受控流程）`), 600);
+  }).catch(e => {
+    btn.disabled = false;
+    toast(`受控写被拒：${e.message_cn || e.message}`);
+  });
+};
+/* 导出 CSV（受控 export：入链头→限时链接→浏览器下载；行数以服务端 rows_exported 为准） */
+const _wbBatchAct = window.batchAct;
+window.batchAct = function(act){
+  if (act !== '导出' || !IHUB_DEMO.isLive()) { _wbBatchAct(act); return; }
+  const ids = [...selected];
+  if (!ids.length) { _wbBatchAct(act); return; }
+  const inst = wbInstOf(ids[0]);
+  const filters = {
+    status: document.getElementById('f-status').value || undefined,
+    keyword: document.getElementById('f-kw').value.trim() || undefined,
+    selected_case_ids: ids.join('、'),
+    note: '选择集跨筛选联动（FN-8-07）；CSV 内容=当前筛选结果（服务端权威），选择集快照已入审计检索条件',
+  };
+  (async () => {
+    try {
+      const ch = await IHUB_API.postJSON('/v1/audit/risk-challenge', { actor: IHUB_API.ACTOR.reviewer, instance: inst, action: 'export' });
+      const out = await IHUB_API.postJSON('/v1/audit/actions/export',
+        { actor: IHUB_API.ACTOR.reviewer, instance: inst, token: ch.token, self_confirmed: true,
+          filters, rows: filtered().length });
+      const a = document.createElement('a');
+      a.href = out.url; a.download = out.file;
+      document.body.appendChild(a); a.click(); a.remove();
+      toast(`✓ 已导出 ${out.rows_exported} 行 CSV（限时 24h：${out.expires_at}）· 导出行为已记入审计链（blk#${out.blk} · ${IHUB_API.ACTOR.reviewer}）`);
+    } catch (e) { toast(`导出被拒：${e.message_cn || e.message}`); }
+  })();
+};
+(async function wbBoot(){
+  try {
+    await IHUB_DEMO.probe();
+    await wbReload();
+    document.body.dataset.ihubWp35 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';
+  } catch (e) {
+    document.body.dataset.ihubWp35 = 'err:' + (e && (e.message_cn || e.message) || e);
+  }
+})();
+</script>
 <script>
 /* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
 (function(){

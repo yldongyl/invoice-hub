@@ -1157,32 +1157,175 @@ function openAction(key, presetNote){
 }
 function closeAct(){ hideModal('act-modal'); pendingAction=null; }
 
-/* M2 接线（P03 §0 二选一，用户裁决 2026-10-26）：受控 Action 按钮保留五要素弹窗 UI 基准，
- * 提交不执行、不改本地数据——受控写命令在 M3（受理与写路径）激活后接线
- * POST /v1/cases/{id}/risk-challenge + /actions/{action}（后端五要素框架 M1 WP1.5 已就绪）。
- * 页面一致性核对清单（P03 §3）据此口径：弹窗可开、要素齐备、提交为 M3 提示。 */
-const M3_GATE = '受控写命令将在 M3（写路径垂直切片）激活——本次未提交、案件数据未修改（五要素弹窗为 UI 基准预览）';
-function doAction(){
+/* M3 WP3.5 写路径激活（P04；替代 M2 的「受控写待 M3 激活」门禁注记）：
+ * 弹窗五要素 UI 与原型逐字一致（风险提示=原型文案基准，服务端 risk_text 同源语义，P09 以原型口径核验）；
+ * 提交链：POST /v1/cases/{id}/risk-challenge（要素②③凭据）→ POST /v1/cases/{id}/actions/{action}
+ * （要素①④⑤由后端全序校验；本人勾选=要素③，未勾选按钮禁用）→ 成功整案重载（时间线实时追加+徽章流转）。
+ * demo-mode 未连接：回落原型本地行为（事件 push+状态翻转+toast），页面仍可独立演示。 */
+
+async function submitControlled(action, extra){
+  const inst = IHUB_API.instanceOfCase(curId);
+  const actor = IHUB_API.ACTOR.reviewer;
+  const ch = await IHUB_API.postJSON(`/v1/cases/${curId}/risk-challenge`,
+                                      { actor, instance: inst, action });
+  const out = await IHUB_API.postJSON(`/v1/cases/${curId}/actions/${action}`,
+      Object.assign({ actor, instance: inst, token: ch.token, self_confirmed: true }, extra || {}));
+  return out;
+}
+function demoApplyAction(key, A, note){
+  const opin = note || '（未填写处置意见）';
+  cur.timeline.push({ t: nowStr(), a: 'human', act: 'ACTION_' + key.toUpperCase(),
+    d: `受控 Action：${A.label}`, x: `处置意见：${opin} · 受控写五要素齐备`, v: 'review-ui v1.2' });
+  const frm = cur.meta.status;
+  cur.timeline.push({ t: nowStr(), a: 'system', act: 'STATUS_CHANGE',
+    d: `案件状态 ${frm} → ${A.to}`, x: '触发条件：人工受控 Action', v: 'case-machine v2.2' });
+  cur.meta.status = A.to;
+  loadCase(curId);
+}
+async function doAction(){
+  const key = pendingAction; const A = ACTIONS[key];
+  const note = document.getElementById('act-note').value.trim();
+  if(key === 'return' && !note){ toast('退回供应商必须填写处置意见/理由（要素④）'); return; }
   closeAct();
-  toast(M3_GATE);
+  if(!IHUB_DEMO.isLive()){ demoApplyAction(key, A, note);
+    toast(`已执行「${A.label}」· 案件状态 → ${A.to} · 已写入不可篡改时间线（演示本地口径）`); return; }
+  try{
+    const out = await submitControlled(key, { opinion: note || null });
+    await loadCaseAsync(curId);
+    toast(`已执行「${A.label}」· 案件状态 → ${out.status || A.to} · 已写入不可篡改时间线（操作人：${IHUB_API.ACTOR.reviewer}）`);
+  }catch(e){
+    toast(`受控写被拒：${e.message_cn || e.message}`);
+    loadCaseAsync(curId);                       // 服务端为准回刷（并发处置可见）
+  }
 }
 
 function adoptAdvice(){
   openAction('release', `采纳 AI 差异解释（${cur.ai.title}，置信度 ${cur.ai.conf}%）：确认为口径差异，按建议处置。人工复核：王莉`);
 }
 function rejectAdvice(btn){
-  toast('不采纳留痕（LLM_ADVICE_REJECTED 入时间线）将在 M3 激活——本次未执行任何修改 · AI 建议未被执行');
+  const done = (msg)=>{
+    const card = document.getElementById('ai-card');
+    if(card){ card.classList.add('opacity-60'); card.querySelectorAll('button').forEach(b=>b.disabled = true); }
+    toast(msg);
+  };
+  if(!IHUB_DEMO.isLive()){
+    cur.timeline.push({ t: nowStr(), a: 'human', act: 'LLM_ADVICE_REJECTED', d: '人工不采纳 AI 建议',
+      x: '不采纳原因待补充 · 建议卡片保留在案件中可追溯 · AI 建议未被执行', v: 'review-ui v1.2' });
+    loadCase(curId);
+    done('已记录「不采纳」到案件时间线 · AI 建议未执行（演示本地口径）');
+    return;
+  }
+  (async()=>{
+    try{
+      await submitControlled('advice_reject', { advice_id: 'ai-card-' + curId });
+      await loadCaseAsync(curId);
+      done('已记录「不采纳」到案件时间线（LLM_ADVICE_REJECTED）· AI 建议未执行 · 卡片保留可追溯');
+    }catch(e){ toast('留痕被拒：' + (e.message_cn || e.message)); }
+  })();
 }
 
-/* 人工修正字段（M2 接线口径：弹窗与必填校验为 UI 基准；提交在 M3 接线受控 edit_field 命令） */
+/* 人工修正字段（WP3.5 激活：受控 edit_field——原因必填、来源徽章变「人工」、原值保留可追溯） */
 function openEdit(){ showModal('edit-modal'); }
 function closeEdit(){ hideModal('edit-modal'); }
-function doEdit(){
+async function doEdit(){
   const nv = document.getElementById('ed-value').value.trim();
   const rs = document.getElementById('ed-reason').value.trim();
   if(!nv || !rs){ toast('新值与修改原因均为必填（审计要求）'); return; }
+  const f = flatFields[+document.getElementById('ed-field').value];
   closeEdit();
-  toast(M3_GATE);
+  if(!f){ toast('字段选择异常'); return; }
+  if(!IHUB_DEMO.isLive()){
+    const oldv = f.v;
+    f.src = 'manual'; f.conf = 100; f.v = nv;
+    f.ev.raw = `人工修改：${oldv} → ${nv}（原因：${rs}）`;
+    cur.timeline.push({ t: nowStr(), a: 'human', act: 'FIELD_EDITED',
+      d: `人工修正字段 ${f.path}：${oldv} → ${nv}`, x: `修改原因：${rs} · 来源标记「人工」· 原识别值保留`, v: 'review-ui v1.2' });
+    loadCase(curId);
+    toast('字段已修正并留痕 · 来源标记为「人工」，原识别值可追溯（演示本地口径）');
+    return;
+  }
+  let val = nv; const num = Number(nv); if(nv !== '' && !isNaN(num)) val = num;
+  try{
+    await submitControlled('edit_field', { field: f.path, new_value: val, reason: rs });
+    await loadCaseAsync(curId);
+    toast('字段已修正并留痕 · 来源标记为「人工」，原识别值保留可追溯 · 已写入不可篡改时间线');
+  }catch(e){ toast('修正被拒：' + (e.message_cn || e.message)); loadCaseAsync(curId); }
+}
+
+/* BLOCKED 双人解除（FN-8-06 · 原型无此控件，接线层新增弹窗——P09 按此核验；ui-design 只读） */
+let _ubOverlay = null;
+async function openUnblock(){
+  const inst = IHUB_API.instanceOfCase(curId);
+  let signers = [{ name: '陈铮', role: '实施管理员 / 平台管理员' }];
+  if(IHUB_DEMO.isLive()){
+    try{ const r = await IHUB_API.getJSON('/v1/workbench/co-signers');
+      if(r && r.items && r.items.length) signers = r.items; }
+    catch(e){ console.warn('会签人目录取数失败，回落内嵌候选：', e.message || e); }
+  }
+  _ubOverlay = document.createElement('div');
+  _ubOverlay.className = 'fixed inset-0 z-50 bg-black/40 flex items-center justify-center';
+  _ubOverlay.innerHTML = `
+  <div class="w-[480px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover p-5">
+    <div class="text-[15px] font-semibold">⚖ 解除 BLOCKED 拦截 · 双人会签（受控写）</div>
+    <div class="mt-3 text-[12px] leading-relaxed rounded-card border border-danger/40 bg-danger-light dark:bg-[#3A2426] p-3 text-ink-1 dark:text-gray-200">
+      【danger】解除拦截须<b>复核员 + 管理员</b>双人审批：解除后按调查结论重新流转（默认回落复核队列），全程留痕；
+      BLOCKED 不可批量放行（红线）。
+    </div>
+    <div class="mt-3 text-[12px] text-ink-2 dark:text-gray-400">
+      权限校验：✓ 发起人 王莉（复核员） · 案件 <b class="num">${curId}</b> · 当前状态 BLOCKED
+    </div>
+    <label class="block mt-3 text-[12px] text-ink-2 dark:text-gray-400 mb-1">会签人（管理员）</label>
+    <select id="ub-signer" class="w-full text-[13px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2">
+      ${signers.map(s=>`<option value="${s.name}">${s.name} · ${s.role}</option>`).join('')}
+    </select>
+    <label class="flex items-start gap-2 mt-3 text-[12px] cursor-pointer">
+      <input type="checkbox" id="ub-self" class="mt-0.5 accent-[#165DFF]">
+      <span>我已核对证据，确认由<b>本人</b>执行；会签人已完成本人执行勾选（要素③同样适用于会签人，未勾选不得提交）</span>
+    </label>
+    <textarea id="ub-note" class="w-full mt-3 min-h-[64px] text-[12.5px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2" placeholder="处置意见 / 会签结论（写入时间线与审计链）"></textarea>
+    <div class="mt-4 flex justify-end gap-2">
+      <button onclick="closeUnblock()" class="px-4 py-2 rounded-card border border-line dark:border-dline text-[13px]">取消</button>
+      <button id="ub-ok" onclick="doUnblock()" disabled class="px-4 py-2 rounded-card bg-ink-4 text-white text-[13px] font-medium cursor-not-allowed">确认解除（会签）</button>
+    </div>
+  </div>`;
+  document.body.appendChild(_ubOverlay);
+  const chk = _ubOverlay.querySelector('#ub-self');
+  chk.onchange = ()=>{ const ok = _ubOverlay.querySelector('#ub-ok'); ok.disabled = !chk.checked;
+    ok.className = chk.checked ? 'px-4 py-2 rounded-card bg-danger text-white text-[13px] font-medium hover:opacity-90'
+                               : 'px-4 py-2 rounded-card bg-ink-4 text-white text-[13px] font-medium cursor-not-allowed'; };
+}
+function closeUnblock(){ if(_ubOverlay){ _ubOverlay.remove(); _ubOverlay = null; } }
+async function doUnblock(){
+  if(!IHUB_DEMO.isLive()){ closeUnblock(); toast('演示模式：解除会签为本地演示（不连接后台）· 状态未变更'); return; }
+  const signer = _ubOverlay.querySelector('#ub-signer').value;
+  const note = _ubOverlay.querySelector('#ub-note').value.trim();
+  closeUnblock();
+  try{
+    const out = await submitControlled('unblock',
+      { co_signer: signer, co_signer_self: true, opinion: note || null });
+    await loadCaseAsync(curId);
+    toast(`已解除拦截（会签：${out.signers ? out.signers.join(' + ') : signer}）· 案件回落 ${out.status} · 已写入不可篡改时间线`);
+  }catch(e){ toast('解除被拒：' + (e.message_cn || e.message)); loadCaseAsync(curId); }
+}
+function ensureUnblockBtn(){
+  const bar = document.querySelector('#act-return-btn') ;
+  const anchor = bar || Array.from(document.querySelectorAll('button'))
+    .find(b => b.getAttribute('onclick') === "openAction('return')");
+  if(!anchor) return;
+  let btn = document.getElementById('ihub-unblock-btn');
+  const blocked = cur && cur.meta && cur.meta.status === 'BLOCKED';
+  if(blocked && !btn){
+    btn = document.createElement('button');
+    btn.id = 'ihub-unblock-btn';
+    btn.className = 'px-3.5 py-2 rounded-card border border-danger text-danger text-[13px] font-medium hover:bg-danger-light dark:hover:bg-[#3A2426] transition-colors';
+    btn.textContent = '⚖ 解除拦截（双人会签）';
+    btn.onclick = openUnblock;
+    anchor.parentElement.appendChild(btn);
+  } else if(!blocked && btn){ btn.remove(); }
+}
+{ // 渲染收尾挂点：每次 loadCase 后同步解除按钮显隐（原型函数零改动，包装不改语义）
+  const _origLoadCase = loadCase;
+  window.loadCase = function(id){ const r = _origLoadCase(id); ensureUnblockBtn(); return r; };
 }
 
 /* ═══════════════ 工具 ═══════════════ */
@@ -1199,10 +1342,15 @@ function nowStr(){
 }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeEv(); closeAct(); closeEdit(); } });
 
-/* 初始化（M2 接线）：探测后台 → 深链 ?case= 取数（不可达时以内嵌 CASES 演示）· 默认中国数电票案件 */
+/* 初始化（M2 接线 + WP3.5 写路径激活标记）：探测后台 → 深链 ?case= 取数（不可达时以内嵌 CASES 演示） */
 (async function boot(){
-  await IHUB_DEMO.probe();
-  await loadCaseAsync(new URLSearchParams(location.search).get('case') || 'INV-CN-2026-0387');
+  try {
+    await IHUB_DEMO.probe();
+    await loadCaseAsync(new URLSearchParams(location.search).get('case') || 'INV-CN-2026-0387');
+    document.body.dataset.ihubWp35 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';
+  } catch (e) {
+    document.body.dataset.ihubWp35 = 'err:' + (e && (e.message_cn || e.message) || e);
+  }
 })();
 </script>
 <script>

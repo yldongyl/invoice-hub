@@ -716,6 +716,229 @@ function toast(msg){
 
 renderBatches();
 </script>
+<script src="js/api-client.js"></script>
+<script src="js/demo-mode.js"></script>
+<script>
+/* ═══════════════ M3 WP3.5 接线：票据接入与批次（P04 · FN-1-01~11 呈现面） ═══════════════
+ * KPI 条/渠道卡数字/⚙ 配置 toast/规则版本徽章/批次列表=REST 取数；
+ * 上传=真实五要素链（confirmUpload 预检 risk-challenge → 确认弹窗逐文件清单+服务端风险提示 →
+ * 提交受理 multipart → 五步动画按**真实步骤结果**回放——同步受理完成，逐格为渲染节奏；
+ * 真异步进度轮询属 M4 Provider 时延场景，登记口径见 M3 自检 §12）；
+ * 批次行展开=文件级明细（载体/案件深链/五步态/摘要）+ 断点续跑按钮（resume API，FN-1-07）；
+ * demo-mode 未连接：回落原型 mock 行为（fakeSha/假批次为 fallback）。ui-design 只读（ADR-0003）。 */
+let IH_UPLOAD = null;            // {token, inst, po_ref}——challenge 预检结果
+window._rawFiles = [];           // addFiles 同步留存原始 File（multipart 提交用）
+
+async function ihLoadKpi(){
+  const k = await IHUB_API.getJSON('/v1/intake/kpi');
+  const m = k.merged, sec = document.querySelectorAll('main > section')[0];
+  const cards = sec.children;
+  const set = (el, v) => { if (el) el.textContent = v; };
+  set(cards[0].querySelector('span.num'), m.daily_received_total);
+  const rects = cards[0].querySelectorAll('svg rect');
+  const series = m.hourly_series || [];
+  const max = Math.max(1, ...series.map(s => s.count));
+  for (let i = 0; i < Math.min(rects.length - 1, series.length); i++) {
+    const h = Math.max(2, Math.round(series[i].count / max * 22));
+    rects[i].setAttribute('height', h); rects[i].setAttribute('y', 26 - h);
+  }
+  const filt = m.filtered_by_doc_type || {};
+  set(cards[1].querySelector('span.num'), Object.values(filt).reduce((a, b) => a + (b || 0), 0));
+  const fsubs = cards[1].querySelectorAll('div');
+  if (fsubs.length) fsubs[fsubs.length - 1].textContent =
+    `合同 ${filt['合同'] ?? '—'} · 对账单 ${filt['对账单'] ?? '—'} · 报价单 ${filt['报价单'] ?? '—'} · 规则引擎判定`;
+  set(cards[2].querySelector('span.num'), m.manual_sort_pending.total);
+  cards[2].querySelectorAll('div').forEach(d => { if (d.textContent.includes('件 ·')) d.textContent =
+    `件 · 含 ${m.manual_sort_pending.encrypted_pdf} 件加密 PDF`; });
+  cards[3].querySelector('span.num').textContent = m.success_rate_pct + '%';
+  cards[3].querySelector('.h-full').style.width = m.success_rate_pct + '%';
+  set(cards[4].querySelector('span.num'), m.avg_latency_s);
+  cards[4].querySelectorAll('div').forEach(d => { if (d.textContent.includes('P95')) d.textContent =
+    `P95 ${m.p95_latency_s}s · 不含识别耗时（运行期实算合并）`; });
+}
+async function ihLoadChannels(){
+  const r = await IHUB_API.getJSON('/v1/intake/channels');
+  const kpi = (await IHUB_API.getJSON('/v1/intake/kpi')).merged;
+  const btns = Array.from(document.querySelectorAll('button')).filter(b => b.textContent.includes('渠道配置'));
+  (r.items || []).forEach((ch, i) => {
+    const btn = btns[i]; if (!btn) return;
+    const card = btn.closest('.rounded-card') || btn.parentElement;
+    const bs = card.querySelectorAll('b');
+    const recv = (kpi.by_channel || {})[ch.channel];
+    if (bs[0] && recv != null) bs[0].textContent = recv;
+    if (bs[1] && ch.channel !== 'API 集成' && ch.today && ch.today.filtered_return != null)
+      bs[1].textContent = ch.today.filtered_return;
+    btn.onclick = () => {
+      const cfg = ch.config || {};
+      const lines = Object.entries(cfg).map(([k2, v]) => `${k2} = ${Array.isArray(v) ? v.join('/') : v}`);
+      toast(`${ch.channel} 配置项（当前生效版本 ${ch.config_version || '—'} · 变更=受控发布）：<br>` +
+            lines.join(' · ') + '（凭证类 KMS 托管不回显 · 演示口径）');
+    };
+  });
+}
+async function ihLoadBadge(){
+  const v = await IHUB_API.getJSON('/v1/intake/rules/version');
+  Array.from(document.querySelectorAll('header span')).filter(s => s.textContent.includes('受理规则版本'))
+    .forEach(s => s.textContent = v.badge);
+}
+async function ihLoadBatches(){
+  const params = {};
+  const ch = document.getElementById('f-channel').value, st = document.getElementById('f-status').value;
+  if (ch) params.channel = ch; if (st) params.status = st;
+  const r = await IHUB_API.getJSON('/v1/batches', params);
+  const mapped = r.items.map(b => ({
+    id: b.batch_id, ch: b.channel, inst: b.instance === '中国' ? '中国' : '海外',
+    files: b.files, st: b.status, ok: b.ok, err: b.err, filt: b.filtered,
+    t: b.created_ts ? b.created_ts.slice(11, 16) : b.time,
+    detail: [], _loading: true,
+  }));
+  BATCHES.length = 0; mapped.forEach(x => BATCHES.push(x));
+  _ihRenderBatches();
+}
+const _ihRenderBatches = window.renderBatches;
+window.renderBatches = function(){
+  if (IHUB_DEMO.isLive()) { ihLoadBatches().catch(e => console.warn('批次取数失败，回退内嵌 mock：', e.message || e)); }
+  else _ihRenderBatches();
+};
+const _ihToggleDetail = window.toggleDetail;
+window.toggleDetail = function(i){
+  _ihToggleDetail(i);
+  const b = BATCHES[i]; if (!b) return;
+  const paint = (row) => {
+    if (!row) return;
+    IHUB_API.getJSON('/v1/batches/' + b.id).then(det => {
+      const host = row.querySelector('td > div'); if (!host) return;
+      (det.files_detail || []).forEach(f => {
+        const d = document.createElement('div');
+        d.className = 'text-[10.5px] text-ink-3 dark:text-gray-500 pl-3';
+        d.textContent = `步骤：${(f.steps || []).map(s => s.no + '·' + s.status).join(' → ')}` +
+          (f.sha256_display ? ` · 摘要 ${f.sha256_display}` : '');
+        host.appendChild(d);
+      });
+      if ((b.err > 0 || b.st === '受理中' || b.st === '识别中') && !row.querySelector('.ihub-resume-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'ihub-resume-btn mt-2 px-2.5 py-1 rounded-card border border-primary text-primary text-[11.5px] hover:bg-primary hover:text-white';
+        btn.textContent = '⏩ 断点续跑（检查点恢复 · FN-1-07）';
+        btn.onclick = () => IHUB_API.postJSON(`/v1/batches/${b.id}/resume`).then(r => {
+          toast(`续跑完成：${(r.files || []).length} 个文件从检查点继续（已完成步骤不重做、摘要幂等不重复受理）→ ${r.status}`);
+          ihLoadBatches();
+        }).catch(e => toast('续跑被拒：' + (e.message_cn || e.message)));
+        (row.querySelector('td') || row).appendChild(btn);
+      }
+    }).catch(() => {});
+  };
+  if (b._loading) { b._loading = false; paint(document.getElementById('dt-row-' + i)); }
+};
+/* ── 上传五要素链 ── */
+const _ihAddFiles = window.addFiles;
+window.addFiles = function(list){
+  const seen = new Set(window._rawFiles.map(f => f.name + ':' + f.size));
+  for (const f of list) { const k = f.name + ':' + f.size; if (!seen.has(k)) { window._rawFiles.push(f); seen.add(k); } }
+  _ihAddFiles(list);
+};
+const _ihRemoveFile = window.removeFile;
+window.removeFile = function(i){
+  const victim = uploadFiles[i];
+  _ihRemoveFile(i);
+  if (victim) window._rawFiles = window._rawFiles.filter(f => !(f.name === victim.name && f.size === victim.size));
+};
+const _ihConfirmUpload = window.confirmUpload;
+window.confirmUpload = function(){
+  _ihConfirmUpload();
+  if (!IHUB_DEMO.isLive() || !uploadFiles.length) return;
+  const inst = (document.querySelector('input[name="inst"]:checked') || {}).value === 'os' ? 'OS' : 'CN';
+  const po = (document.getElementById('po-input').value.trim() || null);
+  const meta = uploadFiles.map(f => ({ name: f.name, size: f.size, mime: null }));
+  IHUB_API.postJSON('/v1/intake/upload/risk-challenge',
+    { actor: IHUB_API.ACTOR.admin, instance: inst, action: 'intake', files: meta, po_ref: po })
+    .then(ch => {
+      IH_UPLOAD = { token: ch.token, inst, po_ref: po };
+      const body = document.getElementById('confirm-body');
+      body.innerHTML += `<br><span class="text-[11px] text-ink-3">🔐 服务端风险提示：${ch.risk_text}</span>`;
+    })
+    .catch(e => toast('受理预检被拒：' + (e.message_cn || e.message)));
+};
+const _ihStartPipeline = window.startPipeline;
+window.startPipeline = function(){
+  if (!IHUB_DEMO.isLive() || !IH_UPLOAD) { _ihStartPipeline(); return; }
+  closeConfirm();
+  const payload = IH_UPLOAD; IH_UPLOAD = null;
+  document.getElementById('btn-upload').disabled = true;
+  document.getElementById('pipeline').classList.remove('hidden');
+  document.getElementById('pl-batch').textContent = '（提交中…）';
+  document.getElementById('pl-steps').innerHTML = PL_STEPS.map((s, i) =>
+    `<li class="pl-step flex items-start gap-2.5 p-2.5 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard" id="pl-${i}">
+       <span class="mt-0.5 shrink-0 w-4 text-center" id="pl-ico-${i}"><span class="pl-spin text-primary">◌</span></span>
+       <div class="min-w-0"><div class="text-[12.5px] font-medium leading-snug">${s.t}</div>
+       <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5 leading-relaxed" id="pl-desc-${i}">受理中…</div></div>
+     </li>`).join('');
+  document.getElementById('pl-state').textContent = '受理中…（受控提交五要素已确认）';
+  document.getElementById('pl-done').classList.add('hidden');
+  const fd = new FormData();
+  fd.append('actor', IHUB_API.ACTOR.admin); fd.append('instance', payload.inst);
+  fd.append('token', payload.token); fd.append('self_confirmed', 'true');
+  if (payload.po_ref) fd.append('po_ref', payload.po_ref);
+  uploadFiles.forEach(u => {
+    const raw = window._rawFiles.find(f => f.name === u.name && f.size === u.size);
+    if (raw) fd.append('files', raw, raw.name);
+  });
+  let shown = 0;
+  const timer = setInterval(() => {
+    if (shown < 5) { document.getElementById('pl-state').textContent = `受理中… ${shown + 1}/5 ${PL_STEPS[shown].t.slice(1).trim()}`; shown++; }
+  }, 260);
+  IHUB_API.postForm('/v1/intake/upload', fd).then(out => {
+    clearInterval(timer);
+    const f0 = (out.files || [])[0] || {};
+    document.getElementById('pl-batch').textContent = out.batch_id;
+    (f0.steps || []).forEach((s, i) => {
+      const ico = document.getElementById('pl-ico-' + i); if (!ico) return;
+      ico.innerHTML = s.status === 'DONE' ? '<span class="text-success">✔</span>'
+        : s.status === 'SKIPPED' ? '<span class="text-ink-4">⊘</span>' : '<span class="text-danger">✖</span>';
+      document.getElementById('pl-' + i)?.classList.add('pl-done');
+      const desc = document.getElementById('pl-desc-' + i);
+      if (desc) desc.textContent = (s.detail && (s.detail.d || s.detail.skipped_reason)) || s.name;
+    });
+    const dupN = (out.duplicates || []).length;
+    const okN = (out.files || []).filter(f => f.caseId).length;
+    const stTxt = f0.status || f0.disposition || 'RECOGNIZED';
+    document.getElementById('pl-state').innerHTML =
+      `<span class="text-success font-medium">✓ 受理完成 · 批次 ${out.batch_id} · 生成案件 ${okN} 个${dupN ? ` · 摘要幂等跳过 ${dupN} 件` : ''}</span>`;
+    const done = document.getElementById('pl-done');
+    done.classList.remove('hidden');
+    done.innerHTML = `
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="text-[13px]">已生成票据案件：</span>
+        <span class="num text-[14px] font-semibold text-primary">${f0.caseId || '（无新案件）'}</span>
+        <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[stTxt] ? STATUS[stTxt].cls : ''}">${stTxt}</span>
+        ${f0.caseId ? `<a href="case-detail.html?case=${f0.caseId}" class="px-3 py-1.5 rounded-card border border-primary text-primary text-[12.5px] font-medium hover:bg-primary-light dark:hover:bg-[#1B2A4A]">查看案件 →</a>` : ''}
+      </div>
+      <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">处置意见：${out.opinion || '（未填写处置意见）'} · 受理规则 ${out.intake_rules_version || '—'}</div>
+      <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed">
+        ⚖️ 以上受理各步均为<b>规则引擎确定性判断（非模型推断）</b>；后续识别环节如含大模型输出，将一律标注「AI 生成」+ 来源模型版本 + 置信度 —— 大模型生成的建议不自动执行业务操作，请人工确认。<br>
+        🧾 本次受理操作（操作人：${IHUB_API.ACTOR.admin} · 时间 · 文件 SHA-256 摘要 · 目标实例）已写入<b>不可篡改审计日志</b>。
+      </div>`;
+    toast(out.toast || `✓ 受理完成：批次 ${out.batch_id} · 操作已写入不可篡改时间线`);
+    uploadFiles = []; window._rawFiles = []; renderFileList();
+    ihLoadKpi(); ihLoadBatches();
+  }).catch(e => {
+    clearInterval(timer);
+    document.getElementById('pl-state').innerHTML = `<span class="text-danger font-medium">✖ 受理被拒：${e.message_cn || e.message}</span>`;
+    toast(`受控受理被拒：${e.message_cn || e.message} —— 本次未提交、案件数据未修改`);
+    document.getElementById('btn-upload').disabled = false;
+  });
+};
+(async function ihBoot(){
+  try {
+    await IHUB_DEMO.probe();
+    if (IHUB_DEMO.isLive()) {
+      try { await Promise.all([ihLoadKpi(), ihLoadChannels(), ihLoadBadge(), ihLoadBatches()]);
+            document.body.dataset.ihubWp35 = 'live-ok'; }
+      catch (e) { console.warn('接入页取数失败，整页回退内嵌 mock：', e.message || e);
+            document.body.dataset.ihubWp35 = 'live-degraded'; }
+    } else { document.body.dataset.ihubWp35 = 'demo'; }
+  } catch (e) { document.body.dataset.ihubWp35 = 'err:' + (e && (e.message_cn || e.message) || e); }
+})();
+</script>
 <script>
 /* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */
 (function(){
