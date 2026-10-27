@@ -1,7 +1,7 @@
 # M3 自检报告 · 会话（P00+P04 · WP3.1–WP3.2 受理流水线 + 通道与批次）
 
 > 执行会话：P00+P04 · 范围经用户确认 = **WP3.1（五步受理流水线）+ WP3.2（通道与批次管理）**，WP3.3 合规服务及之后工作包**不在本会话**（用户指令「只执行 WP3.1–3.2」）。前置：M2 门禁通过（P09 修复复验全绿，commits 至 bda4e54）。
-> 提交序：`16a6423` 契约 v1.2.0 增补 → `08942b0` WP3.1 流水线 → `184fc00` WP3.2 通道与批次（含 §6 走查后的 runtime 重置复验）。
+> 提交序：`16a6423` 契约 v1.2.0 增补 → `08942b0` WP3.1 流水线 → `184fc00` WP3.2 通道与批次 → `f61c01e` WP3.3 合规服务（会话二，含 §10 走查后的 runtime 重置复验；本文件收工节随 WP3.3 收工提交入账）。
 
 ---
 
@@ -29,6 +29,7 @@
 | `16a6423` | 契约 v1.2.0 | enum-registry 5 类 22 值 + Sheet08 22 行 + check_enums（25 类/142 值）+ seeds/channels.json（渠道配置/KPI 锚点/受理规则 v2026-10-20.2 载荷）+ users_roles 第 8 位 + rules_catalog v1.1.0（非发票过滤/载体检测分流两条机器条款，附录 C 冻结 20 条逐字保留）+ seed_loader channels 段（ConfigItem channel:* + AssetRevision channel_config/intake_rules + SeedMeta intake_kpi_baseline）+ 陈旧断言×3（enum 版本/配置项 12/规则 22） |
 | `08942b0` | WP3.1 | object_store（内容寻址+可测目录）/intake_parsers（魔数探测/EInvoice/UBL 极简/PDF 文本层）/rules 两规则实装/intake_pipeline 五步驱动+FileStep+IntakeLedger+RequestIdLedger+EgressLog+案件派生（发号/证据/占位 checks/时间线+审计双写）/resume_batch+retry_file_failed_steps/单测 12 项 |
 | `184fc00` | WP3.2 | channels_ops（渠道读/掩码、签名校验、限流、幂等台账、Webhook outbox、**poll_mailbox/poll_dox 桩**）/recognize（200/202/400/401/409/重放，契约形态）/batch_ops/intake_kpi/api/intake（recognize+上传全序+批次+KPI+渠道+规则徽章+Job 端点）/governed intake 动作+受理内核/actions.py 面收敛/main 挂载 0.4.0/hub 命令×3+Makefile×3/pyproject（python-multipart+marker）/RUNBOOK §1/4/5.1/7/8/9/10/场景 5 条+README 台账/测试 30 项 |
+| `f61c01e` | WP3.3（会话二） | 合规服务六件套（sm2_service/verify_channel/tax_directory/dedup_service/fusion_service/compliance_service）+流水线⑤合规链接线+占位 checks 退役；seeds：config +3 键（版本保持）、tax_directory.json；models +VerifyCache；依赖 +gmssl（uv.lock 47）；测试：专项 9+场景 S-M3-CMP-02/03+存量预期更新（W7）；RUNBOOK §1/§7/§10 刷新；CHANGELOG ⑨；详见 §8~§11 |
 
 ## 3. P04 验收标准判定（本会话范围项）
 
@@ -88,4 +89,55 @@ GET /v1/intake/channels → 4 渠道 · 密钥泄漏检查通过（掩码）
 
 ---
 
-*自检结论：**WP3.1+WP3.2 验收标准（本会话范围）全部达成**；M3 门禁整体验收待 WP3.3~3.6 完成后按 P04 §3 七项执行。*
+# 续 · WP3.3 合规服务（P04 · SM2/查验/名录/查重/融合/勾稽，2026-10-27 会话二）
+
+> 范围经用户确认 = **仅 WP3.3**（WP3.4 工作台及之后不实施）。动工前复述经确认。前置：WP3.1/3.2 已交付（`16a6423`/`08942b0`/`184fc00`）。
+
+## 8. WP3.3 口径裁决与实现注记
+
+| # | 裁决点 | 结论 | 登记 |
+|---|---|---|---|
+| W1 | SM2「算法真实、证书链模拟」落地 | 依赖 **gmssl**（纯 Python SM2+SM3，无 FFI，符合 ADR-0002 零外部强依赖）；演示 CA=仓内固定密钥对+序列（正式证书链管理 FR-L1-05 阶段一 + TODO(FN-9-10)）；**确定性签名 k**（内容摘要派生）保证同文同签→摘要幂等断言成立（RI-M3-008）；PASS/FAILED 均发 `gm-rcpt-*` 回执，落 `runtime/gm-receipts/` + `meta.sm2` + 时间线 + 审计块四处随案归档 | CHANGELOG ⑨；sm2_service.py 头注 |
+| W2 | 授权查验与验签的关系 | CN 链=SM2 验签（原件可信性）**+**授权查验（真伪）两事实合并写 authenticity 一槽（note 合叙，0387 案口径）；验签 FAILED 短路红线、不再外呼查验（FN-0-09 模型/渠道不得互翻）；查验模式=config 三态 pass/timeout/off（演示桩，运行期可注入） | compliance_service；verify_channel 头注 |
+| W3 | 「识别不重跑」断言载体 | 三计数：SM2 回执文件数、`EgressLog(purpose=recognize)` 数、查验通道调用数（`verify_channel.calls()` 演示台账）；重试执行器 `run_due_retries` 只重发查验（+1 查验外发），前两者恒定 | test_verify_timeout_retry_without_rerun |
+| W4 | 查重相似度边界语义 | **sim≥阈值含等于判命中**（与 tolerance_check「恰等容差内」同口径）；模糊命中附加条件=金额全等（键含价税合计）；默认阈值 1.0=仅硬命中——行为与 CON-05「重复票」定义不冲突，调低阈值属配置变更（受控发布面可改）；池=同实例非 BLOCKED 案件（**不入发票池**结构性达成，断言正向） | dedup_service；FN-5-04 台账行 |
+| W5 | 融合最小实现边界 | 仅 XML×OCR-stub 两源关键金额字段比对；一致=互证标注+OCR 证据行；冲突=降级(policy.degrade_to)+双方证据留存+auto_flow(conflict)→NEEDS_REVIEW；采信方向=priority 首元素（用例实证反转）；**不静默取舍**。多版式/二维码合并与融合规则版本化 UI 属 M4 | fusion_service 头注 |
+| W6 | 无案件的重复受控定性 | 同文件重提=摘要幂等 409（WP3.1 既有）；**异字节同票面**=合规链查重红线 BLOCKED（本会话）——两类留痕分离且互不替代，测试双断言 | test_dedup_cn_two_key / S-M3-CMP-02 |
+| W7 | 占位 checks 退役 | WP3.1 的 NOT_VERIFIED 占位随合规接线**移除**（真实四槽位由 apply_results 首写）；受影响的 12 项存量预期同步更新（含「零外发」限定为 purpose=recognize——授权查验必要外发单列 purpose=verify，口径变更登记于此避免误读） | §9 检查单 |
+| W8 | 名录数据 | 演示数据源 `seeds/tax_directory.json`（5 条，入 SeedMeta）；OS 案件无统一验签体系→名录命中即 authenticity 依据并明示（FN-5-03 原文）；UEN 格式不符但名录命中的组合如实呈现（fmt ✗ + HIT） | CHANGELOG ⑨ |
+
+## 9. WP3.3 收工检查单（会话二）
+
+- [x] **全部测试通过**：`pytest` **224 passed**（213 基线 + 9 合规专项 + 2 新场景 S-M3-CMP-02/03）；`pytest -m scenario` **7 passed**；三校验全绿（142 枚举/40 契约/41 交叉组）。
+- [x] **P04 指定完成条件逐项**：①SM2 FAILED→authenticity FAILED→BLOCKED 红线链+**失败回执归档断言**（回执文件存在+result=FAILED+doc_hold_pending+告警+链完整）；②超时→NOT_VERIFIED→单独排定重试+**识别不重跑调用计数**（W3 三计数）；③CON-05 **两套业务键构造断言**（CN `|no|gross` 空代码段型 / OS `no|gross|supplier` 型）+**相似度阈值边界三用例**（0.9 恰等命中/0.8 不命中/异额不触发+P95 200ms 内）+命中→DEDUP_CHECK/DEDUP_BLOCKED+**不入池断言**；④多源冲突（0381 口径）→OCR_CROSS_CHECK_CONFLICT+降级 82+NEEDS_REVIEW+**采信规则配置化**（priority 反转用例）+一致互证路径；勾稽实跑超容差转人工。
+- [x] **枚举一致性**：零新增枚举（事件码 30 码全复用；alert_level 引用 code）；check_enums 142/142 保持。
+- [x] **seed 一致性**：`make seed` 幂等（新增 tax_directory 装载段+config items 12→15 项断言更新）；check_seeds_vs_ui 41 组通过；seeds/config.json 版本号**保持 v2026-10-21.2**（避免 test_versioning/页面耦合断裂，新键注记 CHANGELOG ⑨）。
+- [x] **依赖纪律**：backend 零 LLM（grep+门禁测）；门禁有效拦截并修复一处散落 `BLOCKED` 字面量（RI-M3-009）；agent/mcp/web 零改动；checks/status 写入全部经 orchestrator/state_machine 唯一通道（合规服务不直写投影）；名录/通道/CA 桩均注记「演示口径」。
+- [x] **台账回填**：Sheet03 **FN-5-01~05 + FN-4-02/03 七行=待验收**（逐项括注【M3 WP3.3】与用例指针）；Sheet08/04 无新增改动。
+- [x] **文档回写**：CHANGELOG **⑨（COMPAT 依赖与配置基线，契约文件零改动）**；run-issues **RI-M3-008~010**（已闭）；RUNBOOK 走查记录§6 追加；ADR 无新增（依赖选型注记随 CHANGELOG）。
+
+## 10. WP3.3 实机走查记录（v0.4.1 · HTTP 链）
+
+```text
+hub.py intake:demo-drop → mailbox:poll → BT-…：数电票_青岛海纳 ACCEPTED
+GET /v1/cases/INV-CN-2026-0388 → checks：authenticity PASSED（SM2 PASS+查验 pass 合叙）/
+    duplicate PASSED（池无命中）/ supplierMatch、poMatch 如实 NOT_VERIFIED
+meta.sm2 = {ok:true, receipt_no:"gm-rcpt-1043"} · runtime/gm-receipts/gm-rcpt-1043.json 在档（seed 1042 续发）
+时间线：… INBOUND_ACCEPTED → SM2_VERIFY → DEDUP_CHECK(+PO) · 三域链 verify ok
+二次异字节同票面件上传 → INV-CN-2026-0389 BLOCKED + DEDUP_BLOCKED + 批次行 bad；
+红线告警（展示级 danger/分发级 P0·红线 双轨）经 GET /v1/alerts 读侧可消费（RI-M3-011 回归点）
+批量放行混入 BLOCKED → skipped 列因「不可批量放行」processed=0；解除缺会签 → 409
+篡改件（签名后改金额）→ SM2_VERIFY_FAILED + 失败回执 FAILED 在档 + doc_hold_pending
+```
+走查后 `hub.py clean && seed` + 清 runtime 通道/回执目录，恢复初始演示态（回执文件为运行态产物，seed 基线不含）。
+
+## 11. 遗留与后续（更新）
+
+1. **WP3.4/3.5**：工作台队列/受控 Action 接线与三页写路径（P09 画面验证范围含本会话新增的 timeline 合规事件与 SM2 卡数据面）。
+2. **SM2 卡数据面就绪**：case-detail 的 meta.sm2/回执号/时间线事件已真实产生（原为 seed 静态）——WP3.5 接线直接消费。
+3. 红线告警「不可停用+关闭拦截留痕」与分发渠道 = FN-9-08/M5；`run_due_retries` 接入真实调度（定时触发）属 FN-9-07 队列面板。
+4. S-M3-01（放行→RESOLVED 全链留痕）尚缺工作台放行入口（WP3.4），场景台账已标 🔄。
+
+---
+
+*自检结论：**WP3.1+WP3.2+WP3.3 验收标准（各会话范围）全部达成**；M3 门禁整体验收待 WP3.4~3.6 完成后按 P04 §3 七项执行（含 workbench/case-detail 画面验证与 S-M3-01~05 全量场景）。*

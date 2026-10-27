@@ -36,3 +36,12 @@
 | RI-M3-005 | `test_dependency_discipline` 误报：测试函数名含违禁词子串 | CS 组大小写敏感镜像 grep 从严，函数名 `…_no_llm` 命中。修复：函数改中性名（断言不变=直读零外发）；「自误报纪律」注记已有、本条补执行案例 | 213 passed 含纪律测 |
 | RI-M3-006 | multipart 上传端点 500：`python-multipart` 缺失 | FastAPI 表单解析运行期硬依赖未入 pyproject（M2 无表单面未暴露）。修复：dependencies 增 `python-multipart>=0.0.9`，uv.lock 重锁 45 包；RUNBOOK §1/§8 同步 | 干净 uv sync 链待门禁复验；本会话 venv 实测 ok |
 | RI-M3-007 | 走查前 8000 端口响应 404 `/v1/intake/*` | **环境项**：M2 会话遗留 backend 进程（v0.3.0，PID 5408）持续占端，本会话两次 `hub.py run` bind 失败静默退出（日志有 10048 但链式命令未暴露）。处置：taskkill 后重启 v0.4.0 复验 | healthz version=0.4.0-m3-wp3.1-3.2 + smoke 10/10；RUNBOOK §8 已有端口占用条目（建议补「先核对 /healthz version」提示已含） |
+
+## M3-WP3.3 会话缺陷记录（2026-10-27 · 均已闭）
+
+| 编号 | 症状 | 根因与修复 | 回归证据 |
+|---|---|---|---|
+| RI-M3-008 | `attach_signature` 同文异字节 → 摘要幂等断言失败（同文件二次提交 sha 不同） | SM2 签名随机 k 使签名值每次不同；演示签名改**确定性 k=内容摘要派生**（RFC6979 同思路演示简化）——同文必得同签 | test_digest_idempotent / S-M3-INT-03 恢复通过 |
+| RI-M3-009 | enum 纪律门禁拦截 `intake_pipeline.py: 硬编码状态比较 BLOCKED` | 合规链接入时写了字面量比较；改 `state_machine.STATUS.BLOCKED` 引用（门禁有效，属预期拦截） | test_dependency_discipline 全绿 |
+| RI-M3-010 | OS 重复票场景未命中（BLOCKED 断言失败） | **测试助手缺陷**：accept() 第二次调用漏传 instance=OS，副本件落入 CN 域分池——恰好反证四隔离④分池正确；测试参数补全 | test_dedup_os_key / S-M3-CMP-02 通过 |
+| RI-M3-011 | 走查中 `/v1/alerts` 500（运行期红线告警行） | WP3.3 告警生成初版按分发级词汇（alert_level P0·红线）写 raw.level 且缺 evidence 要素，与 FN-5-09 读侧契约（展示级 danger/warning + evidence 必备，M2 builder 强制违例 500）不兼容。修复：raw.level=展示级 danger、分发级 P0·红线 存 raw.sev（registry 引用校验）、补 evidence 要素；S-M3-CMP-02/03 增读侧兼容断言（builder 消费运行期告警） | 224 passed + 实机 /v1/alerts 200 含「重复票红线拦截：INV-CN-2026-0389」 |
