@@ -255,6 +255,24 @@ class VerifyCache(Base):
     ts: Mapped[str] = mapped_column(String(30))
 
 
+class ExportTicket(Base):
+    """导出清单限时下载凭据（WP3.4 · FN-8-07/FN-0-08：导出行为自审计入链后发放；
+    下载链接 24 小时失效——过期即 410，重导重新签发并重入链）。"""
+
+    __tablename__ = "export_tickets"
+
+    token: Mapped[str] = mapped_column(String(48), primary_key=True)
+    actor: Mapped[str] = mapped_column(String(40))
+    instance: Mapped[str | None] = mapped_column(String(2))
+    filters_raw: Mapped[dict | None] = mapped_column(JSON)
+    rows: Mapped[int] = mapped_column(Integer)
+    filename: Mapped[str] = mapped_column(String(80))
+    created_ts: Mapped[str] = mapped_column(String(30))
+    expires_ts: Mapped[str] = mapped_column(String(30))
+    blk: Mapped[int | None] = mapped_column(Integer)          # 入链块高（链头断言用）
+    trace: Mapped[str | None] = mapped_column(String(12))
+
+
 class WebhookDelivery(Base):
     """Webhook 回调登记（FN-A-03 · 演示口径：本地 outbox 落盘替代真实外呼；
     消费方非 2xx 指数退避重试 ≤8 次=sla_targets.webhook_retry_max，消费者属 M4+）。"""

@@ -97,7 +97,13 @@ def list_cases(session, ctx: TenantContext, *, status: str | None = None,
     if status:
         q = q.where(m.Case.status == status)
     if risk:
-        q = q.where(m.Case.risk_label == risk)
+        # 四维筛选-风险维（FN-8-01/工作台）：any=仅有风险标记 / none=无风险 / 其余=具体标签等值
+        if risk == "any":
+            q = q.where(m.Case.risk_label.isnot(None))
+        elif risk == "none":
+            q = q.where(m.Case.risk_label.is_(None))
+        else:
+            q = q.where(m.Case.risk_label == risk)
     if keyword:
         like = f"%{keyword}%"
         q = q.where(or_(m.Case.case_id.like(like), m.Case.supplier.like(like)))

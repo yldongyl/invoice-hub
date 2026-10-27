@@ -53,6 +53,7 @@ ACTION_PERMS = {
     "export": PERM_EXPORT,
     "publish": PERM_PUBLISH, "rollback": PERM_PUBLISH,
     "intake": PERM_INTAKE,                 # 受理提交（FN-1-08：门户上传=业务写，走五要素全序）
+    "advice_reject": PERM_VIEW,            # 不采纳 AI 建议留痕（FN-0-09/8-09 · WP3.4，前提=案件查看）
 }
 
 RISK_TEXT = {
@@ -69,6 +70,8 @@ RISK_TEXT = {
     "rollback": "【warn】回滚=以目标历史版本载荷发布新版本（不删历史）；变更链完整可追。",
     "intake": "受理提交后文件进入五步流水线（信封解析→非发票过滤→载体分流→SHA-256 摘要登记→路由派生案件），"
               "逐文件清单与原件摘要将写入不可篡改审计日志；非发票文档将被拒绝入池并退回通知留痕（FN-1-08）。",
+    "advice_reject": "不采纳 AI 建议：仅写入 LLM_ADVICE_REJECTED 留痕事件（时间线+审计链双写），"
+                     "建议卡片保留可追溯、建议不会被执行、案件状态不变（FN-0-09/8-09）。",
 }
 
 
@@ -331,19 +334,41 @@ def _do_batch(session, case_ids, user, role, *, release: bool, opinion):
             "processed": len(released) + len(claimed), "skipped_count": len(skipped)}
 
 
-def _do_export(session, user, role, *, filters, rows):
+def _do_export(session, user, role, *, filters, rows, instance):
+    """导出=自审计事件：**AUDIT_EXPORT 先入链（链头）**，随后按链头 blk 发放限时下载票据
+    （24h 失效，FN-8-07/WP3.4）；rows 为申报留痕值，实际导出行数随票据返回。"""
     if filters is None or rows is None:
         raise CommandError(E_EXPORT_PARAM, "导出须携带检索条件与行数（审计留痕要素，FN-8-07）", http=422)
     trace = new_trace_id()
     fr = f"检索条件：{_fmt_filters(filters)}"
     to = f"导出 {rows} 行 CSV"
-    fnote = (f"文件 audit-export-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}.csv · "
-             f"操作人 {_op(user)} · 时间 {now_iso()} · 行数 {rows} · 下载链接 24 小时后失效（演示口径）")
+    fnote = (f"文件 audit-export-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}-*.csv · "
+             f"操作人 {_op(user)} · 时间 {now_iso()} · 申报行数 {rows} · 下载链接 24 小时后失效（演示口径）")
     ab = append_block(session, ts=now_iso(), trace=trace, actor="human", act="AUDIT_EXPORT",
                       cs=None, from_state=fr, to_state=to, note=fnote, op=_op(user),
                       category="export")
-    return {"file": fnote.split(" · ")[0].replace("文件 ", ""), "rows": rows,
-            "blk": ab.blk, "trace": trace, "expires": "24h（演示口径）"}
+    from app.services import workbench
+    ctx = TenantContext.of(instance)
+    tk = workbench.create_ticket(session, actor=user.name, ctx=ctx, filters=filters,
+                                 blk=ab.blk, trace=trace)
+    return {"file": tk["file"], "rows": rows, "blk": ab.blk, "trace": trace,
+            "expires": "24h（演示口径）", **tk}
+
+
+def _do_advice_reject(session, case, user, role, *, advice_id, reason):
+    """不采纳 AI 建议留痕（FN-0-09/FN-8-09）：LLM_ADVICE_REJECTED 事件双写入链——
+    卡片保留可追溯、建议未被执行；采纳路径不在此（=预填处置意见转 release 受控确认）。"""
+    x = (f"不采纳原因：{reason or '未填写（原型口径：待补充）'} · "
+         f"建议卡 {advice_id or '（默认卡）'} 保留在案件中可追溯 · AI 建议未被执行"
+         f"（模型不持有任何 RBAC 角色，FN-0-09）")
+    v = state_machine.component_version(session, "review-ui")
+    state_machine.append_case_event(session, case, a="human", act="LLM_ADVICE_REJECTED",
+                                    d="人工不采纳 AI 建议", x=x, v=v, commit=False)
+    append_block(session, ts=now_iso(), trace=case.trace_id or new_trace_id(), actor="human",
+                 act="LLM_ADVICE_REJECTED", cs=case.case_id,
+                 from_state=f"AI 建议挂起（{advice_id or 'ai-card'}）", to_state="已不采纳（留痕）",
+                 note=x, op=_op(user), category="action", commit=False)
+    return {"rejected": True, "advice_id": advice_id, "reason": reason or "（未填写处置意见）"}
 
 
 def _asset_type_for(key: str) -> str:
@@ -437,7 +462,7 @@ def execute(session, *, actor: str, action: str, instance: str | None = None,
             config_key: str | None = None, to_version: str | None = None,
             config_payload: dict | None = None,
             intake_files: list[dict] | None = None, po_ref: str | None = None,
-            scope_override: str | None = None) -> dict:
+            scope_override: str | None = None, advice_id: str | None = None) -> dict:
     """受控写唯一入口：五要素全序校验 → 执行 → 审计+时间线双写 → 状态流转。
 
     租户上下文（WP1.7）：instance 必携带（缺失 E_TENANT_MISSING→400）；
@@ -477,7 +502,7 @@ def execute(session, *, actor: str, action: str, instance: str | None = None,
             result = _do_batch(session, case_ids, user, role,
                                release=(action == "batch_release"), opinion=opinion)
         elif action == "export":
-            result = _do_export(session, user, role, filters=filters, rows=rows)
+            result = _do_export(session, user, role, filters=filters, rows=rows, instance=instance)
         elif action == "publish":
             result = _do_publish(session, user, role, config_key, config_payload, opinion)
         elif action == "rollback":
@@ -501,6 +526,9 @@ def execute(session, *, actor: str, action: str, instance: str | None = None,
             elif action == "unblock":
                 result = _do_unblock(session, case, user, role, co_signer=co_signer,
                                      co_signer_self=co_signer_self, opinion=opinion)
+            elif action == "advice_reject":
+                result = _do_advice_reject(session, case, user, role,
+                                           advice_id=advice_id, reason=reason)
             else:
                 raise CommandError("UNKNOWN_ACTION", action)
         session.commit()  # ⑤ 双写与业务写同事务提交（原子）

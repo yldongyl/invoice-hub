@@ -44,6 +44,7 @@ class ActionBody(BaseModel):
     config_key: str | None = None          # publish
     config_payload: dict | None = None
     to_version: str | None = None          # rollback
+    advice_id: str | None = None           # advice_reject（不采纳 AI 建议留痕，WP3.4）
 
 
 class BatchActionBody(ActionBody):
@@ -106,7 +107,7 @@ def _execute(session, body: ActionBody, action: str, case_id: str | None = None,
                       field=body.field, new_value=body.new_value, reason=body.reason,
                       filters=body.filters, rows=body.rows,
                       config_key=body.config_key, to_version=body.to_version,
-                      config_payload=body.config_payload)
+                      config_payload=body.config_payload, advice_id=body.advice_id)
 
 
 @router.post("/cases/{case_id}/actions/{action}")

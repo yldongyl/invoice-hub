@@ -14,11 +14,11 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import (actions as actions_api, cases as cases_api, dashboard as dashboard_api,
-                     intake as intake_api)
+                     intake as intake_api, workbench as workbench_api)
 from app.domain.registry import get_registry
 from app.services import persistence
 
-APP_VERSION = "0.4.1-m3-wp3.3"
+APP_VERSION = "0.4.2-m3-wp3.4"
 # P03 WP2.3 部署形态：backend 同源静态托管 web/（单端口，免 CORS）；
 # web/ = ui-design 12 页接线副本（ADR-0003），根路径重定向到总览仪表盘（P07 RUNBOOK 入口）
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
@@ -34,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(actions_api.router)
     app.include_router(dashboard_api.router)
     app.include_router(intake_api.router)
+    app.include_router(workbench_api.router)
 
     # M2 WP2.3：web 运行副本同源托管（/web/*.html 直访；仅目录存在时挂载，测试/最小部署不受影响）
     if WEB_DIR.is_dir():
