@@ -57,6 +57,11 @@
 - **随登记裁决**：受控写动作词汇新增 `intake`（受理提交，FN-1-08 五要素），权限位「受理提交」为 RBAC 矩阵第 8 位（FN-9-02 明示「基线，可版本化变更；矩阵编辑=高风险变更」；users_roles.json 同步增补，管理员/运营=1，复核员/审计只读=0；M5 RBAC 实装时以矩阵版本化机制承接）。属命令/权限词汇而非徽章枚举，不入 Sheet08（与 permissions 既有的 users_roles 承载一致）。
 - **依据**：清单 §3.1 FN-1-01~07/1-08、FN-2-14、FN-9-02；P04 §1/§2 WP3.1-3.2；docs/adr/0004（矩阵桩边界）。
 
+### ⑨ 2026-10-27 · COMPAT（依赖与配置基线） · M3-WP3.3 合规服务：gmssl 依赖 + 查验/查重/融合三配置项 + 名录种子（契约文件零改动）
+- **影响文件**：`backend/pyproject.toml` + `backend/uv.lock`（新增运行期依赖 **gmssl**——SM2 真实算法）、`seeds/config.json`（v2026-10-21.2 版本号保持，items +3）、新增 `seeds/tax_directory.json`（5 条，演示名录）、`contracts/` **零改动**（无新枚举/新端点/北向变更）。
+- **内容**：P04 WP3.3 合规服务实装所需基线增补。① **依赖**：SM2=算法真实、证书链模拟（P00 §6）——选 gmssl（纯 Python，无 FFI，符合 ADR-0002 零外部服务强依赖；组件选型留注 `sm2_service.py` 头注，正式 CA/KMS 属 FR-L1-05 阶段一 + TODO(FN-9-10)）；② **配置键**：`dedup_similarity_threshold`（默认 1.0=仅硬命中；边界语义 sim≥阈值含等于，FN-5-04）、`auth_verify_channel_mode`（pass/timeout/off 三态演示桩，FN-5-02）、`fusion_adoption_policy`（priority 首元素=采信来源，默认 xml_direct 结构化原件优先；conflict_fields+degrade_to=82 为 0381 案口径，FN-4-02）——三键均入 ConfigItem 装载链与 AssetRevision 基线（受控发布可改）；③ **名录种子**：`tax_directory.json` 为 FN-5-03 海外名录校验的**模拟 webhook 数据源**（演示口径，正式=授权名录通道），入 SeedMeta 由服务层消费；④ 事件码全量复用 timeline_event 既有 30 码（SM2_VERIFY/SM2_VERIFY_FAILED/AUTH_QUERY_TIMEOUT/DEDUP_*/OCR_CROSS_CHECK(_CONFLICT)/TAXID_CHECK），**未新增枚举值**；gm-rcpt 回执发号沿用 id_format 既有 pattern。
+- **依据**：清单 FN-5-01~05/FN-4-02/03 + CON-05/CON-12；P04 WP3.3；docs/gate-reports/M3-self-check.md §8。
+
 ---
 
 ## TODO 未决项登记（冻结不阻塞，实现标注纪律）

@@ -13,9 +13,10 @@
 步边界提交；resume_batch 从最后成功检查点续做未完成步骤——已 DONE 跳过（识别不重跑、摘要不重复登记）；
 文件级 retry 仅重跑 FAILED 步骤。
 
-红线纪律（本会话范围）：案件派生后停在 RECOGNIZED——查重/验真/红线流转属 WP3.3 合规服务，
-checks 四槽位以「合规服务未激活」NOT_VERIFIED 占位写入（唯一业务写入口 orchestrator.apply_results）；
-低置信 <80 无任何自动放行路径（本模块不产生放行出口）。
+红线纪律：案件派生（RECOGNIZED）后即调用 **compliance_service.run_compliance**（WP3.3 接线）——
+SM2 验签/授权查验/名录/查重/勾稽/融合经 orchestrator.apply_results 唯一写入口落 checks，
+红线（验签 FAILED/查重命中）自动 BLOCKED、低置信/冲突走 FN-0-02 边至 NEEDS_REVIEW；
+**低置信 <80 无任何自动放行路径**（本模块与合规层均不产生放行出口，红线不可被配置绕过）。
 """
 
 import hashlib
@@ -26,8 +27,8 @@ from sqlalchemy.exc import IntegrityError
 
 from app.domain import models as m
 from app.domain.registry import get_registry
-from app.services import (intake_parsers, object_store, orchestrator, rules, state_machine,
-                          versioning)
+from app.services import (compliance_service, intake_parsers, object_store, rules,
+                          state_machine, versioning)
 from app.services.audit_chain import append_block, now_iso
 from app.services.errors import CommandError
 
@@ -346,8 +347,25 @@ def _s5(session, batch, frow, content, payload):
     frow.conf = case.confidence
     frow.disposition = "ACCEPTED"
     session.commit()
-    return {"case_id": case.case_id, "confidence": case.confidence, "route": route,
-            "d": f"派生案件 {case.case_id}（RECOGNIZED）· 置信度 {case.confidence} · trace {trace}"}
+    # ── WP3.3 合规编排接线（FN-5-01~05 + FN-4-02/03）：SM2/查验/名录/查重/勾稽/融合→apply_results→auto_flow ──
+    comp = compliance_service.run_compliance(session, case.case_id, file_text=doc.get("xml"))
+    fresh = session.get(m.Case, case.case_id)
+    frow.status_snapshot = fresh.status
+    frow.conf = fresh.confidence
+    if comp.get("status") == state_machine.STATUS.BLOCKED:
+        frow.note = f"红线拦截：{(fresh.checks_raw or {}).get('authenticity', {}).get('note') or (fresh.checks_raw or {}).get('duplicate', {}).get('note')}"
+        ir = dict(frow.intake_raw or {})
+        ir.update({"bad": True, "note": frow.note})
+        frow.intake_raw = ir
+    session.commit()
+    return {"case_id": case.case_id, "confidence": fresh.confidence, "route": route,
+            "status": fresh.status, "compliance": {k: comp.get(k) for k in
+                                                   ("sm2", "verify", "dedup", "taxid", "reconcile",
+                                                    "transitions", "retry_task")},
+            "d": f"派生案件 {case.case_id} → {fresh.status}"
+                 f"（合规链：验签 {comp['sm2']['ok'] if comp.get('sm2') else '—'} / "
+                 f"查重 {'命中' if (comp.get('dedup') or {}).get('hit') else '通过'} · "
+                 f"置信度 {fresh.confidence} · trace {trace}"}
 
 
 _EXEC = {1: _s1, 2: _s2, 3: _s3, 4: _s4, 5: _s5}
@@ -422,7 +440,7 @@ def _ocr_stub_recognize(session, batch, frow, content, trace):
 
 def _derive_case(session, batch, frow, doc, route, sha, trace,
                  provider_disp, source_code, parse_event, parse_v):
-    """结构化/归一化输出 → InvoiceCase 全量聚合（RECOGNIZED；checks 占位归编排器唯一写入口）。"""
+    """结构化/归一化输出 → InvoiceCase 全量聚合（RECOGNIZED 建档；checks 由紧随的合规编排写入）。"""
     from app.services.issuer import next_case_no
     inst = batch.instance
     year = datetime.now(timezone.utc).astimezone().year
@@ -466,8 +484,9 @@ def _derive_case(session, batch, frow, doc, route, sha, trace,
                              "partial": None, "confirmed": False}}
     next_action = {
         "type": "HUMAN_REVIEW",
-        "reason": "受理派生完成 · 合规校验链（查重/验真/红线）属 WP3.3 未激活，checks 占位 NOT_VERIFIED",
-        "assign_to": "共享中心复核队列（演示口径归属；激活后按 FN-0-02 自动流转）",
+        "reason": "受理派生完成 · 合规校验链即时执行（WP3.3：验真/查重/勾稽/融合），"
+                  "按 FN-0-02 触发条件流转（红线→BLOCKED；低置信/冲突→NEEDS_REVIEW）",
+        "assign_to": "共享中心复核队列（演示口径归属）",
     }
     case = m.Case(
         case_id=case_id, detail_level="full", status="RECOGNIZED",
@@ -489,11 +508,6 @@ def _derive_case(session, batch, frow, doc, route, sha, trace,
         session.add(m.FieldEvidence(case_id=case_id, seq=i, field=ev["field"],
                                     source=ev["source"], confidence=float(ev["confidence"]),
                                     evidence_raw=ev))
-    # checks 四槽位占位（唯一业务写入口=编排器；红线逻辑保留：任何 FAILED 自动 BLOCKED 由 WP3.3 激活后生效）
-    placeholder = {item: {"result": "NOT_VERIFIED",
-                          "note": "合规服务（WP3.3）未激活 · 受理派生占位（不代表查验结论）"}
-                   for item in orchestrator.check_items()}
-    orchestrator.apply_results(session, case, placeholder, transition=True, commit=False)
     # 时间线 + 审计链（双写）
     s1 = _step_row(session, batch.batch_id, frow.seq, 1).detail_raw or {}
     timeline_evts = [

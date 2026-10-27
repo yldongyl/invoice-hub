@@ -243,6 +243,18 @@ class EgressLog(Base):
     note: Mapped[str | None] = mapped_column(Text)                      # 演示口径注记
 
 
+class VerifyCache(Base):
+    """同票查验结果缓存（FN-5-02：避免重复计费；键=CN/OS 查重业务键同源口径）。"""
+
+    __tablename__ = "verify_cache"
+
+    biz_key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(20), index=True)
+    result: Mapped[str] = mapped_column(String(20))                  # check_result 枚举
+    detail: Mapped[str | None] = mapped_column(Text)
+    ts: Mapped[str] = mapped_column(String(30))
+
+
 class WebhookDelivery(Base):
     """Webhook 回调登记（FN-A-03 · 演示口径：本地 outbox 落盘替代真实外呼；
     消费方非 2xx 指数退避重试 ≤8 次=sla_targets.webhook_retry_max，消费者属 M4+）。"""

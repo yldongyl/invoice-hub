@@ -315,6 +315,12 @@ def load_all(session, seeds_dir: Path | None = None):
                                        desc=cv.get("desc")))
     counts["versions"] = len(data["components"])
 
+    # ---- tax_directory（M3 WP3.3 · FN-5-03 演示名录：入 SeedMeta，服务层消费）----
+    data = jl("tax_directory.json")
+    session.add(m.SeedMeta(name="tax_directory",
+                           payload={"entries": data["entries"], "note": data["note"]}))
+    counts["tax_directory"] = len(data["entries"])
+
     # ---- alerts / kpi（M2 读模型 seed 口径）----
     data = jl("alerts.json")
     pat = re.compile(reg.id_pattern("案件号"))

@@ -19,15 +19,16 @@ import pytest
 from sqlalchemy import func, select
 
 from app.domain import models as m
-from app.services import audit_chain, intake_pipeline, object_store
+from app.services import audit_chain, intake_pipeline, object_store, sm2_service
 from app.services import channels_ops
 
 pytestmark = pytest.mark.scenario
 
 SECRET = "invoice-hub-demo-webhook-secret"
 
-# 现场造：seeds 之外的新数电票 XML（供应商/票号/金额均为新值）
-FRESH_XML = """<?xml version="1.0" encoding="UTF-8"?>
+# 现场造：seeds 之外的新数电票 XML（供应商/票号/金额均为新值；演示 CA 真实 SM2 签名）
+FRESH_XML = sm2_service.attach_signature(
+    """<?xml version="1.0" encoding="UTF-8"?>
 <EInvoice xmlns="urn:cn:tax:einvoice:1.0">
   <Header><InvoiceNo>2451200000066101</InvoiceNo><IssueDate>2026-10-27</IssueDate>
   <InvoiceType>数电票（增值税专用发票）</InvoiceType></Header>
@@ -38,12 +39,13 @@ FRESH_XML = """<?xml version="1.0" encoding="UTF-8"?>
   <Total><NetAmount>10000.00</NetAmount><TaxAmount>1300.00</TaxAmount>
   <GrossAmount>11300.00</GrossAmount></Total>
 </EInvoice>
-""".encode("utf-8")
+""")
 
 
 @pytest.fixture(autouse=True)
 def tmp_dirs(tmp_path, monkeypatch):
     monkeypatch.setattr(object_store, "OBJECTS_DIR", tmp_path / "objects")
+    monkeypatch.setattr(sm2_service, "GM_RECEIPT_DIR", tmp_path / "gm-receipts")
     monkeypatch.setattr(channels_ops, "MAILBOX_INBOX", tmp_path / "mb" / "inbox")
     monkeypatch.setattr(channels_ops, "MAILBOX_OUTBOX", tmp_path / "mb" / "outbox")
     monkeypatch.setattr(channels_ops, "MAILBOX_PROCESSED", tmp_path / "mb" / "processed")
@@ -91,7 +93,8 @@ def test_s_m3_int_01_new_xml_full_chain(api_client, tmp_dirs):
     assert d.status_code == 200 and d.json()["status"] == "RECOGNIZED"
     assert d.json()["meta"]["po"] == "PO-DEMO-66001"
     acts = [e["act"] for e in d.json()["timeline"]]
-    assert acts == ["CHANNEL_RECEIVED", "CARRIER_ROUTED", "XML_PARSED", "INBOUND_ACCEPTED"]
+    assert acts[:4] == ["CHANNEL_RECEIVED", "CARRIER_ROUTED", "XML_PARSED", "INBOUND_ACCEPTED"]
+    assert "SM2_VERIFY" in acts and "DEDUP_CHECK" in acts          # WP3.3 合规事件在案
     # 审计链完整性校验通过（本场景写链后 CN/OS/PLATFORM 三域全验）
     from app.services.persistence import get_session
     with get_session() as session:
@@ -100,7 +103,8 @@ def test_s_m3_int_01_new_xml_full_chain(api_client, tmp_dirs):
         # 受理事件在案件链域入块（trace 贯穿）
         trace = d.json()["meta"]["trace_id"]
         blks = session.scalars(select(m.AuditBlock).where(m.AuditBlock.trace == trace)).all()
-        assert len(blks) == len(acts)
+        # DEDUP_PO_CHECK 为 PO 维度注记事件（无独立链块）；其余事件时间线↔审计链 1:1
+        assert len(blks) == len(acts) - acts.count("DEDUP_PO_CHECK")
 
 
 def test_s_m3_int_02_direct_read_zero_egress_ocr_single(api_client, tmp_dirs):
@@ -108,13 +112,16 @@ def test_s_m3_int_02_direct_read_zero_egress_ocr_single(api_client, tmp_dirs):
     assert _upload(api_client).status_code == 200
     from app.services.persistence import get_session
     with get_session() as session:
-        assert session.scalar(select(func.count()).select_from(m.EgressLog)) == 0  # 直读：零
+        # 直读：不调用 OCR stub（recognize 外发为零；授权查验 purpose=verify 单列，FN-5-02 必要外发）
+        assert session.scalar(select(func.count()).select_from(m.EgressLog).where(
+            m.EgressLog.purpose == "recognize")) == 0
     png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 48
     assert _upload(api_client, content=png, name="扫描件_宁波_66102.png").status_code == 200
     with get_session() as session:
-        eg = session.scalars(select(m.EgressLog)).all()
+        eg = session.scalars(select(m.EgressLog).where(
+            m.EgressLog.purpose == "recognize")).all()
         assert len(eg) == 1 and eg[0].provider_id == "selfhosted-ocr-vlm-stub"
-        assert eg[0].purpose == "recognize" and eg[0].bytes_out > 0
+        assert eg[0].bytes_out > 0
 
 
 def test_s_m3_int_03_digest_idempotent(api_client, tmp_dirs):
@@ -154,11 +161,14 @@ def test_s_m3_int_04_checkpoint_resume_no_rerun(api_client, tmp_dirs):
         # 续跑：从检查点继续
         res = intake_pipeline.resume_batch(session, batch.batch_id)
         assert res["files"][0]["caseId"].startswith("INV-CN-2026-")
-        assert session.scalar(select(func.count()).select_from(m.EgressLog)) == 1
-        # 二次续跑：无事可做（已完成步骤不重做、不重复受理）
+        # 识别调用计数=1（purpose=recognize；合规查验外发单列，不构成识别重跑）
+        assert session.scalar(select(func.count()).select_from(m.EgressLog).where(
+            m.EgressLog.purpose == "recognize")) == 1
+        # 二次续跑：无事可做（已完成步骤不重做、不重复受理、合规链不重跑）
         res2 = intake_pipeline.resume_batch(session, batch.batch_id)
         assert res2["files"][0]["reason"] == "检查点已完成，续跑跳过"
-        assert session.scalar(select(func.count()).select_from(m.EgressLog)) == 1
+        assert session.scalar(select(func.count()).select_from(m.EgressLog).where(
+            m.EgressLog.purpose == "recognize")) == 1
         assert session.scalar(select(func.count()).select_from(m.IntakeLedger)) == 1
 
 
@@ -225,3 +235,70 @@ def test_s_m3_int_05_channel_jobs_manual_trigger(api_client, tmp_dirs):
     # KPI 联动：运行期四渠道计数
     k = api_client.get("/v1/intake/kpi").json()["runtime"]["by_channel"]
     assert k.get("供应商邮箱") == 2 and k.get("SAP DOX") == 2
+
+
+# ───────────────────────── WP3.3 追加场景：红线链全链（API 层） ─────────────────────────
+
+def test_s_m3_cmp_03_tampered_sm2_failed_blocked(api_client, tmp_dirs):
+    """S-M3-CMP-03 篡改票（SM2 路径重放）：上传→验签 FAILED→BLOCKED→建档挂起→失败回执归档+告警。"""
+    tampered = sm2_service.attach_signature(FRESH_XML.decode("utf-8")).replace(
+        b"11300.00", b"11299.00")
+    r = _upload(api_client, content=tampered, name="数电票_篡改_66201.xml")
+    assert r.status_code == 200, r.json()
+    cid = r.json()["files"][0]["caseId"]
+    c = api_client.get(f"/v1/cases/{cid}?instance=CN").json()
+    assert c["status"] == "BLOCKED"
+    assert c["meta"]["doc_hold_pending"] is True                # 建档挂起（CON-02）
+    assert c["meta"]["sm2"]["ok"] is False and c["meta"]["sm2"]["receipt_no"].startswith("gm-rcpt-")
+    assert c["checks"]["authenticity"]["result"] == "FAILED"
+    assert any("SM2_VERIFY_FAILED" == e["act"] for e in c["timeline"])
+    from app.services.persistence import get_session
+    with get_session() as s:
+        assert (tmp_dirs / "gm-receipts" / f"{c['meta']['sm2']['receipt_no']}.json").exists()
+        alerts = s.query(m.Alert).filter(m.Alert.case_ref == cid).all()
+        assert any("验真红线" in a.title for a in alerts)       # 高风险通知（分发属 M5）
+        assert audit_chain.verify_chain(s, verifier="S-M3-CMP-03")["ok"]
+    # FN-5-09 读侧兼容：运行期红线告警须可被 /v1/alerts builder 消费（展示级词汇+evidence 要素）
+    al = api_client.get("/v1/alerts?instance=CN")
+    assert al.status_code == 200, al.json()
+    assert any(cid in a["title"] or cid in (a.get("meta") or "") for a in al.json()["items"])
+
+
+def test_s_m3_cmp_02_duplicate_blocked_batch_skip(api_client, tmp_dirs):
+    """S-M3-CMP-02 重复票：第二张同票面件（异字节）→DEDUP_BLOCKED→批量放行被跳过→解除须双人会签。"""
+    xml_a = FRESH_XML.decode("utf-8")
+    r1 = _upload(api_client, content=sm2_service.attach_signature(xml_a), name="数电票_原_66202.xml")
+    cid_a = r1.json()["files"][0]["caseId"]
+    dup_xml = xml_a.replace("宁波北仑精密铸造有限公司", "宁波北仑精密铸造有限公司（代开）")
+    r2 = _upload(api_client, content=sm2_service.attach_signature(dup_xml), name="数电票_重_66202B.xml")
+    cid_b = r2.json()["files"][0]["caseId"]
+    cb = api_client.get(f"/v1/cases/{cid_b}?instance=CN").json()
+    assert cb["status"] == "BLOCKED" and cb["checks"]["duplicate"]["result"] == "FAILED"
+    assert any(e["act"] == "DEDUP_BLOCKED" for e in cb["timeline"])
+    # 批量放行含 BLOCKED：必须被跳过（FN-0-08 红线：BLOCKED 不可批量放行）；
+    # 混入的合法件 A 停 RECOGNIZED（放行前提=NEEDS_REVIEW/INVESTIGATING）同样如实跳过并列因
+    ch = api_client.post("/v1/batch/risk-challenge",
+                         json={"actor": "王莉", "instance": "CN", "action": "batch_release",
+                               "case_ids": [cid_a, cid_b]})
+    tok = ch.json()["token"]
+    rr = api_client.post("/v1/batch/actions/batch_release",
+                         json={"actor": "王莉", "instance": "CN", "token": tok,
+                               "self_confirmed": True, "opinion": "S-M3-CMP-02 批量放行断言",
+                               "case_ids": [cid_a, cid_b]})
+    assert rr.status_code == 200
+    body = rr.json()
+    assert [sk["caseId"] for sk in body["skipped"]] == [cid_a, cid_b]
+    assert any("BLOCKED 不可批量放行" in sk["reason"] for sk in body["skipped"])
+    assert body["processed"] == 0
+    assert api_client.get(f"/v1/cases/{cid_b}?instance=CN").json()["status"] == "BLOCKED"
+    # 解除拦截缺会签人 → 拒绝（双人审批，FN-8-06）
+    ch2 = api_client.post(f"/v1/cases/{cid_b}/risk-challenge",
+                          json={"actor": "王莉", "instance": "CN", "action": "unblock"})
+    r3 = api_client.post(f"/v1/cases/{cid_b}/actions/unblock",
+                         json={"actor": "王莉", "instance": "CN", "token": ch2.json()["token"],
+                               "self_confirmed": True})
+    assert r3.status_code == 409 and r3.json()["detail"]["error_code"] == "E_COUNTERSIGN_REQUIRED"
+    # 读侧兼容：重复票红线告警可被 /v1/alerts 消费（FN-5-09 展示级契约）
+    al = api_client.get("/v1/alerts?instance=CN")
+    assert al.status_code == 200, al.json()
+    assert any("重复票红线拦截" in a["title"] for a in al.json()["items"])

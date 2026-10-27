@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "status": "海外 Tax ID 名录（FN-5-03 · 演示口径模拟名录 webhook 数据源）",
+  "source": "清单 FN-5-03 + ui-design/case-detail.html VAT 卡（0125 案）；正式名录=授权 webhook 通道（真实化前模拟）",
+  "note": "名录校验回执 source=webhook（field_source 六枚举）、组件版本 webhook-sg（versions.json）；无统一验签体系地区以名录命中为 authenticity 判定依据并明示口径（FN-5-03）；命中判定=TaxID 全等（格式校验另走 sg_uen_format_check/tax_id_checksum 规则）；本表入 SeedMeta 后由 tax_directory 服务消费。",
+  "entries": [
+    { "tax_id": "S24LE3399E", "entity": "Singapore Components Pte Ltd", "region": "SG", "gst_registered": true },
+    { "tax_id": "S00EP1234X", "entity": "Test SG Parts Pte Ltd", "region": "SG", "gst_registered": true },
+    { "tax_id": "M90345627L", "entity": "Dell Asia Pacific Pte Ltd", "region": "SG", "gst_registered": true },
+    { "tax_id": "T08PL45219G", "entity": "Johnson Controls Singapore", "region": "SG", "gst_registered": true },
+    { "tax_id": "S77INV0011B", "entity": "Siemens Energy SG Branch", "region": "SG", "gst_registered": true }
+  ]
+}

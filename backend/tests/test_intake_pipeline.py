@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 """WP3.1 五步受理流水线单测（FN-1-05/06/07 · FN-5-08 外发台账 · 案件派生）。
 
-数据锚点：现场造 seeds 之外新 XML（含 demo XML）；对象存储目录经 monkeypatch 走 tmp（测试零污染）。
+数据锚点：现场造 seeds 之外新 XML；WP3.3 起样例票以**演示 CA 真实 SM2 签名**
+（验签算法真实，证书链模拟）；篡改件=签名后改金额（FAILED 红线对照）。
+对象存储/回执目录经 monkeypatch 走 tmp（测试零污染）。
 """
 
 import pytest
 from sqlalchemy import func, select
 
 from app.domain import models as m
-from app.services import intake_pipeline as ip, object_store, state_machine
+from app.services import intake_pipeline as ip, object_store, sm2_service, state_machine
 from app.services.errors import CommandError
 
 from tests.conftest import schema_errors
-
 
 NEW_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <EInvoice xmlns="urn:cn:tax:einvoice:1.0">
@@ -29,9 +30,13 @@ NEW_XML = """<?xml version="1.0" encoding="UTF-8"?>
   </Items>
   <Total><NetAmount>10000.00</NetAmount><TaxAmount>1300.00</TaxAmount>
     <GrossAmount>11300.00</GrossAmount></Total>
-  <Signature alg="SM2">（测试样例）</Signature>
 </EInvoice>
 """
+
+
+def signed(text: str = NEW_XML) -> bytes:
+    return sm2_service.attach_signature(text)
+
 
 CONTRACT_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <Contract><Title>框架协议</Title><Note>本件为合同，非供应商发票</Note></Contract>
@@ -43,10 +48,12 @@ PNG_MAGIC = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 @pytest.fixture(autouse=True)
 def tmp_objects(tmp_path, monkeypatch):
     monkeypatch.setattr(object_store, "OBJECTS_DIR", tmp_path / "objects")
+    monkeypatch.setattr(sm2_service, "GM_RECEIPT_DIR", tmp_path / "gm-receipts")
 
 
-def _run_one(fresh_session, name="数电票_苏州东方_77701.xml", content=NEW_XML.encode(),
+def _run_one(fresh_session, name="数电票_苏州东方_77701.xml", content=None,
              channel="门户上传", instance="CN", po_ref=None, target=None):
+    content = signed() if content is None else content
     payload, ver = ip.current_intake_rules(fresh_session)
     batch = ip.create_batch(fresh_session, channel=channel, instance=instance)
     frow = ip.add_file(fresh_session, batch, name=name, content=content, mime=None,
@@ -83,20 +90,34 @@ def test_xml_full_chain_derives_case(fresh_session, case_validator, events_valid
     assert not schema_errors(case_validator, agg), schema_errors(case_validator, agg)
     for tl in agg["timeline"]:
         assert not schema_errors(events_validator, tl)
-    # 时间线事件序：受理→分流→解析→接收
+    # 时间线：受理四事件先行（WP3.1），合规事件随后（WP3.3）
     acts = [e["act"] for e in agg["timeline"]]
-    assert acts == ["CHANNEL_RECEIVED", "CARRIER_ROUTED", "XML_PARSED", "INBOUND_ACCEPTED"]
+    assert acts[:4] == ["CHANNEL_RECEIVED", "CARRIER_ROUTED", "XML_PARSED", "INBOUND_ACCEPTED"]
+    assert "SM2_VERIFY" in acts and "DEDUP_CHECK" in acts
     assert frow.status_snapshot == "RECOGNIZED" and frow.conf == 99
-    # 外发台账为零（直读路径数据最小外发断言）
-    assert fresh_session.scalar(select(func.count()).select_from(m.EgressLog)) == 0
-    # 查重池/合规检查占位（WP3.3 激活）——四槽位 NOT_VERIFIED，绝不伪装 PASSED
-    for item, chk in agg["checks"].items():
-        assert chk["result"] == "NOT_VERIFIED"
+    # 数据最小外发：直读路径**不调用 OCR stub**（purpose=recognize 外发为零；
+    # 授权查验模拟通道外发 purpose=verify 属必要外发，FN-5-02）
+    eg = fresh_session.scalars(select(m.EgressLog)).all()
+    assert [e for e in eg if e.purpose == "recognize"] == []
+    assert {e.purpose for e in eg} == {"verify"}
+    # 合规链实跑（WP3.3）：验签 PASS+查验 pass→authenticity PASSED；池无命中→duplicate PASSED；
+    # 主数据/PO 档案未接入→两项如实 NOT_VERIFIED（绝不伪装 PASSED）
+    chk = agg["checks"]
+    assert chk["authenticity"]["result"] == "PASSED" and "SM2 PASS" in chk["authenticity"]["note"]
+    assert chk["duplicate"]["result"] == "PASSED"
+    assert chk["supplierMatch"]["result"] == "NOT_VERIFIED"
+    assert chk["poMatch"]["result"] == "NOT_VERIFIED"
+    assert case.meta_raw["sm2"]["receipt_no"].startswith("gm-rcpt-")
+    # SM2 回执真实归档（算法真实+证书链模拟 · 演示口径）
+    rcpt_file = sm2_service.GM_RECEIPT_DIR / f"{case.meta_raw['sm2']['receipt_no']}.json"
+    assert rcpt_file.exists() and case.meta_raw["sm2"]["ok"] is True
 
 
 def test_direct_read_zero_egress(fresh_session):
+    """直读路径不调用任何 OCR stub（recognize 外发=0）；查验通道必要外发单列 purpose=verify。"""
     _run_one(fresh_session)
-    assert fresh_session.scalar(select(func.count()).select_from(m.EgressLog)) == 0
+    assert fresh_session.scalar(select(func.count()).select_from(m.EgressLog).where(
+        m.EgressLog.purpose == "recognize")) == 0
 
 
 def test_non_invoice_filtered(fresh_session):
@@ -120,9 +141,9 @@ def test_digest_idempotent_no_double_accept(fresh_session):
     sha = frow.sha256
     dup = ip.find_business_dup(fresh_session, sha, None)
     assert dup is not None and dup.case_id == out["caseId"]
-    # 二次提交同文件：preflight 命中 + 步内终检双防护
+    # 二次提交同文件（同签名内容=同摘要）：preflight 命中 + 步内终检双防护
     b2 = ip.create_batch(fresh_session, channel="门户上传", instance="CN")
-    f2 = ip.add_file(fresh_session, b2, name="same.xml", content=NEW_XML.encode(),
+    f2 = ip.add_file(fresh_session, b2, name="same.xml", content=signed(),
                      mime=None, po_ref=None, target_doc_ref=None)
     with pytest.raises(CommandError) as ei:
         ip.run_file(fresh_session, b2, f2, rules_payload=ip.current_intake_rules(fresh_session)[0])
@@ -139,22 +160,29 @@ def test_encrypted_pdf_manual_sort_still_registers_digest(fresh_session):
         m.FileStep.batch_id == batch.batch_id))}
     assert steps[4] == "DONE" and steps[5] == "SKIPPED"
     assert fresh_session.scalar(select(func.count()).select_from(m.Case)) == 11  # 未派生新案件
+    assert fresh_session.scalar(select(func.count()).select_from(m.EgressLog).where(
+        m.EgressLog.purpose == "recognize")) == 0
 
 
 def test_scan_image_ocr_stub_egress_logged(fresh_session):
     batch, frow, out = _run_one(fresh_session, name="扫描件_苏州东方_77702.png", content=PNG_MAGIC)
     assert out["disposition"] == "ACCEPTED"
     assert frow.carrier_route == "L2_ocr_vlm"
-    eg = fresh_session.scalars(select(m.EgressLog)).all()
+    eg = fresh_session.scalars(select(m.EgressLog).where(
+        m.EgressLog.purpose == "recognize")).all()
     assert len(eg) == 1 and eg[0].provider_id == "selfhosted-ocr-vlm-stub"
     case = fresh_session.get(m.Case, out["caseId"])
-    assert case.confidence == 82 and case.provider == "自托管 OCR-VLM（SPI stub · 演示口径）"
+    # WP3.3：stub 合成置信度 82 < 阈值 85 → FN-0-02 低置信边自动流转 NEEDS_REVIEW（强制人工）
+    assert case.confidence == 82 and case.status == "NEEDS_REVIEW"
+    assert case.provider == "自托管 OCR-VLM（SPI stub · 演示口径）"
+    assert case.checks_raw["authenticity"]["result"] == "PASSED"   # 无 XML 原件→查验判定
     evs = fresh_session.scalars(select(m.FieldEvidence).where(
-        m.FieldEvidence.case_id == case.case_id)).all()
-    assert evs and all(e.source == "ocr" for e in evs)          # 来源徽章=OCR，不冒充直读
+        m.FieldEvidence.case_id == case.case_id,
+        m.FieldEvidence.source == "ocr")).all()
+    assert evs and all(e.source == "ocr" for e in evs)             # 来源徽章=OCR，不冒充直读
     acts = [t.act for t in fresh_session.scalars(select(m.TimelineEvent).where(
         m.TimelineEvent.case_id == case.case_id).order_by(m.TimelineEvent.seq))]
-    assert "OCR_RECOGNIZED" in acts
+    assert "OCR_RECOGNIZED" in acts and "STATUS_CHANGE" in acts    # 低置信流转留痕
 
 
 def test_batch_checkpoint_resume_stepwise(fresh_session):
@@ -177,14 +205,16 @@ def test_batch_checkpoint_resume_stepwise(fresh_session):
     # ①-③ 未重跑：步骤行仍是 DONE（无第二次 RUNNING 痕迹——detail 的 sha 不变）
     again = ip.resume_batch(fresh_session, batch.batch_id)
     assert again["files"][0].get("reason") == "检查点已完成，续跑跳过"
-    assert fresh_session.scalar(select(func.count()).select_from(m.EgressLog)) == 1  # 识别不重跑
+    # 识别不重跑：全程 OCR stub 外发计数恒=1（resume 未二次调用；合规查验外发单列 purpose=verify）
+    assert fresh_session.scalar(select(func.count()).select_from(m.EgressLog).where(
+        m.EgressLog.purpose == "recognize")) == 1
 
 
 def test_resume_no_double_register_after_digest_step(fresh_session):
     """中断于④（摘要已登记）→resume 仅派生⑤；不重复登记、不重复派生。"""
     payload, _ = ip.current_intake_rules(fresh_session)
     batch = ip.create_batch(fresh_session, channel="门户上传", instance="CN")
-    frow = ip.add_file(fresh_session, batch, name="数电票_中断续跑.xml", content=NEW_XML.encode(),
+    frow = ip.add_file(fresh_session, batch, name="数电票_中断续跑.xml", content=signed(),
                        mime=None, po_ref=None, target_doc_ref=None)
     with pytest.raises(ip.IntakeInterrupt):
         ip.run_file(fresh_session, batch, frow, rules_payload=payload, fail_after_step=4)

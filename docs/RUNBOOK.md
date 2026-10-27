@@ -13,7 +13,7 @@ WP3.3 合规服务、WP3.4 工作台、WP3.5 web 接线及 case-detail 写路径
 |---|---|
 | Python | **≥3.11**（`pyproject.toml requires-python`；本仓在 3.14.3 实测） |
 | pip 流 | `cd backend && pip install -r requirements-dev.txt`（运行+测试+校验全量） |
-| uv 流（推荐，精确重现） | 安装 uv 后：`cd backend && uv sync --extra dev`（按 `uv.lock` 锁定 45 包（M3 起含 `python-multipart`——门户上传/recognize multipart 表单解析必需），自动建 `.venv/`；后续命令用 `uv run python scripts/...` 或激活 venv） |
+| uv 流（推荐，精确重现） | 安装 uv 后：`cd backend && uv sync --extra dev`（按 `uv.lock` 锁定 47 包——M3 起含 `python-multipart`（表单解析）与 `gmssl`（SM2 真实算法，WP3.3，纯 Python 无 FFI），自动建 `.venv/`；后续命令用 `uv run python scripts/...` 或激活 venv） |
 | 零外部服务强依赖 | 默认 **SQLite**（`runtime/invoice_hub.db`）+ **本地目录**对象存储位 + **进程内**队列；无需安装 PostgreSQL/MinIO/Redis |
 
 **Windows / macOS·Linux 差异**：
@@ -113,8 +113,8 @@ python scripts/hub.py intake:poll-dox         # ③ DOX Job 一次拉取 → 输
 | 域 | 桩做方式 | 代码/演示位置 |
 |---|---|---|
 | 商业 Provider（百望云/诺诺/海外 e-invoicing 等） | SPI stub（按 provider-spi.schema 返回归一化结果+模拟时延成本） | `seeds/providers.json` 6 实例；真实化=商务合同+凭证（M4 实装路由编排） |
-| SM2 验签 | **算法真实、证书链模拟**；回执 gm-rcpt-* 按契约生成 | 时间线 SM2_VERIFY 事件/案件 sm2 卡（0387 通过、0379 失败→BLOCKED） |
-| 税局授权查验 | 模拟通道（含超时→NOT_VERIFIED→断点续跑重试） | authenticity note「渠道超时·已排定重试」+ AUTH_QUERY_TIMEOUT；workers/retry 演示队列 |
+| SM2 验签 | **算法真实（gmssl SM2+SM3）、证书链模拟**（演示 CA 固定密钥对，TODO(FN-9-10/FR-L1-05)）；回执 gm-rcpt-* PASS/FAILED 均产生并**运行期随案归档** `runtime/gm-receipts/` | 时间线 SM2_VERIFY/_FAILED 事件+案件 meta.sm2 卡（seeds 0379/0387 为展示口径静态注记；运行期新案件走真实验签——FAILED→BLOCKED 红线链走查见 M3 自检 §10） |
+| 税局授权查验 | **模拟通道运行期激活（WP3.3）**：模式=config `auth_verify_channel_mode` pass/timeout/off；超时→NOT_VERIFIED+AUTH_QUERY_TIMEOUT+单独排定重试；同票缓存去重复计费；外呼登记 purpose=verify | `verify_channel.py`+重试执行器 `run_due_retries`（只重发查验、识别不重跑=三计数断言）；workers/retry 演示队列 |
 | SAP DOX / 邮箱 Job | DOX 桥接桩（目录投递，参与方 ID 核对+信封校验真实执行、回执模拟）；邮箱本地信箱模拟 15 分钟 Job（**手动触发=§5.1 命令，不做真实 IMAP**） | `app/services/channels_ops.py` poll_mailbox/poll_dox；TODO(H30) 余项 DOX 产品细节 |
 | OCR Provider（M4 前） | stub Provider：扫描件/图片路由时返回**显式标注的合成演示值**（source=ocr、不冒充直读），每次外发登记 `EgressLog` 台账；直读路径零外发为断言项 | `intake_pipeline._ocr_stub_recognize`；S-M3-INT-02；正式 SPI 接入属 M4（FN-2-02/08） |
 | Webhook 回调（FN-A-03） | outbox 落盘=投递完成（X-Signature HMAC 演示密钥计算留痕）；≤8 次指数退避的真实消费者未实装 | `channels_ops.emit_webhook` → `runtime/webhook-outbox/` |
@@ -165,7 +165,7 @@ file_steps/intake_ledger/egress_log 表）：库内部分随 seed 重建清空�
 ```text
 grep -rnoE "TODO\((H[0-9]+|CON-[0-9]+|WP[0-9.]+|M[0-9][^)]*)\)" backend/app web/js --include=*.py --include=*.js
 ```
-运行代码现存 6 处（2026-10-27 M3-WP3.2 扫描）：`TODO(M3/FN-1-04)`（退回邮件通知桩注记，governed_commands）· `TODO(H39)`（数据驻留推断，tenant 文案）· `TODO(FN-9-10)` ×3（KMS 凭证/签名密钥演示桩，channels_ops ×2 + recognize）· `TODO(M4)`（OCR stub 正式 SPI 化，intake_pipeline）。
+运行代码现存 9 处（2026-10-27 M3-WP3.3 扫描）：`TODO(M3/FN-1-04)`（退回邮件通知桩注记，governed_commands）· `TODO(H39)`（数据驻留推断，tenant 文案）· `TODO(FN-9-10)` ×6（KMS 凭证/签名密钥/演示 CA 与证书链管理，channels_ops ×2 + recognize + sm2_service ×3，其中两处并注 FR-L1-05）· `TODO(M4)`（OCR stub 正式 SPI 化，intake_pipeline）。
 其余未决项登记于 `contracts/CHANGELOG.md`「TODO 未决项登记」表（H24/H25/H29/H38/H39、CON-06/09/12/13/14——归属 M3/M4/M5 对应工作包落地时消费）；里程碑边界注记（如 summary 投影、KPI live 口径）见 `docs/gate-reports/M1/M2-self-check.md` 遗留节。
 
 ---

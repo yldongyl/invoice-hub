@@ -1,43 +1,118 @@
 {
   "version": "v2026-10-21.2",
   "state": "published",
-  "status": "配置中心默认值（FN-9-09 · CON-01 决议：全局默认阈值 0.85 冻结；租户级覆盖）",
+  "status": "配置中心默认值（FN-9-09 · CON-01 冻结 0.85；M3-WP3.3 增补查验/查重/融合四项配置）",
   "source": "ui-design/platform-admin.html Tab3 saved 基准 + 清单 FN-0-06/09/12/13、FN-5-04、FN-2-10 + ADR-0004",
   "note": "草稿/已发布双态；发布=前值→后值 diff 二次确认+版本递增+审计+可回滚；低置信强制人工为红线关联项（关闭与产品红线冲突需警示，FN-9-09/5-05）；组件产品为 PoC 口径可替换（ADR-0002：SQLite→PostgreSQL / 本地目录→MinIO / 内存队列→Redis），本文件不绑定产品。",
   "items": {
     "confidence_threshold_default": {
-      "label": "置信度阈值（全局默认）", "value": 0.85, "range": [0.5, 0.99],
-      "note": "CON-01 决议：0.85 为唯一全局默认；规格 v0.3 §5.2 的 0.75 为历史默认标注。路由阈值按规则逐条配置（见 routing_policy：0.85/0.88/0.90）。", "risk_level": "high_on_disable_chain"
+      "label": "置信度阈值（全局默认）",
+      "value": 0.85,
+      "range": [
+        0.5,
+        0.99
+      ],
+      "note": "CON-01 决议：0.85 为唯一全局默认；规格 v0.3 §5.2 的 0.75 为历史默认标注。路由阈值按规则逐条配置（见 routing_policy：0.85/0.88/0.90）。",
+      "risk_level": "high_on_disable_chain"
     },
     "amount_reconcile_tolerance": {
-      "label": "尾差容差（金额勾稽）", "value": "±0.06", "amount": 0.06, "currency_scope": "CN",
+      "label": "尾差容差（金额勾稽）",
+      "value": "±0.06",
+      "amount": 0.06,
+      "currency_scope": "CN",
       "note": "规则 amount_tax_sum_check / 行级勾稽容差（FN-4-03）；展示口径页面单列呈现。"
     },
     "po_match_tolerance": {
-      "label": "PO 匹配容差（BTP）", "value": "±S$50", "amount": 50, "currency": "SGD",
+      "label": "PO 匹配容差（BTP）",
+      "value": "±S$50",
+      "amount": 50,
+      "currency": "SGD",
       "note": "TODO(CON-12)：admin 页当前仅一个「尾差容差」项，PO 匹配容差配置项补入属 M5 页面接线；两套容差适用范围必须显式区分（FN-6-02）。"
     },
     "low_confidence_force_human": {
-      "label": "低置信强制人工", "value": true,
+      "label": "低置信强制人工",
+      "value": true,
       "note": "默认开（FN-9-09）；<80% 强制人工、禁止自动放行属产品红线（FN-0-06/5-05），关闭与红线冲突需警示——不可被配置绕过（P00 §5）。"
     },
     "new_customer_first_month_review": {
-      "label": "新客户首月全量复核", "value": false, "note": "兜底触发条件之一，默认关（enum-registry.fallback_trigger；校准阈值与映射规则用）。"
+      "label": "新客户首月全量复核",
+      "value": false,
+      "note": "兜底触发条件之一，默认关（enum-registry.fallback_trigger；校准阈值与映射规则用）。"
     },
     "region_routing": {
-      "label": "数据区域路由", "value": "中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域",
-      "tristate": ["境内优先（默认）", "严格境内（中国数电票/增值税票不出境）", "跟随租户实例配置"],
+      "label": "数据区域路由",
+      "value": "中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域",
+      "tristate": [
+        "境内优先（默认）",
+        "严格境内（中国数电票/增值税票不出境）",
+        "跟随租户实例配置"
+      ],
       "note": "三档含租户可用性限制；出境管控由本配置执行（FN-5-10）；数据驻留细则 TODO(H39)（推断标注）。高风险项：变更二次确认+审计。"
+    },
+    "dedup_similarity_threshold": {
+      "label": "查重相似度阈值",
+      "value": 1.0,
+      "range": [
+        0.8,
+        1.0
+      ],
+      "note": "FN-5-04 CON-05：100% 完全一致=硬命中（业务键全等）；调低启用票号相似度模糊命中（票号逐位匹配率≥阈值且金额全等）。边界语义 sim≥阈值 即命中；性能目标 P95<200ms（sla_targets）。",
+      "risk_level": "normal"
+    },
+    "auth_verify_channel_mode": {
+      "label": "授权查验通道演示模式",
+      "value": "pass",
+      "tristate": [
+        "pass（查验通过）",
+        "timeout（超时→NOT_VERIFIED+排定重试=断点续跑验证点）",
+        "off（不查验）"
+      ],
+      "note": "FN-5-02 演示口径桩（模拟通道，税局授权接入前）；同票结果缓存避免重复计费；验真必须走授权渠道、模型不得自行宣称发票真实（FN-0-09）。运行期参数可注入覆盖（测试/走查）。",
+      "risk_level": "normal"
+    },
+    "fusion_adoption_policy": {
+      "label": "多源融合采信策略",
+      "value": {
+        "priority": [
+          "xml_direct",
+          "qr_code",
+          "ocr",
+          "model"
+        ],
+        "conflict_fields": [
+          "header.invoice_no",
+          "total.tax_amount",
+          "total.gross_amount"
+        ],
+        "degrade_to": 82,
+        "note": "FN-4-02：结构化原件优先（0381 案口径 OCR ¥5,650 vs XML ¥5,680 超容差→多源字段冲突路由人工）；互证一致标注「XML 直读 + OCR 互证一致」；冲突不得静默取舍——双方证据留存、采信值=priority 首个来源、置信度降级 degrade_to 并强制人工（NEEDS_REVIEW）"
+      },
+      "note": "差异判定共用勾稽容差（amount_reconcile_tolerance，CON-12）；策略变更=受控发布",
+      "risk_level": "normal"
     }
   },
   "id_formats_ref": "contracts/enum-registry.json#id_format（INV-{CN|SG}-2026-NNNN / BT-YYYYMMDD-NNN / tr-{8hex} / gm-rcpt-NNNN / SUP-NNNNN / TENANT-{区域}-{名称}-{序号} / QA-YYYY-Wnn-NN / ANNO-YYYY-NNNN / SHA-256）",
   "sla_targets": {
-    "sync_recognize_p95_ms": 3000, "dedup_p95_ms": 200, "archive_p95_ms": 1000,
-    "claim_high_risk_minutes": 30, "webhook_retry_max": 8, "adapter_retry_max": 3,
-    "adapter_retry_backoff": ["30s", "2min", "10min"], "queue_callback_retry_max": 5,
-    "false_auto_rate_max": 0.0005, "upload_file_size_max_mb": 20,
-    "retention_years": { "xml_ofd_original_and_audit": 10, "pdf_image": 7, "recognition_intermediate": 2,
-      "note": "目标合规策略口径（FN-5-06 · TODO(CON-09)：与规格默认 ≥365 天分层关系声明待补；XML/OFD 保留期含 H39 推断标注）" },
+    "sync_recognize_p95_ms": 3000,
+    "dedup_p95_ms": 200,
+    "archive_p95_ms": 1000,
+    "claim_high_risk_minutes": 30,
+    "webhook_retry_max": 8,
+    "adapter_retry_max": 3,
+    "adapter_retry_backoff": [
+      "30s",
+      "2min",
+      "10min"
+    ],
+    "queue_callback_retry_max": 5,
+    "false_auto_rate_max": 0.0005,
+    "upload_file_size_max_mb": 20,
+    "retention_years": {
+      "xml_ofd_original_and_audit": 10,
+      "pdf_image": 7,
+      "recognition_intermediate": 2,
+      "note": "目标合规策略口径（FN-5-06 · TODO(CON-09)：与规格默认 ≥365 天分层关系声明待补；XML/OFD 保留期含 H39 推断标注）"
+    },
     "prompt_retention_days": 30
   },
   "asset_versions": {

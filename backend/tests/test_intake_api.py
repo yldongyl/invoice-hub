@@ -13,9 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from app.services import channels_ops, object_store
+from app.services import channels_ops, object_store, sm2_service
 
-NEW_XML = """<?xml version="1.0" encoding="UTF-8"?>
+NEW_XML = sm2_service.attach_signature(
+    """<?xml version="1.0" encoding="UTF-8"?>
 <EInvoice xmlns="urn:cn:tax:einvoice:1.0">
   <Header><InvoiceNo>2431200000077888</InvoiceNo><IssueDate>2026-10-26</IssueDate>
   <InvoiceType>数电票（增值税专用发票）</InvoiceType></Header>
@@ -26,7 +27,7 @@ NEW_XML = """<?xml version="1.0" encoding="UTF-8"?>
   <Total><NetAmount>8000.00</NetAmount><TaxAmount>1040.00</TaxAmount>
   <GrossAmount>9040.00</GrossAmount></Total>
 </EInvoice>
-""".encode()
+""")
 
 SECRET = "invoice-hub-demo-webhook-secret"
 
@@ -34,6 +35,7 @@ SECRET = "invoice-hub-demo-webhook-secret"
 @pytest.fixture(autouse=True)
 def tmp_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(object_store, "OBJECTS_DIR", tmp_path / "objects")
+    monkeypatch.setattr(sm2_service, "GM_RECEIPT_DIR", tmp_path / "gm-receipts")
     monkeypatch.setattr(channels_ops, "MAILBOX_INBOX", tmp_path / "mb" / "inbox")
     monkeypatch.setattr(channels_ops, "MAILBOX_OUTBOX", tmp_path / "mb" / "outbox")
     monkeypatch.setattr(channels_ops, "MAILBOX_PROCESSED", tmp_path / "mb" / "processed")
@@ -219,7 +221,8 @@ def test_recognize_multipart_ocr_202_and_webhook_stub(api_client, tmp_runtime):
     assert r.status_code == 202, r.json()
     body = r.json()
     errs1 = list(_openapi_component("AcceptedResponse").iter_errors(body)); assert not errs1, errs1
-    assert body["caseId"] == "INV-CN-2026-0388" and body["status"] == "RECOGNIZED"
+    # stub 合成置信度 82<阈值 → 合规链即时低置信流转 NEEDS_REVIEW（AcceptedResponse 合法态）
+    assert body["caseId"] == "INV-CN-2026-0388" and body["status"] == "NEEDS_REVIEW"
     wh = list((tmp_runtime / "wh").glob("*.json"))
     assert len(wh) == 1
     payload = json.loads(wh[0].read_text(encoding="utf-8"))
