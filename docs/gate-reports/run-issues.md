@@ -24,3 +24,15 @@
 - 干净链：`uv sync --extra dev` → `hub.py clean`（RI-M2-003 兜底）→ `hub.py seed`（EXIT 0）→ `hub.py run` → `hub.py smoke` **10/10 PASS** → `hub.py test` **171 passed**。
 - 三形态：A 接线态（test_api_web 6 项 + smoke 09/10 实证）；B 仅核心（API 面全量，agent/mcp 占位不阻塞）；C 独立演示（http.server 8001 页面/js 200、/healthz 404 触发回落——角标与 mock 逻辑由测试断言，浏览器目验待 RI-M2-005）。
 - ui-design 只读：12 页源文件 mtime 全部 ≤2026-10-22 零改动；web 副本 diff 审查：10 页 ZERO-DIFF、2 页仅接线段（dashboard 40 行/case-detail 118 行，均收敛于数据入口与 M3 门控，未触碰原型数据常量/渲染函数/文案——清单 §R1 自查记录）。
+
+## M3-WP3.1/3.2 会话缺陷记录（2026-10-27 · 均已闭）
+
+| 编号 | 症状 | 根因与修复 | 回归证据 |
+|---|---|---|---|
+| RI-M3-001 | 门户上传报 `E_NO_FILE`（文件部件全被跳过） | fastapi 0.162 的 `UploadFile` 与 starlette 1.10 表单解析器产出的 `starlette.datastructures.UploadFile` **不同源**，`isinstance` 判 False。修复：api/intake.py 文件部件改鸭子类型（`hasattr read/filename`），不再 import fastapi.UploadFile | test_intake_api 上传/recognize multipart 全绿；213 passed |
+| RI-M3-002 | 通道桩样例落 `backend/runtime/`（应=仓库根 `runtime/`） | object_store/channels_ops 的 REPO_ROOT 用 `parents[2]`（=backend），应为 `parents[3]`（与 domain/registry.py 同基准=invoice-hub/）。修复后 backend/runtime 清除重播 | RUNBOOK §5.1 实机走查：两桩批次/案件/KPI 与页面锚点核对一致 |
+| RI-M3-003 | 同日晚些 CN/OS 各自首批发号同为 `BT-…-001` → PRIMARY KEY 冲突 | BT 编号规则不含实例段而发号计数分实例域（CON-04 域）——同日双域同序必撞。修复：`_next_batch` 全局唯一检查+域内重发（≤16 次防御） | S-M3-INT-05 两桩连发不撞；seed 计数器播种口径不变 |
+| RI-M3-004 | 门户 KPI 运行段成功率=50%（2 受理+2 退回/4 件） | 口径修正：退回（FILTERED）属受理处置成功（FN-1-09「受理登记成功/接入总量」），仅 FAILED 计失败——`success_rate=(accepted+filtered)/total` | intake_kpi 注释+场景 05；页面 merged 回落锚点逻辑不变 |
+| RI-M3-005 | `test_dependency_discipline` 误报：测试函数名含违禁词子串 | CS 组大小写敏感镜像 grep 从严，函数名 `…_no_llm` 命中。修复：函数改中性名（断言不变=直读零外发）；「自误报纪律」注记已有、本条补执行案例 | 213 passed 含纪律测 |
+| RI-M3-006 | multipart 上传端点 500：`python-multipart` 缺失 | FastAPI 表单解析运行期硬依赖未入 pyproject（M2 无表单面未暴露）。修复：dependencies 增 `python-multipart>=0.0.9`，uv.lock 重锁 45 包；RUNBOOK §1/§8 同步 | 干净 uv sync 链待门禁复验；本会话 venv 实测 ok |
+| RI-M3-007 | 走查前 8000 端口响应 404 `/v1/intake/*` | **环境项**：M2 会话遗留 backend 进程（v0.3.0，PID 5408）持续占端，本会话两次 `hub.py run` bind 失败静默退出（日志有 10048 但链式命令未暴露）。处置：taskkill 后重启 v0.4.0 复验 | healthz version=0.4.0-m3-wp3.1-3.2 + smoke 10/10；RUNBOOK §8 已有端口占用条目（建议补「先核对 /healthz version」提示已含） |
