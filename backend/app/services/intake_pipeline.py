@@ -79,8 +79,14 @@ def create_batch(session, *, channel: str, instance: str, po_ref: str | None = N
 
 
 def _next_batch(session, instance: str) -> str:
+    """BT-YYYYMMDD-NNN 全库唯一（编号规则不含实例段）：分实例计数域同日可能同序，
+    碰撞则向本域继续重发（intake 页「今日 31 批次」为跨渠道全局序的演示口径防御）。"""
     from app.services.issuer import next_batch_no
-    return next_batch_no(session, instance)
+    for _ in range(16):
+        bid = next_batch_no(session, instance)
+        if session.get(m.Batch, bid) is None:
+            return bid
+    raise CommandError("E_BATCH_ISSUE", "批次发号连续碰撞（>16 次），请检查发号域状态", http=500)
 
 
 def find_business_dup(session, sha256_hex: str, target_doc_ref: str | None):

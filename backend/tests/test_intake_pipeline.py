@@ -94,7 +94,7 @@ def test_xml_full_chain_derives_case(fresh_session, case_validator, events_valid
         assert chk["result"] == "NOT_VERIFIED"
 
 
-def test_direct_read_zero_egress_and_no_llm(fresh_session):
+def test_direct_read_zero_egress(fresh_session):
     _run_one(fresh_session)
     assert fresh_session.scalar(select(func.count()).select_from(m.EgressLog)) == 0
 

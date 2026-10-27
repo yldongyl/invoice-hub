@@ -9,7 +9,7 @@
 import hashlib
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]          # backend/app/services -> invoice-hub/
+REPO_ROOT = Path(__file__).resolve().parents[3]          # backend/app/services -> invoice-hub/（与 domain/registry.py 同基准）
 OBJECTS_DIR = REPO_ROOT / "runtime" / "objects"
 
 

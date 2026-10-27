@@ -4,7 +4,7 @@
 
 PY ?= python
 
-.PHONY: seed run run-agent run-mcp run-workers test test-e2e verify-enums verify-contracts verify-ui verify smoke clean all
+.PHONY: seed run run-agent run-mcp run-workers test test-e2e verify-enums verify-contracts verify-ui verify smoke clean all intake-mailbox intake-dox intake-demo
 
 ## 种子装载（幂等可重跑，P07 1.2）
 seed:
@@ -30,9 +30,19 @@ run-workers:
 test:
 	$(PY) scripts/hub.py test
 
-## E2E 场景断言（M3 建立最小场景集；当前占位说明）
+## E2E 场景断言（M3 起 pytest -m scenario 承载）
 test-e2e:
 	$(PY) scripts/hub.py test-e2e
+
+## 通道桩手动触发（演示口径 15 分钟邮箱 Job 等效；RUNBOOK §桩边界）
+intake-mailbox:
+	$(PY) scripts/hub.py intake:poll-mailbox
+
+intake-dox:
+	$(PY) scripts/hub.py intake:poll-dox
+
+intake-demo:
+	$(PY) scripts/hub.py intake:demo-drop
 
 verify-enums:
 	$(PY) scripts/hub.py verify:enums

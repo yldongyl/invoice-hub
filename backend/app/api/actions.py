@@ -17,7 +17,8 @@ from app.services.tenant import TenantContext
 
 router = APIRouter(prefix="/v1")
 
-ACTIONS = "|".join(sorted(gc.ACTION_PERMS))
+# 案件/批量/配置动作面词汇（M3 intake=受理提交，专用入口 /v1/intake/*，不在此面暴露）
+ACTIONS = "|".join(sorted(k for k in gc.ACTION_PERMS if k != "intake"))
 
 
 class ChallengeBody(BaseModel):
@@ -110,7 +111,7 @@ def _execute(session, body: ActionBody, action: str, case_id: str | None = None,
 
 @router.post("/cases/{case_id}/actions/{action}")
 def case_action(case_id: str, action: str, body: ActionBody):
-    if action not in gc.ACTION_PERMS or action.startswith("batch_"):
+    if action not in gc.ACTION_PERMS or action.startswith("batch_") or action == "intake":
         raise HTTPException(400, detail={"error_code": "UNKNOWN_ACTION",
                                          "message": f"不支持的单案动作 {action!r}"})
     with get_session() as session:

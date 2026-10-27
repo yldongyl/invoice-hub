@@ -9,7 +9,10 @@
   run-mcp         MCP Server 启动占位（streamable-http 端口 8002，M5 实装）
   run-workers     workers 占位（受理流水线/重试/归档随 backend 进程内钩子，独立进程属 M3+）
   test            全部测试（单元+契约）
-  test-e2e        E2E 场景断言占位（tests/scenarios/ 最小场景集 M3 建立）
+  test-e2e        E2E 场景断言（pytest -m scenario；最小场景集随 M3 建立）
+  intake:poll-mailbox   邮箱通道桩手动触发（演示口径 15 分钟 Job 等效，RUNBOOK §桩边界）
+  intake:poll-dox       SAP DOX 桥接桩手动触发（目录投递）
+  intake:demo-drop      投放演示信箱/DOX 样例件（XML 发票+非发票+UBL+Order Response）
   verify:enums    enum-registry ↔ Excel Sheet08 逐字校验
   verify:contracts 契约结构/种子交叉校验
   verify:ui       seeds ↔ ui-design 页面交叉校验（G-M0-001）
@@ -79,10 +82,21 @@ def cmd_test(a):
 
 
 def cmd_test_e2e(a):
-    print("E2E 场景断言集 = tests/scenarios/（P07 引用实施规划 §7）：最小场景集随 M3 建立，"
-          "当前为 README 占位。本里程碑以 test_api_dashboard / test_api_web 的端到端冒烟"
-          "（tools/smoke.py）作为运行基线验证。")
-    return 0
+    # M3 起：场景断言以 pytest -m scenario 承载（backend/tests/test_scenarios_*.py），
+    # 方法论参考旧 S01~S16（仅方法论，代码不复用）；tests/scenarios/README.md 维护场景台账。
+    return _run([sys.executable, "-m", "pytest", "-q", "-m", "scenario"])
+
+
+def cmd_intake_poll_mailbox(a):
+    return _run([sys.executable, "-m", "app.workers.jobs_cli", "mailbox"])
+
+
+def cmd_intake_poll_dox(a):
+    return _run([sys.executable, "-m", "app.workers.jobs_cli", "dox"])
+
+
+def cmd_intake_demo_drop(a):
+    return _run([sys.executable, "-m", "app.workers.jobs_cli", "demo-drop"])
 
 
 def cmd_verify_enums(a):
@@ -133,6 +147,9 @@ def main():
     p = sub.add_parser("smoke"); p.add_argument("--base", default="http://127.0.0.1:8000")
     sub.add_parser("clean")
     sub.add_parser("all")
+    sub.add_parser("intake:poll-mailbox")   # M3 邮箱通道桩手动触发（15 分钟 Job 演示等效）
+    sub.add_parser("intake:poll-dox")       # M3 SAP DOX 桥接桩手动触发
+    sub.add_parser("intake:demo-drop")      # 投放演示信箱/DOX 样例件（RUNBOOK §桩边界）
     a = ap.parse_args()
 
     if a.cmd == "verify":
@@ -157,6 +174,8 @@ def main_one(name, a):
         "run-workers": cmd_run_workers, "test": cmd_test, "test-e2e": cmd_test_e2e,
         "verify:enums": cmd_verify_enums, "verify:contracts": cmd_verify_contracts,
         "verify:ui": cmd_verify_ui, "smoke": cmd_smoke, "clean": cmd_clean,
+        "intake:poll-mailbox": cmd_intake_poll_mailbox, "intake:poll-dox": cmd_intake_poll_dox,
+        "intake:demo-drop": cmd_intake_demo_drop,
     }[name](a)
 
 

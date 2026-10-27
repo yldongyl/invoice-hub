@@ -36,11 +36,14 @@ PERM_ACTION = "受控 Action 放行/退回"
 PERM_EDIT = "字段修正"
 PERM_EXPORT = "审计导出"
 PERM_PUBLISH = "策略发布"      # WP1.8 发布/回滚（FN-9-02 权限位⑤，管理员持有）
+PERM_INTAKE = "受理提交"       # M3 WP3.2 权限位⑧（FN-1-08 受控写要素①；CHANGELOG ⑧ 裁决）
 
 UNOPINIONED = "（未填写处置意见）"
 OPINION_REQUIRED_ACTIONS = {"return"}          # FN-0-08：拒绝/退回类必填备注
 RELEASE_STATES = {STATUS.NEEDS_REVIEW, STATUS.INVESTIGATING}   # FN-0-02 放行前提
 RETURN_STATE = STATUS.INVESTIGATING   # FN-0-02 退回供应商触发边所在态
+# 无目标案件的框架级动作（scope 由业务对象摘要绑定）
+NON_CASE_ACTIONS = {"export", "publish", "rollback", "intake"}
 
 ACTION_PERMS = {
     "release": PERM_ACTION, "hold": PERM_ACTION, "return": PERM_ACTION, "unblock": PERM_ACTION,
@@ -49,6 +52,7 @@ ACTION_PERMS = {
     "claim": PERM_VIEW, "batch_claim": PERM_VIEW,
     "export": PERM_EXPORT,
     "publish": PERM_PUBLISH, "rollback": PERM_PUBLISH,
+    "intake": PERM_INTAKE,                 # 受理提交（FN-1-08：门户上传=业务写，走五要素全序）
 }
 
 RISK_TEXT = {
@@ -63,7 +67,18 @@ RISK_TEXT = {
     "export": "导出行为本身写入审计链（操作人/时间/检索条件/行数），下载链接 24 小时后失效（演示口径）。",
     "publish": "【warn】配置发布即时生效：前值→后值 diff 已留痕、旧版本保留可回滚、POLICY_PUBLISHED 入审计链（FN-0-12/FN-9-09）；红线项关闭将被拒绝。",
     "rollback": "【warn】回滚=以目标历史版本载荷发布新版本（不删历史）；变更链完整可追。",
+    "intake": "受理提交后文件进入五步流水线（信封解析→非发票过滤→载体分流→SHA-256 摘要登记→路由派生案件），"
+              "逐文件清单与原件摘要将写入不可篡改审计日志；非发票文档将被拒绝入池并退回通知留痕（FN-1-08）。",
 }
+
+
+def intake_scope_digest(files_meta: list[dict], po_ref: str | None = None) -> str:
+    """受理提交确认凭据 scope：绑定逐文件清单（name:size）+目标实例上下文之外由调用方拼 instance。
+    风险提示签发与执行时按实际字节重算比对——清单被换=凭据失效（要素③错绑拒绝）。"""
+    canon = "|".join(f"{f['name']}:{f['size']}" for f in sorted(files_meta, key=lambda x: x["name"]))
+    if po_ref:
+        canon += f"|po:{po_ref}"
+    return "intake:" + hashlib.sha256(canon.encode()).hexdigest()[:12]
 
 
 def _now():
@@ -331,11 +346,68 @@ def _do_export(session, user, role, *, filters, rows):
             "blk": ab.blk, "trace": trace, "expires": "24h（演示口径）"}
 
 
+def _asset_type_for(key: str) -> str:
+    """受控发布资产域路由（M3：channel:* → 渠道配置；intake_rules → 受理规则版本资产）。"""
+    from app.services import versioning
+    if key.startswith("channel:"):
+        return "channel_config"
+    if key == "intake_rules":
+        return "intake_rules"
+    return versioning.ASSET_CONFIG
+
+
 def _do_publish(session, user, role, key, payload, opinion):
     """配置发布内核：转 versioning（diff/版本递增/旧版保留/POLICY_PUBLISHED 入链）。"""
     from app.services import versioning
     return {"published": True, **versioning.publish(session, key, user.name,
-                                                    payload=payload, opinion=opinion)}
+                                                    payload=payload, opinion=opinion,
+                                                    asset_type=_asset_type_for(key))}
+
+
+def _do_intake(session, user, role, *, instance: str, files: list[dict], po_ref: str | None,
+               opinion: str | None, scope: str) -> dict:
+    """受理提交内核（FN-1-08 五要素齐备后执行；FN-1-03/05 门户上传→流水线）。
+
+    命令级审计块先行（逐文件 SHA-256 清单+操作人+处置意见入链，要素⑤），批次内每文件的
+    流水线事件另行入链；步骤边界提交为 FN-1-07 检查点语义（不保持单事务原子性，已注释）。
+    """
+    from app.services import intake_pipeline, object_store
+    trace = new_trace_id()
+    manifest = " · ".join(f"{f['name']}[{object_store.sha256_of(f['content'])[:8]}…]" for f in files)
+    ab = append_block(session, ts=now_iso(), trace=trace, actor="human", act="CHANNEL_RECEIVED",
+                      cs=None, from_state="门户上传·受控受理提交",
+                      to_state=f"批次受理中（{len(files)} 件）",
+                      note=f"受控受理提交（五要素齐备）· 实例 {instance} · 处置意见：{opinion or UNOPINIONED} · "
+                           f"逐文件 SHA-256：{manifest} · 确认凭据 scope {scope}",
+                      op=_op(user), category="intake")
+    payload, ver = intake_pipeline.current_intake_rules(session)
+    batch = intake_pipeline.create_batch(session, channel="门户上传", instance=instance, trace=trace)
+    results, dups = [], []
+    for f in files:
+        sha = object_store.sha256_of(f["content"])
+        dup = intake_pipeline.find_business_dup(session, sha, None)
+        if dup is not None:
+            dups.append({"file": f["name"], "existing_case": dup.case_id,
+                         "existing_batch": dup.batch_id,
+                         "reason": "摘要幂等：同文件此前已受理，不重复受理（CON-05）"})
+            continue
+        frow = intake_pipeline.add_file(session, batch, name=f["name"], content=f["content"],
+                                        mime=f.get("mime"), po_ref=po_ref, target_doc_ref=None)
+        out = intake_pipeline.run_file(session, batch, frow, rules_payload=payload)
+        out["sha256_display"] = f"{sha[:4]}…{sha[-4:]}"
+        results.append(out)
+    if not results:
+        row = session.get(m.Batch, batch.batch_id)
+        if row is not None and row.files == 0:
+            session.delete(row)
+            session.commit()
+        raise CommandError("E_INTAKE_DUP",
+                           "全部命中摘要幂等：本次提交无新文件可受理（FN-1-05④/CON-05）",
+                           http=409, details={"duplicates": dups, "trace_id": trace})
+    batch = intake_pipeline.recompute_batch(session, batch.batch_id)
+    return {"batch_id": batch.batch_id, "status": batch.status, "files": results,
+            "duplicates": dups, "opinion": opinion or UNOPINIONED, "trace": trace,
+            "blk": ab.blk, "intake_rules_version": ver}
 
 
 def _do_rollback(session, user, role, key, to_version, opinion):
@@ -343,7 +415,8 @@ def _do_rollback(session, user, role, key, to_version, opinion):
     if not to_version:
         raise CommandError(E_STATE_PRECONDITION, "rollback 须指定 to_version", http=422)
     return {"rolled_back": True, **versioning.rollback(session, key, to_version, user.name,
-                                                      opinion=opinion)}
+                                                       opinion=opinion,
+                                                       asset_type=_asset_type_for(key))}
 
 
 def _fmt_filters(f):
@@ -362,7 +435,9 @@ def execute(session, *, actor: str, action: str, instance: str | None = None,
             field: str | None = None, new_value=None, reason: str | None = None,
             filters=None, rows: int | None = None,
             config_key: str | None = None, to_version: str | None = None,
-            config_payload: dict | None = None) -> dict:
+            config_payload: dict | None = None,
+            intake_files: list[dict] | None = None, po_ref: str | None = None,
+            scope_override: str | None = None) -> dict:
     """受控写唯一入口：五要素全序校验 → 执行 → 审计+时间线双写 → 状态流转。
 
     租户上下文（WP1.7）：instance 必携带（缺失 E_TENANT_MISSING→400）；
@@ -373,13 +448,15 @@ def execute(session, *, actor: str, action: str, instance: str | None = None,
         raise CommandError("UNKNOWN_ACTION", f"未注册命令 {action!r}", http=400)
     ctx = TenantContext.of(instance)          # 缺失即 E_TENANT_MISSING（FN-0-11/WP1.7）
     batch = action in ("batch_claim", "batch_release")
-    scope = scope_ref(action, case_id, case_ids, config_key)
-    if not batch and action not in ("export", "publish", "rollback") and not case_id:
+    scope = scope_override or scope_ref(action, case_id, case_ids, config_key)
+    if not batch and action not in NON_CASE_ACTIONS and not case_id:
         raise CommandError(E_STATE_PRECONDITION, "单案命令须指定 caseId", http=422)
+    if action == "intake" and not intake_files:
+        raise CommandError(E_STATE_PRECONDITION, "受理提交缺少文件清单（intake_files）", http=422)
     if batch:
         for cid in case_ids or []:
             ctx.assert_matches_case_id(cid)   # 跨实例批量 → E_TENANT_MISMATCH
-    elif action not in ("export", "publish", "rollback"):
+    elif action not in NON_CASE_ACTIONS:
         ctx.assert_matches_case_id(case_id)
 
     # ① 权限
@@ -405,6 +482,9 @@ def execute(session, *, actor: str, action: str, instance: str | None = None,
             result = _do_publish(session, user, role, config_key, config_payload, opinion)
         elif action == "rollback":
             result = _do_rollback(session, user, role, config_key, to_version, opinion)
+        elif action == "intake":
+            result = _do_intake(session, user, role, instance=ctx.instance, files=intake_files,
+                                po_ref=po_ref, opinion=opinion, scope=scope)
         else:
             case = state_machine.get_case(session, case_id)
             if action == "release":
