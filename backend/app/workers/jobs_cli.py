@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from app.services import channels_ops, object_store
+from app.services import channels_ops, object_store, sm2_service
 from app.services.persistence import get_session
 
 DEMO_CN_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -45,9 +45,10 @@ DEMO_CN_XML = """<?xml version="1.0" encoding="UTF-8"?>
     <GrossAmount>169500.00</GrossAmount>
     <GrossInWords>壹拾陆万玖仟伍佰元整</GrossInWords>
   </Total>
-  <Signature alg="SM2">（演示样例 · 受理链路走查用）</Signature>
 </EInvoice>
 """
+# 注意：演示样例签名在 demo_drop() 内用演示 CA 真实生成（sm2_service.attach_signature）——
+# 验签走真实 SM2 算法（WP3.3 FN-5-01），不走静态文案
 
 # 非发票样例件：以 .xml 投递（类型白名单内），由 ②非发票过滤 按内容特征退回——演示走查规则引擎判定
 DEMO_CONTRACT = """<?xml version="1.0" encoding="UTF-8"?>
@@ -91,7 +92,7 @@ def _drop(name: str, obj: dict):
 def demo_drop():
     MAILBOX = channels_ops.MAILBOX_INBOX
     DOX = channels_ops.DOX_INBOX
-    xml_b64 = base64.b64encode(DEMO_CN_XML.encode("utf-8")).decode()
+    xml_b64 = base64.b64encode(sm2_service.attach_signature(DEMO_CN_XML)).decode()
     con_b64 = base64.b64encode(DEMO_CONTRACT.encode("utf-8")).decode()
     f1 = _drop(str(MAILBOX / "env-demo-001.json"), {
         "from": "orders@supplier-partners.com", "subject": "青岛海纳 10 月发票（2 附件）",
