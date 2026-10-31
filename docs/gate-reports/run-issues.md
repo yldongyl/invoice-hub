@@ -59,3 +59,57 @@
 |---|---|---|---|
 | RI-M3-013 | R-01 行为用例首跑即失败：conf 70 + 全 PASSED 案件 auto_flow 产出 ['NEEDS_REVIEW','RESOLVED'] | **状态机红线缺口（M1 遗留实现）**：evaluate 的 NEEDS_REVIEW/INVESTIGATING→RESOLVED「自动路径全 PASSED」边未校验置信度红档（<80 强制人工，P00 §5）——低置信件经自动边入队后被同一自动边直达 RESOLVED。修复：新增 `_auto_release_floor()`（从 registry「<80%」带码解析下限，非配置项、不可绕过），evaluate 在该边前设闸 | R-01 通过（行为+边来源走查+源码含闸断言）；全量 250 passed（test_state_machine 既有用例 conf99 不受影响） |
 | RI-M3-014 | S-M3-04 冲突修正后「OCR 未采信行」消失（两条 evidence 均变 manual） | edit_field 按 field 匹配覆写**全部**同名字段行——把融合留存的佐证/冲突注记行一并改写，违背 FN-4-02「双方证据留存不静默取舍」。修复：fusion 注记行加 `evidence.role`（cross_check/conflict_non_adopted）标记，_do_edit_field 仅改写无 role 的合并基准行（无 role 数据全行覆写保持向后兼容） | S-M3-04 通过（基准行 5650→5680 原值保留 + ocr 行留存）；M1 edit_field 既有用例绿 |
+
+## M3 门禁缺陷修复记录（2026-10-27 · 门禁闭环）
+
+| 编号 | 对应门禁缺陷 | 症状与根因 | 修复方案 | 回归证据 |
+|---|---|---|---|---|
+| RI-M3-015 | M-M3-MAJOR-01 | `seed_loader.py` 使用全锚定正则 `^INV-...$` 提取 `alerts.json` 的 meta 中的案件号，由于 `$` 约束导致包含后缀文本的 meta 匹配恒为 None，告警的 `case_ref` 全部落库为 NULL。 | 正则去除全锚定 `^` 与 `$`（`reg.id_pattern("案件号").lstrip("^").rstrip("$")`），支持在 meta 文本中搜索案件号子串。同步强化 `test_api_dashboard.py` 中 `case_ref` 的严格全等集合断言。 | `test_api_dashboard.py` 18 passed（含 CN/OS 全量告警严格提取断言）；DB 实际装载 `INV-CN-2026-0385`、`0381`、`INV-SG-2026-0122`、`0125`、`0123` 均非空生效。 |
+| RI-M3-016 | M-M3-MAJOR-02 | `scripts/hub.py all` 在执行到 verify 步时崩溃 `KeyError: 'verify'`，分发表 `main_one` 字典缺少复合命令 `"verify"`。 | 在 `scripts/hub.py` 中新增 `cmd_verify` 函数依次调度 enums/contracts/ui 校验，并在 `main_one` 映射表中注册 `"verify": cmd_verify`；`cmd_clean` 遇到 Windows 文件被占用时输出提示并顺畅交由 `seed` 表级重建。 | `python scripts/hub.py all` 一键完成 clean→seed→verify→test→test-redline 全链路，退出码 0，全过提示输出。 |
+| RI-M3-017 | M-M3-MINOR-01 | Windows 环境下直接执行 `python scripts/hub.py` 时，若系统默认 Python 缺少 `gmssl` 等虚拟环境依赖会导致测试与运行失败。 | `scripts/hub.py` 头部增加 `_find_python()` 自动探测逻辑，优先解析并使用 `backend/.venv` 虚拟环境解释器作为 `PYTHON_BIN`，所有子命令均委托此解释器执行。 | 系统全局 Python 与 venv 双入口调用 `python scripts/hub.py verify` 及 `hub.py all` 均平滑通过，零外部报错。 |
+
+## M4 编排与治理域缺陷修复记录（2026-10-28 · P09 闭环）
+
+| 编号 | 对应核验缺陷 | 症状与根因 | 修复方案 | 回归证据 |
+|---|---|---|---|---|
+| RI-M4-001 | UI-M4-F01 / API-M4-01 | `provider-orchestration.html` 点击 Provider「测试连通」报 HTTP 500 异常。根因：前端传操作员姓名 `{ actor: '陈铮' }`，`provider_service.py:test_connection` 未对 `actor` 规范化直接传给 `audit_chain.append_block`，触发 `timeline_actor` 枚举合法性校验异常。 | 修改 `backend/app/services/provider_service.py`：对 `test_connection` 与 `toggle_provider` 方法中的 `actor` 参数自适应规范化：`audit_actor = actor if actor in ("system", "provider", "human", "ai") else "human"`，将具体操作员姓名传入 `op_component`；`test_provider_management.py` 追加 `'陈铮'` 姓名传参用例断言。 | `test_provider_management.py` 5 passed；`curl POST /v1/providers/bwyun-cn/test` 200 返回成功；Edge headless 自动化 `verify-m4.mjs` 59/59 满分全绿。 |
+
+## P07 运行与部署终验记录（2026-10-28 · M5 全栈就绪态）
+
+### 1. 干净环境重置与种子装载实测
+- **运行态数据重置**：彻底清空 `runtime/` 历史残留（包含 `runtime/objects/`、`runtime/exports/`、日志文件），执行 `python scripts/hub.py clean` 移除历史 SQLite 数据；
+- **种子装载（make seed）**：执行 `python scripts/hub.py seed`，幂等装载 **23 类资产 / 244 行**，包含双实例 11 案件、36 条事实证据、34 条时间线事件、15 个审计块、6 个 Provider 配置、5 个 Adapter 配置及哈希链与发号计数器播种；
+- **重复 seed 幂等断言**：连续执行两次 `python scripts/hub.py seed`，行态输出完全一致，单测 `test_rebuild_twice_identical`（`test_seed_loader.py`）4 passed 全绿。
+
+### 2. 标准 8000 端口服务启动与冒烟检查（10/10 PASS）
+执行 `python scripts/hub.py smoke --base http://127.0.0.1:8000`，输出逐项验证记录：
+1. `PASS  01 · healthz`：GET /healthz 状态 ok，数据库连通；
+2. `PASS  02 · seed 装载断言（11 案件在库）`：CN 7 案 + OS 4 案齐备；
+3. `PASS  03 · dashboard 聚合（双实例 KPI 非空/红线布尔/Top5/告警×3/适配×5）`：双实例指标正常；
+4. `PASS  04 · case-detail 三案聚合 Schema 校验`：0387/0379/0125 全量聚合数据完全符合 Schema；
+5. `PASS  05 · 证据查询 0387 total.gross_amount 七要素齐备`：page/bbox/raw_text/rule/model/provider 要素齐全；
+6. `PASS  06 · 时间线查询（11 事件·事件码 ∈ enum-registry）`：11 事件全部落入规范枚举词汇；
+7. `PASS  07 · 审计链完整性校验（CN/OS/PLATFORM 三域）`：底层哈希链 verify_chain 校验全绿；
+8. `PASS  08 · 受控写拒绝路径（无有效凭据 release 被拒·五要素守门）`：无 token 请求返回 4xx 且拦截有效；
+9. `PASS  09 · web 首页（307→dashboard 200）与共享 js 可达`：根路径重定向与静态文件正常；
+10. `PASS  10 · demo-mode 回退在位（healthz 探测+角标口径+三页引用）`：回退探针与内嵌 mock 标记在位。
+
+### 3. 三种运行形态验证结论
+- **形态 A（全栈接线态）**：启动 backend（8000 端口）+ 可选 agent（8001）/ mcp（8002），12 个页面全部正常托管，`/healthz` 探针返回 ok，页面 `data-ihub-mode='live'`，真实打通 REST API；
+- **形态 B（仅核心态）**：单启动 backend 8000，核心 REST API 全量可用，不依赖 agent/mcp 即可完成所有业务与数据查询；
+- **形态 C（独立演示态）**：不启动 backend，直接通过 `file://` 打开或使用纯静态 http.server 打开，`/healthz` 探针判定不可达，页面自动显示橙色演示角标，平滑回退至内嵌 mock 数据，所有交互完整可用。
+
+### 4. 桩做边界与 TODO 扫描核对（抽查 3 项一致性）
+- **桩做边界抽查**：
+  1. 国密验签：`sm2_service.py` 算法真实（gmssl SM2+SM3），证书链模拟（固定演示 CA，回执随案归档），一致；
+  2. 渠道 Job：`channels_ops.py` 本地信箱与 DOX 目录模拟 15 分钟定时拉取，一致；
+  3. Adapter 建档：`adapter_service.py` 五步链路真实执行，沙箱回执模拟，一致。
+- **TODO 扫描抽查**：
+  1. `tenant.py:40` `TODO(H39)`（数据驻留细则推断标注），一致；
+  2. `governed_commands.py:213` `TODO(M3/FN-1-04)`（退回邮件通知演示桩注记），一致；
+  3. `sm2_service.py:28` `TODO(FN-9-10 / FR-L1-05)`（演示 CA 模拟证书链注记），一致。
+
+### 5. 终验结论
+P07 运行终验**全部通过（ALL PASS）**。`docs/RUNBOOK.md` 已刷新为 M5 全功能终验版，工程具备干净环境从零一键启动、运行、演示与自检能力。
+
+

@@ -85,3 +85,21 @@ make seed && make run
   file:// 态回退 `demo`。toast 文案含「已写入不可篡改时间线/审计日志」全局口径。
 - 待 P09 正式核验项：五要素弹窗逐字对照（风险提示文案以原型为基准、服务端 risk_text 同源语义）、
   intake 步骤回放视觉节奏、导出下载文件名、会签人下拉、解除按钮 BLOCKED 显隐。
+
+## M3 正式核验执行与缺陷修复闭环（2026-10-27 P09 会话）
+
+- **核验范围**：`invoice-intake.html`（§3.5）+ `agent-workbench.html` 队列侧（§3.4，对话侧标 N/A）+ `case-detail.html` 写路径（§3.1）×（接线态 + 演示态）+ M2 三页回归 + G1–G8 通用项。
+- **执行方式**：Playwright-core 驱动 Edge headless 自动化，47 项全量断言（脚本 `verify-m3.mjs`，存 `p09-verify/`）；产出 15 张截图存 `docs/ui-verification-M3-shots/01~15`；核验报告 `docs/ui-verification-report-M3.md`。
+- **核验结果**：**首轮 45 PASS / 1 FAIL / 1 N/A → 修复后复验 46 PASS / 0 FAIL / 1 N/A（改判 PASS）**。
+  - 受控写五要素全链合规：权限校验、风险提示、本人执行强制勾选、处置意见、不可篡改时间线与审计留痕均实测通过；
+  - 0379 BLOCKED 案件双人会签解除拦截受控流程通过；
+  - 批量操作含 BLOCKED 案件时自动拦截（FN-0-08）；
+  - CSV 导出记入审计链头并提供限时下载链接（24h）；
+  - AI 建议采纳（预填意见转确认）与不采纳（卡片置灰+时间线留痕）闭环；
+  - 人工修正字段（FN-8-05）来源变「人工」、保留原值展示并入时间线；
+  - 手工上传五步受理流水线逐步执行与完成面板渲染；
+  - M2 三页回归（dashboard 双实例联动/红线、login SSO 锁定与拒绝 toast、case-detail 0125 海外案例）全部通过；
+  - 通用项 G1–G8 全部通过。
+- **缺陷闭环处置记录**：
+  - **UI-M3-F01**（接线层）：`invoice-intake.html` 接线态下展开批次时未根据接口返回的 `files_detail` 动态回填卡片列表。已在 `web/invoice-intake.html` 的 `window.toggleDetail` 中使用 `[class*="space-y"]` 容器完成 DOM 动态回填，实测案件深链 `a[href*="case-detail.html?case="]` 与六态徽章完整渲染。自动化复验通过，改判 **PASS**。
+

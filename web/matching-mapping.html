@@ -3,29 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>匹配就绪与字段映射治理 · 全球采购平台票据智能与合规中台</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: { extend: {
-    colors: {
-      primary: { DEFAULT:'#165DFF', light:'#F0F5FF', mid:'#BEDAFF' },
-      success: { DEFAULT:'#00B42A', light:'#E8FFEA' },
-      warning: { DEFAULT:'#FF7D00', light:'#FFF7E8' },
-      danger:  { DEFAULT:'#F53F3F', light:'#FFECE8' },
-      purple:  { DEFAULT:'#722ED1', light:'#F5E8FF' },
-      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
-      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
-    },
-    fontFamily:{ sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif'] },
-    boxShadow:{ card:'0 2px 8px rgba(29,33,41,.06)', cardhover:'0 4px 16px rgba(29,33,41,.10)' },
-    borderRadius:{ card:'8px' }
-  } }
-}
-</script>
+<title>匹配准备与字段映射治理 · 全球采购平台票据智能与合规中台</title>
+<link rel="stylesheet" href="css/invoice-hub.css">
+<script src="js/auth-guard.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/demo-mode.js"></script>
 <style>
   body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
   .num{font-variant-numeric:tabular-nums;}
@@ -67,12 +49,13 @@ tailwind.config = {
     <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
     <div class="sb-group">接入受理</div>
     <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
-    <div class="sb-group">复核运营</div>
-    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
-    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">案件与复核</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🧾</span><span>票据案件工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配准备与字段映射</span></a>
     <div class="sb-group">编排与适配</div>
-    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
-    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 能力编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>采购平台适配器</span></a>
+    <a href="outbound-filing.html" data-k="outbound" class="sb-item"><span class="sb-ico">🚚</span><span>出站建档与回写</span></a>
     <div class="sb-group">审计与平台</div>
     <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
     <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
@@ -80,7 +63,6 @@ tailwind.config = {
     <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
   </nav>
   <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
-    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
     <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
   </div>
 </aside>
@@ -96,9 +78,9 @@ tailwind.config = {
     <nav class="text-[13px] flex items-center gap-1.5 min-w-0">
       <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary shrink-0">总览仪表盘</a>
       <span class="text-ink-4">›</span>
-      <span class="text-ink-3 dark:text-gray-500 shrink-0">复核运营</span>
+      <span class="text-ink-3 dark:text-gray-500 shrink-0">案件与复核</span>
       <span class="text-ink-4">›</span>
-      <b class="text-ink-1 dark:text-white truncate">匹配就绪与字段映射</b>
+      <b class="text-ink-1 dark:text-white truncate">匹配准备与字段映射</b>
     </nav>
   </div>
   <div class="flex items-center gap-4 shrink-0">
@@ -106,7 +88,7 @@ tailwind.config = {
       class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
     </button>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 ihub-static-user">
       <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">王莉</div>
       <div class="leading-tight">
         <div class="text-[13px] font-medium">王莉 · 复核员</div>
@@ -121,7 +103,7 @@ tailwind.config = {
   <!-- ═══════════════ 页面标题 + 蓝图定位 ═══════════════ -->
   <section class="flex items-end justify-between gap-4">
     <div>
-      <h1 class="text-[20px] font-semibold leading-tight">匹配就绪与字段映射治理 <span class="text-[13px] font-normal text-ink-3 dark:text-gray-500 ml-1">Matching Readiness &amp; Field Mapping Governance</span></h1>
+      <h1 class="text-[20px] font-semibold leading-tight">匹配准备与字段映射治理 <span class="text-[13px] font-normal text-ink-3 dark:text-gray-500 ml-1">Matching Readiness &amp; Field Mapping Governance</span></h1>
       <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1">对应蓝图：⑥匹配就绪化层 · §4.4 字段映射治理 · §4.7 红字票 / Credit Note Link · LLM 只建议，规则与人工决定</div>
     </div>
     <div class="flex items-center gap-2 text-[11px] shrink-0">
@@ -312,7 +294,7 @@ tailwind.config = {
   </section>
 
   <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
-    Invoice Intelligence &amp; Compliance Hub · 匹配就绪与字段映射治理 · 数据为演示样例 · v1.2-candidate 蓝图口径
+    Invoice Intelligence &amp; Compliance Hub · 匹配准备与字段映射治理 · 数据为演示样例 · v1.2-candidate 蓝图口径
   </footer>
 </main>
 
@@ -857,6 +839,112 @@ renderQueue();
 renderQ2();
 renderQ3();
 switchTab(1);
+
+/* ════════════════ M4 WP4.7 接线：API 优先 + demo-mode 回退 ════════════════ */
+const _origDoAct = window.doAct;
+window.doAct = async function(){
+  if (!IHUB_DEMO.isLive()) { _origDoAct(); return; }
+  if (!pending) return;
+  const D = ACT_DEFS[pending.key];
+  const note = document.getElementById('act-note').value.trim();
+  if (D.noteRequired && !note) { toast('拒绝操作必须填写备注（审计要求）'); return; }
+
+  try {
+    if (pending.tab === 'q1') {
+      const c = QUEUE[pending.idx];
+      let actCode = 'release';
+      if (pending.key === 'q1_return') actCode = 'return';
+      else if (pending.key === 'q1_po') actCode = 'hold';
+
+      const ch = await IHUB_API.postJSON('/v1/cases/' + c.id + '/risk-challenge', {
+        actor: '王莉', instance: c.id.startsWith('INV-CN') ? 'CN' : 'OS', action: actCode
+      });
+      await IHUB_API.postJSON('/v1/cases/' + c.id + '/actions/' + actCode, {
+        actor: '王莉', instance: c.id.startsWith('INV-CN') ? 'CN' : 'OS', token: ch.token,
+        self_confirmed: true, opinion: note || '确认差异处置'
+      });
+      c.processed = true; c.doneLabel = D.label;
+      renderQueue();
+      if (selectedIdx === pending.idx) renderConfirm(pending.idx);
+      toast(`已写入案件时间线：「${D.label}」· 案件 ${c.id} · 操作人 王莉（复核员）· 不可篡改审计日志`);
+    } else if (pending.tab === 'q2') {
+      const m = MAPQ[pending.idx];
+      if (pending.key === 'q2_adopt') {
+        await IHUB_API.postJSON('/v1/matching/recommendations/adopt', { src_field: m.src, actor: '王莉', opinion: note });
+        m.state = 'adopted';
+        toast('确认一次即沉淀为规则（人工确认沉淀机制），记入不可篡改审计日志');
+      } else {
+        await IHUB_API.postJSON('/v1/matching/recommendations/reject', { src_field: m.src, reason: note, actor: '王莉' });
+        m.state = 'rejected'; m.note = note;
+        toast('已拒绝该推荐 · 字段回落人工队列 · 备注已记入审计日志');
+      }
+      renderQ2();
+    } else {
+      const L = LINKS[pending.idx];
+      if (pending.key === 'q3_confirm') {
+        await IHUB_API.postJSON('/v1/matching/links/confirm', {
+          credit_case_id: L.inv, origin_case_id: L.orig.id, actor: '王莉', opinion: note
+        });
+        L.state = 'confirmed'; L.open = false;
+        toast(L.toastMsg);
+      } else {
+        await IHUB_API.postJSON('/v1/matching/links/reject', {
+          credit_case_id: L.inv, origin_case_id: L.orig.id, reason: note, actor: '王莉'
+        });
+        L.state = 'rejected'; L.note = note; L.open = false;
+        toast('已拒绝 Link 并备注 · 未建立冲减关系 · 备注与操作已记入审计日志');
+      }
+      renderQ3();
+    }
+  } catch (e) {
+    toast(`受控写被拒：${e.message_cn || e.message}`);
+  } finally {
+    closeAct();
+  }
+};
+
+(async function mmBoot(){
+  try {
+    await IHUB_DEMO.probe();
+    if (IHUB_DEMO.isLive()) {
+      // 1. 待确认差异队列
+      const qRes = await IHUB_API.getJSON('/v1/matching/queue');
+      if (qRes && qRes.items && qRes.items.length) {
+        QUEUE.length = 0;
+        qRes.items.forEach(it => QUEUE.push(it));
+        renderQueue();
+      }
+      // 2. 推荐队列
+      const recRes = await IHUB_API.getJSON('/v1/matching/recommendations');
+      if (recRes && recRes.items && recRes.items.length) {
+        MAPQ.length = 0;
+        recRes.items.forEach(it => MAPQ.push({
+          src: it.src, to: it.to, conf: it.confidence, reason: it.reason,
+          state: it.state, note: it.reject_note || ''
+        }));
+        renderQ2();
+      }
+      // 3. Link 候选
+      const linkRes = await IHUB_API.getJSON('/v1/matching/links/candidates');
+      if (linkRes && linkRes.items && linkRes.items.length) {
+        LINKS.length = 0;
+        linkRes.items.forEach(it => LINKS.push({
+          inv: it.inv, kind: it.kind, amount: it.amount, date: it.date, supplier: it.supplier,
+          orig: { id: it.origin.caseId, amount: it.origin.amount, date: it.origin.date, supplier: it.origin.supplier },
+          match: it.match_score, mode: it.mode,
+          evidence: it.evidence,
+          ai: { conf: it.match_score, body: '候选关系经规则引擎四项校验通过。', conclude: '建议建立冲减 Link。' },
+          toastMsg: `Link已建立：${it.kind}→冲减→原票，写入案件时间线与对象模型`,
+          state: it.confirmed ? 'confirmed' : 'pending', note: '', open: false
+        }));
+        renderQ3();
+      }
+    }
+    document.body.dataset.ihubWp47 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';
+  } catch (e) {
+    document.body.dataset.ihubWp47 = 'demo';
+  }
+})();
 </script>
 <script>
 /* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */

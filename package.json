@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i ./web/css/tailwind-input.css -o ./web/css/invoice-hub.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

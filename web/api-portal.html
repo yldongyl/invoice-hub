@@ -4,33 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>接口契约与 MCP Server 门户 · 全球采购平台票据智能与合规中台</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      colors: {
-        primary: { DEFAULT: '#165DFF', light: '#F0F5FF', mid: '#BEDAFF' },
-        success: { DEFAULT: '#00B42A', light: '#E8FFEA' },
-        warning: { DEFAULT: '#FF7D00', light: '#FFF7E8' },
-        danger:  { DEFAULT: '#F53F3F', light: '#FFECE8' },
-        ink:  { 1: '#1D2129', 2: '#4E5969', 3: '#86909C', 4: '#C9CDD4' },
-        line: '#E5E6EB',
-        surface: '#F7F8FA',
-        card: '#FFFFFF',
-        dcard: '#1D2129',
-        dline: '#333A45'
-      },
-      fontFamily: { sans: ['Inter', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'sans-serif'] },
-      boxShadow: { card: '0 2px 8px rgba(29,33,41,.06)', cardhover: '0 4px 16px rgba(29,33,41,.10)' },
-      borderRadius: { card: '8px' }
-    }
-  }
-}
-</script>
+<link rel="stylesheet" href="css/invoice-hub.css">
 <style>
   body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
   .num{font-variant-numeric:tabular-nums;}
@@ -63,6 +37,7 @@ tailwind.config = {
   .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
   .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
 </style>
+<script src="js/auth-guard.js"></script>
 </head>
 <body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
 
@@ -83,12 +58,13 @@ tailwind.config = {
     <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
     <div class="sb-group">接入受理</div>
     <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
-    <div class="sb-group">复核运营</div>
-    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
-    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">案件与复核</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🧾</span><span>票据案件工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配准备与字段映射</span></a>
     <div class="sb-group">编排与适配</div>
-    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
-    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 能力编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>采购平台适配器</span></a>
+    <a href="outbound-filing.html" data-k="outbound" class="sb-item"><span class="sb-ico">🚚</span><span>出站建档与回写</span></a>
     <div class="sb-group">审计与平台</div>
     <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
     <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
@@ -96,7 +72,6 @@ tailwind.config = {
     <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
   </nav>
   <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
-    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
     <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
   </div>
 </aside>
@@ -123,12 +98,13 @@ tailwind.config = {
       class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
     </button>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 ihub-static-user">
       <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
       <div class="leading-tight">
         <div class="text-[13px] font-medium">陈铮 · 实施管理员</div>
         <div class="text-[11px] text-ink-3 dark:text-gray-500">接口契约 Owner · 平台集成组</div>
       </div>
+      <button type="button" onclick="try{IHUB_AUTH.logout()}catch(e){sessionStorage.removeItem('ihub.auth');location.href='login.html'}" class="px-2.5 py-1 rounded-card border border-danger text-danger bg-card hover:bg-danger-light text-[12px] font-medium">退出</button>
     </div>
   </div>
 </header>
@@ -505,7 +481,7 @@ tailwind.config = {
           <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">插拔契约 · v1 frozen</span>
         </div>
         <p class="mt-2 text-[13px] text-ink-2 dark:text-gray-400 leading-relaxed">
-          新增 OCR / 查验 Provider（百望云、诺诺、客户自有 OCR、私有化 VLM、海外 e-invoicing 等）<b class="text-ink-1 dark:text-white">只需实现 SPI 并注册路由，不改平台内核</b>。这是「可插拔 Provider 编排」定位的契约基础。
+          新增 OCR / 查验 Provider（百望云、诺诺、客户自有 OCR、私有化 VLM、海外 e-invoicing 等）<b class="text-ink-1 dark:text-white">只需实现 SPI 并注册路由，不改平台内核</b>。这是「可插拔 Provider 能力编排」定位的契约基础。
         </p>
 
         <!-- 最小实现契约 -->
@@ -555,7 +531,7 @@ tailwind.config = {
 
         <!-- 路由/降级配置 -->
         <div id="spi-routing" class="mt-6 pt-5 border-t border-line dark:border-dline scroll-mt-[76px]">
-          <div class="text-[14px] font-semibold">路由 / 降级配置片段 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">YAML · 与 Provider 编排页同一口径</span></div>
+          <div class="text-[14px] font-semibold">路由 / 降级配置片段 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">YAML · 与 Provider 能力编排页同一口径</span></div>
           <div class="mt-3 codeblock border border-line dark:border-dline max-w-[720px]">
             <div class="code-cap"><span>routing/cn-e-invoice.yaml</span><span class="num">SPI v1</span></div>
 <pre>route: cn_e_invoice_recognize
@@ -576,7 +552,7 @@ cross_check:
   require_different_source: true    # 异源交叉核验：金额类字段须由不同来源 Provider 复核
   fields: [total.gross_amount, total.tax_amount]</pre>
           </div>
-          <div class="mt-2.5 text-[12px] text-ink-3 dark:text-gray-500">🔌 已注册 Provider 的路由策略、降级链与成本视图 → <a href="provider-orchestration.html" class="text-primary hover:underline">Provider 编排配置页 →</a></div>
+          <div class="mt-2.5 text-[12px] text-ink-3 dark:text-gray-500">🔌 已注册 Provider 的路由策略、降级链与成本视图 → <a href="provider-orchestration.html" class="text-primary hover:underline">Provider 能力编排页 →</a></div>
         </div>
       </section>
 
@@ -623,7 +599,7 @@ cross_check:
   &lt;/Request&gt;
 &lt;/cXML&gt;</pre>
           </div>
-          <div class="mt-2.5 text-[12px] text-ink-3 dark:text-gray-500">🧩 字段映射模板机制（映射规则维护 / 多目标系统模板库 / 映射版本管理）→ <a href="adapter-management.html" class="text-primary hover:underline">适配器管理页 →</a></div>
+          <div class="mt-2.5 text-[12px] text-ink-3 dark:text-gray-500">🧩 字段映射模板机制（映射规则维护 / 多目标系统模板库 / 映射版本管理）→ <a href="adapter-management.html" class="text-primary hover:underline">采购平台适配器页 →</a></div>
         </div>
 
         <!-- Adapter 开发流程 -->

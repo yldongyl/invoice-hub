@@ -22,13 +22,14 @@ _EPS = 1e-9   # 十进制金额的二进制浮点表示误差容许（边界语�
 from app.domain.registry import EnumViolation, get_registry
 from app.services.errors import (E_RULE_NOT_IMPLEMENTED, E_RULE_NOT_REGISTERED, CommandError)
 
-# 实装集（P02 WP1.6 点名 13 条 + M3 WP3.1 受理流水线 2 条；机器 id 用 catalog 登记值）
+# 实装集（P02 WP1.6 点名 13 条 + M3 WP3.1 受理流水线 2 条 + M4 WP4.4 税码映射；机器 id 用 catalog 登记值）
 IMPLEMENTED = {
     "amount_tax_sum_check", "amount_sum_check", "line_amount_sum_check",
     "invoice_no_format_check", "date_valid_range", "supplier_master_match",
     "tax_id_checksum", "buyer_entity_match", "currency_iso_check",
     "sg_uen_format_check", "tolerance_check", "redline_policy", "dedup_business_key",
     "non_invoice_doc_filter", "carrier_route_detect",      # M3 WP3.1（FN-1-05②③，v1.1.0 规则目录增补）
+    "tax_code_mapping",                                   # M4 WP4.4（FN-6-04，v1.4 表驱动）
 }
 
 # —— 校验结果值一律取自 enum-registry.check_result（引用不造词）——
@@ -321,6 +322,82 @@ def carrier_route_detect(ctx: dict) -> dict:
     return out("carrier_route_detect", PASSED, why) | {"route": route}
 
 
+# ───────────────────────── M4 匹配就绪化税码映射（FN-6-04 · v1.4 表驱动） ─────────────────────────
+
+# v1.4 表驱动映射规则表（seeds/taxcodes.json 机器可读化对照）
+_TAX_MAP_CN = {
+    "13%": ("J1", "一般纳税人 · 货物/加工修理修配"),
+    "0.13": ("J1", "一般纳税人 · 货物/加工修理修配"),
+    "9%": ("J2", "交通运输/建筑/农产品等"),
+    "0.09": ("J2", "交通运输/建筑/农产品等"),
+    "6%": ("J3", "现代服务/增值电信等"),
+    "0.06": ("J3", "现代服务/增值电信等"),
+    "3%": ("J4", "小规模纳税人征收率"),
+    "0.03": ("J4", "小规模纳税人征收率"),
+    "1%": ("J5", "小规模纳税人优惠征收率"),
+    "0.01": ("J5", "小规模纳税人优惠征收率"),
+    "0%": ("J6", "出口零税率"),
+    "0": ("J6", "出口零税率"),
+    "0.00": ("J6", "出口零税率"),
+    "免税": ("J7", "免税项目 · 票面标注「免税」"),
+}
+
+_TAX_MAP_SG = {
+    "9%": ("SG-SR", "Standard-Rated"),
+    "0.09": ("SG-SR", "Standard-Rated"),
+    "0%": ("SG-ZR", "zero-rated · 出口备件行项目"),
+    "0": ("SG-ZR", "zero-rated · 出口备件行项目"),
+    "zero-rated": ("SG-ZR", "zero-rated · 出口备件行项目"),
+}
+
+
+def tax_code_mapping(ctx: dict) -> dict:
+    """税码映射引擎（FN-6-04 · v1.4 表驱动）：
+    CN 七档 (J1~J7) + SG 两档 (SG-SR/SG-ZR) + 红字沿用原票税码。"""
+    inst = ctx.get("instance", "CN")
+    rate_raw = str(ctx.get("rate") or "").strip()
+    is_credit = bool(ctx.get("is_credit") or False)
+
+    if is_credit:
+        return out("tax_code_mapping", PASSED,
+                   "红字票 / Credit Note 沿用原票税码（冲减方向，FN-6-04）") | {
+                   "tax_code": ctx.get("origin_tax_code", "J1"),
+                   "usage": "红字票沿用原票税码 · 冲减方向",
+                   "version": "v1.4"}
+
+    # 规范化税率字符串
+    rate_key = rate_raw.replace("增值税", "").replace("GST", "").strip()
+    if rate_key.endswith("%"):
+        pass
+    else:
+        try:
+            val = float(rate_key)
+            rate_key = f"{int(round(val * 100))}%"
+        except ValueError:
+            pass
+
+    if inst == "CN":
+        hit = _TAX_MAP_CN.get(rate_key) or _TAX_MAP_CN.get(rate_raw)
+        if hit:
+            code, usage = hit
+            return out("tax_code_mapping", PASSED, f"增值税 {rate_raw} → Ariba Tax Code {code}（{usage}）") | {
+                "tax_code": code, "usage": usage, "version": "v1.4"
+            }
+        return out("tax_code_mapping", NOT_VERIFIED, f"未匹配到 CN 预设税码（{rate_raw}），需人工复核") | {
+            "tax_code": None, "usage": "未知税率", "version": "v1.4"
+        }
+    else:  # SG / OS
+        hit = _TAX_MAP_SG.get(rate_key) or _TAX_MAP_SG.get(rate_raw)
+        if hit:
+            code, usage = hit
+            return out("tax_code_mapping", PASSED, f"GST {rate_raw} → Tax Code {code}（{usage}）") | {
+                "tax_code": code, "usage": usage, "version": "v1.4"
+            }
+        return out("tax_code_mapping", NOT_VERIFIED, f"未匹配到 SG 预设税码（{rate_raw}），需人工复核") | {
+            "tax_code": None, "usage": "未知税率", "version": "v1.4"
+        }
+
+
 RULES = {
     "amount_tax_sum_check": amount_tax_sum_check,
     "amount_sum_check": amount_sum_check,
@@ -337,6 +414,7 @@ RULES = {
     "dedup_business_key": dedup_business_key,
     "non_invoice_doc_filter": non_invoice_doc_filter,
     "carrier_route_detect": carrier_route_detect,
+    "tax_code_mapping": tax_code_mapping,
 }
 
 

@@ -278,6 +278,10 @@ def load_all(session, seeds_dir: Path | None = None):
     data = jl("routing_policy.json")
     session.add(m.RoutingPolicy(version=data["version"], state=data.get("state", "published"),
                                 policy_raw=data))
+    session.add(m.AssetRevision(asset_type="routing_policy", key="routing_policy",
+                                version=data["version"], state="published",
+                                payload=data, diff_json=None, updated_by="seed-loader",
+                                updated_at=data["version"], opinion=None))
     counts["routing_policy"] = 1
 
     data = jl("taxcodes.json")
@@ -323,7 +327,8 @@ def load_all(session, seeds_dir: Path | None = None):
 
     # ---- alerts / kpi（M2 读模型 seed 口径）----
     data = jl("alerts.json")
-    pat = re.compile(reg.id_pattern("案件号"))
+    # 去除全锚定 ^ 与 $，在 meta 文本中搜索子串案件号（修复 M-M3-MAJOR-01）
+    pat = re.compile(reg.id_pattern("案件号").lstrip("^").rstrip("$"))
     n = 0
     for inst in ("cn", "os"):
         for a in data[inst]:

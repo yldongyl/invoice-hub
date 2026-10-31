@@ -33,6 +33,7 @@ def db_path(tmp_path_factory):
 def engine_url(db_path):
     url = f"sqlite:///{db_path.as_posix()}"
     os.environ["INVOICE_HUB_DATABASE_URL"] = url
+    os.environ.setdefault("INVOICE_HUB_DISABLE_AUTH", "1")  # 单元/契约测试默认跳过 HTTP 会话门禁；认证测试直接打 auth 端点
     return url
 
 
@@ -84,6 +85,7 @@ def api_client(tmp_path, monkeypatch):
 
     url = f"sqlite:///{(tmp_path / 'api.db').as_posix()}"
     monkeypatch.setenv("INVOICE_HUB_DATABASE_URL", url)
+    monkeypatch.setenv("INVOICE_HUB_DISABLE_AUTH", "1")
     persistence.reset_engine()
     eng = persistence.get_engine()
     m.Base.metadata.create_all(eng)

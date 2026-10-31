@@ -37,6 +37,8 @@ packages = ["app", "app.domain", "app.services", "app.api", "app.workers"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
+    "unit: 单元测试（P08 单元测试最小集）",
+    "contract: 三层契约测试（FN-A-08 结构/语义/版本兼容）",
     "scenario: E2E 场景断言（make test-e2e 即 pytest -m scenario；实施规划 §7 最小场景集）",
     "redline: 红线回归集 R-01~R-06（P08 §1.4；make test-redline=pytest -m redline，每里程碑门禁必跑）",
 ]

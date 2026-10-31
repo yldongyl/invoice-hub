@@ -132,6 +132,19 @@ def publish(session, key: str, actor: str, *, payload: dict | None = None,
         item.value_raw = payload
         item.state = "published"
         item.version = version
+
+    # 路由策略资产同步（FN-2-12 / M4 复用本框架）
+    if asset_type == "routing_policy" or key == "routing_policy":
+        if isinstance(payload, dict):
+            payload["version"] = version
+            payload["state"] = "published"
+        rp = session.scalar(select(m.RoutingPolicy).where(m.RoutingPolicy.state == "published"))
+        if rp is not None:
+            rp.version = version
+            rp.policy_raw = payload
+        else:
+            session.add(m.RoutingPolicy(version=version, state="published", policy_raw=payload))
+
     if commit:
         session.commit()
         config_center.assert_no_redline_bypass(session, scope)

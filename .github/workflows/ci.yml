@@ -1,0 +1,70 @@
+name: invoice-hub CI Gate
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  verify-and-test:
+    name: Lint, Verify Consistency & Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "backend[dev]"
+
+      # ── 前置门禁：三项一致性校验 + 破坏性变更检测 ──
+      - name: Verify Enum Consistency (verify-enums)
+        run: |
+          python scripts/hub.py verify:enums
+
+      - name: Verify Contracts Structural Lint (verify-contracts)
+        run: |
+          python scripts/hub.py verify:contracts
+
+      - name: Verify UI & Seed Data Consistency (verify-seeds)
+        run: |
+          python scripts/hub.py verify:ui
+
+      - name: Verify Contracts & Portal Sync (verify-contracts-sync)
+        run: |
+          python scripts/hub.py verify:contracts-sync
+
+      # ── 第一阶段门禁：契约测试（结构 / 语义 / 版本兼容） ──
+      - name: Run 3-Layer Contract Tests
+        run: |
+          python -m pytest backend/tests/test_contracts.py -v -m contract
+
+      # ── 第二阶段门禁：红线回归集（R-01~R-06 全量闭环，零 skip） ──
+      - name: Run Redline Regression Tests
+        run: |
+          python scripts/hub.py test-redline
+
+      # ── 第三阶段门禁：E2E 场景断言（17 条场景全量回归） ──
+      - name: Run E2E Scenario Tests
+        run: |
+          python scripts/hub.py test-e2e
+
+      # ── 第四阶段门禁：全量单元与集成测试（覆盖率 ≥80%） ──
+      - name: Run All Tests with Coverage Report
+        run: |
+          cd backend
+          python -m pytest --cov=app.domain --cov=app.services --cov-report=term --cov-report=json:../docs/test-reports/coverage.json -q
+
+      # ── 第五阶段门禁：蓝图 §13.2 八大 Demo 场景回放 ──
+      - name: Run Blueprint Demo Replay
+        run: |
+          python scripts/hub.py demo-replay

@@ -4,7 +4,7 @@
 
 PY ?= python
 
-.PHONY: seed run run-agent run-mcp run-workers test test-e2e test-redline verify-enums verify-contracts verify-ui verify smoke clean all intake-mailbox intake-dox intake-demo
+.PHONY: seed run run-agent run-mcp run-workers test test-e2e test-redline demo-replay verify-enums verify-contracts verify-ui verify smoke clean all intake-mailbox intake-dox intake-demo
 
 ## 种子装载（幂等可重跑，P07 1.2）
 seed:
@@ -38,6 +38,10 @@ test-e2e:
 test-redline:
 	$(PY) scripts/hub.py test-redline
 
+## 蓝图 §13.2 八大 Demo 场景回放（输出演示步骤对照表 · P08 §1.3）
+demo-replay:
+	$(PY) scripts/hub.py demo-replay
+
 ## 通道桩手动触发（演示口径 15 分钟邮箱 Job 等效；RUNBOOK §桩边界）
 intake-mailbox:
 	$(PY) scripts/hub.py intake:poll-mailbox
@@ -56,6 +60,9 @@ verify-contracts:
 
 verify-ui:
 	$(PY) scripts/hub.py verify:ui
+
+verify-contracts-sync:
+	$(PY) scripts/hub.py verify:contracts-sync
 
 verify:
 	$(PY) scripts/hub.py verify

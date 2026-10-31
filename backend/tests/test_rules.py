@@ -173,12 +173,19 @@ def test_unregistered_rule_rejected():
 
 
 def test_registered_but_unimplemented_rule_rejected():
-    """已注册未实装（归属 M3/M4）：显式报错，不静默缺席。"""
-    for rid in ("tax_code_mapping", "po_line_coverage", "credit_link_check",
+    """已注册未实装（归属 M4 后续/M5）：显式报错，不静默缺席。"""
+    for rid in ("po_line_coverage", "credit_link_check",
                 "gst_rate_sg_check", "manual_edit_audit", "tax_rate_13_check"):
         with pytest.raises(CommandError) as ei:
             rules.run_rule(rid, _ctx())
         assert ei.value.code == E_RULE_NOT_IMPLEMENTED, rid
+
+
+def test_tax_code_mapping_rule():
+    """M4 WP4.4 实装税码映射规则。"""
+    res = rules.run_rule("tax_code_mapping", {"instance": "CN", "rate": "13%"})
+    assert res["result"] == "PASSED"
+    assert res["tax_code"] == "J1"
 
 
 def test_chinese_family_alias_resolves_to_machine_id():

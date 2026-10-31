@@ -9,7 +9,7 @@
 from sqlalchemy import select
 
 from app.domain import models as m
-from app.services import intake_pipeline
+from app.services import audit_chain, intake_pipeline
 from app.services.errors import CommandError
 
 # 页面状态词汇 ↔ 枚举合并态（seed_loader.BATCH_STATUS_ALIAS 同口径反向）
@@ -94,4 +94,19 @@ def retry_file(session, batch_id: str, seq: int, *, instance: str | None = None)
         raise CommandError("E_BATCH_NOT_FOUND", f"批次 {batch_id} 不存在", http=404)
     if instance and b.instance and b.instance != instance.upper():
         raise CommandError("E_TENANT_MISMATCH", "跨实例重试被拒绝（四隔离①）", http=403)
-    return intake_pipeline.retry_file_failed_steps(session, batch_id, seq)
+    out = intake_pipeline.retry_file_failed_steps(session, batch_id, seq)
+    trace = audit_chain.new_trace_id()
+    audit_chain.append_block(
+        session,
+        ts=audit_chain.now_iso(),
+        trace=trace,
+        actor="human",
+        act="STATUS_CHANGE",
+        cs=out.get("caseId") or out.get("case_id"),
+        category="intake",
+        note=f"运维操作：批次 {batch_id} 文件序号 {seq} 触发「只重试相关步骤」（FN-1-07 · 重试步骤 {out.get('retried_steps', [])}）",
+        op="batch-ops/retry-file",
+    )
+    session.commit()
+    out["trace"] = trace
+    return out

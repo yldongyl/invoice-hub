@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出站建档与回写 · 全球采购平台票据智能与合规中台</title>
+<link rel="stylesheet" href="css/invoice-hub.css">
+<script src="js/auth-guard.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/demo-mode.js"></script>
+<style>
+  body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
+  .num{font-variant-numeric:tabular-nums;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:#C9CDD4;border-radius:3px;} .dark ::-webkit-scrollbar-thumb{background:#3A4150;}
+  .toast{transition:opacity .3s,transform .3s;}
+  #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
+  #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
+  .dark #sb.sb-open{box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  .sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:#4E5969;text-decoration:none;white-space:nowrap;font-size:13px;transition:background .15s,color .15s;margin-bottom:2px;}
+  .sb-item:hover{background:#F2F3F5;color:#1D2129;}
+  .dark .sb-item{color:#9CA3AF;} .dark .sb-item:hover{background:#23282F;color:#E5E7EB;}
+  .sb-active,.sb-active:hover{background:#F0F5FF !important;color:#165DFF !important;font-weight:500;}
+  .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
+  .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
+  .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+</style>
+</head>
+<body class="bg-surface dark:bg-[#17171A] text-ink-1 dark:text-gray-100 antialiased">
+<div id="sb-mask" class="fixed inset-0 z-[65] bg-black/30 hidden" onclick="sbClose()"></div>
+<aside id="sb" class="fixed left-0 top-0 bottom-0 z-[70] bg-card dark:bg-dcard border-r border-line dark:border-dline flex flex-col overflow-hidden">
+  <div class="h-14 shrink-0 flex items-center justify-between px-3 border-b border-line dark:border-dline">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="leading-tight min-w-0"><div class="text-[12.5px] font-semibold truncate">票据智能与合规中台</div><div class="text-[9.5px] text-ink-3 dark:text-gray-500 truncate">Invoice Intelligence Hub</div></div>
+    </div>
+    <button onclick="sbClose()" title="关闭菜单" class="w-8 h-8 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-500 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+  </div>
+  <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+    <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
+    <div class="sb-group">接入受理</div>
+    <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
+    <div class="sb-group">案件与复核</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🧾</span><span>票据案件工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配准备与字段映射</span></a>
+    <div class="sb-group">编排与适配</div>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 能力编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>采购平台适配器</span></a>
+    <a href="outbound-filing.html" data-k="outbound" class="sb-item"><span class="sb-ico">🚚</span><span>出站建档与回写</span></a>
+    <div class="sb-group">审计与平台</div>
+    <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
+    <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
+    <div class="sb-group">开发者</div>
+    <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
+  </nav>
+  <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5"><a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a></div>
+</aside>
+
+<header class="sticky top-0 z-40 h-14 bg-card dark:bg-dcard border-b border-line dark:border-dline px-6 flex items-center justify-between">
+  <div class="flex items-center gap-3 min-w-0">
+    <button onclick="sbOpen()" title="菜单" class="w-9 h-9 -ml-1.5 rounded-card flex items-center justify-center text-ink-2 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-gray-200 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+    <div class="w-8 h-8 rounded-card bg-primary flex items-center justify-center shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="#fff" stroke-width="1.8"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <nav class="text-[13px] flex items-center gap-1.5">
+      <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary">总览仪表盘</a><span class="text-ink-4">›</span><span class="text-ink-3 dark:text-gray-500">编排与适配</span><span class="text-ink-4">›</span><b class="text-ink-1 dark:text-white">出站建档与回写</b>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <span class="text-[11px] px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">运行台账 · Adapter 回执 · 失败重试</span>
+    <button onclick="toggleDark()" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="深色模式"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg></button>
+    <div class="flex items-center gap-2 ihub-static-user"><div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">刘工</div><div class="leading-tight"><div class="text-[13px] font-medium">刘工 · 平台运营</div><div class="text-[11px] text-ink-3 dark:text-gray-500">出站运行与重试权限</div></div><button type="button" onclick="try{IHUB_AUTH.logout()}catch(e){sessionStorage.removeItem('ihub.auth');location.href='login.html'}" class="px-2.5 py-1 rounded-card border border-danger text-danger bg-card hover:bg-danger-light text-[12px] font-medium">退出</button></div>
+  </div>
+</header>
+
+<main class="max-w-[1440px] mx-auto px-6 py-5 space-y-4">
+  <section class="rounded-card bg-primary-light dark:bg-[#1B2A4A] border border-primary-mid dark:border-[#2A3F6B] px-6 py-4 flex items-center justify-between gap-6">
+    <div class="flex items-center gap-3 min-w-0"><div class="w-9 h-9 rounded-card bg-primary flex items-center justify-center shrink-0 text-white">🚚</div><div class="min-w-0"><div class="text-[15px] font-semibold">出站建档与回写 <span class="text-[11px] font-medium ml-1 px-1.5 py-0.5 rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">多采购平台运行台账</span></div><div class="text-[12px] text-ink-2 dark:text-gray-300 mt-0.5 leading-relaxed"><b>InvoiceCase → 匹配准备完成 → 目标平台 Adapter → 出站建档 → 回执归档 / 状态回写</b>。本页负责运行、回执、失败重试；Adapter 配置仍在 <a href="adapter-management.html" class="text-primary hover:underline">采购平台适配器</a> 管理。</div></div></div>
+    <div class="flex items-center gap-2 shrink-0 text-[11px]"><span class="px-2 py-1 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline">Ariba / Oracle / Coupa / S4 / 自研平台</span><span class="px-2 py-1 rounded-card bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30">复核员不直接重推出站</span></div>
+  </section>
+
+  <section class="grid grid-cols-5 gap-4" id="kpi-cards"></section>
+
+  <section class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
+    <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-line dark:border-dline">
+      <div><div class="text-[15px] font-semibold">出站批次列表</div><div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">批次 = 一组已完成匹配准备、准备进入目标采购平台的 InvoiceCase 集合 · 点击查看明细展开回执与错误原因</div></div>
+      <div class="flex items-center gap-2"><label class="text-[12px] text-ink-3 dark:text-gray-500">目标平台</label><select id="f-adapter" onchange="renderBatches()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px]"><option value="">全部</option></select><label class="text-[12px] text-ink-3 dark:text-gray-500 ml-2">状态</label><select id="f-status" onchange="renderBatches()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px]"><option value="">全部</option><option>待出站</option><option>推送中</option><option>已完成</option><option>部分失败</option><option>待人工处理</option></select></div>
+    </div>
+    <table class="w-full text-[13px]"><thead><tr class="text-left text-[12px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]"><th class="px-5 py-2.5 font-medium">出站批次</th><th class="px-3 py-2.5 font-medium">目标平台</th><th class="px-3 py-2.5 font-medium text-right">单据数</th><th class="px-3 py-2.5 font-medium">状态</th><th class="px-3 py-2.5 font-medium text-right">成功 / 失败 / 重试</th><th class="px-3 py-2.5 font-medium">最近回执</th><th class="px-3 py-2.5 font-medium text-right pr-5">操作</th></tr></thead><tbody id="ob-tbody" class="divide-y divide-line dark:divide-dline"></tbody></table>
+    <div class="px-5 py-2.5 text-[12px] text-ink-3 dark:text-gray-500 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F]">出站重推为受控运行操作：权限校验 · 二次确认 · Payload 摘要与回执写入不可篡改审计链。当前 PoC 的正式推送仍为演示桩，真实外呼需目标平台联调后启用。</div>
+  </section>
+</main>
+
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[680px]"></div>
+
+<script>
+const STATUS_STYLE = {
+  '待出站':'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]',
+  '推送中':'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]',
+  '已完成':'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30',
+  '部分失败':'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30',
+  '待人工处理':'bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30'
+};
+const OUTBOUND_BATCHES = [
+  {id:'OB-20261029-001', adapter:'SAP Ariba', adapter_id:'ariba', docs:18, status:'部分失败', ok:16, fail:1, retry:1, t:'13:42', detail:[
+    {caseId:'INV-CN-2026-0386', receipt:'AID-2026-90218', payload:'cXML InvoiceDetailRequest · 摘要 9f2c…e41a', attach:'XML+PDF 已上传', writeback:'已回写', note:'成功回执已归档案件时间线'},
+    {caseId:'INV-CN-2026-0383', receipt:'—', payload:'cXML · requestId=INV-CN-2026-0383', attach:'待确认', writeback:'未回写', note:'网络超时 · 30s/2min/10min 退避第 2/3 次'},
+    {caseId:'INV-CN-2026-0381', receipt:'—', payload:'cXML · Extrinsic ProjectDesc', attach:'未发送', writeback:'转人工', note:'Custom Field 超长，需实施管理员确认截断/转附件策略'}]},
+  {id:'OB-20261029-002', adapter:'Oracle Fusion Payables', adapter_id:'oracle', docs:7, status:'已完成', ok:7, fail:0, retry:0, t:'12:18', detail:[
+    {caseId:'INV-CN-2026-0387', receipt:'302455F3E23', payload:'AP Invoice Import REST · 摘要 a81b…93de', attach:'影像外链已绑定', writeback:'已回写', note:'Supplier/PO/Tax 映射通过'}]},
+  {id:'OB-20261029-003', adapter:'Coupa Invoicing', adapter_id:'coupa', docs:5, status:'待人工处理', ok:0, fail:0, retry:0, t:'—', detail:[
+    {caseId:'INV-SG-2026-0125', receipt:'—', payload:'Coupa Invoice API draft', attach:'待上传', writeback:'未回写', note:'Adapter 仍为适配中，生产出站未开放；可沙箱预演'}]},
+  {id:'OB-20261029-004', adapter:'自研应付系统', adapter_id:'custom', docs:12, status:'推送中', ok:8, fail:0, retry:0, t:'13:55', detail:[
+    {caseId:'INV-CN-2026-0379', receipt:'AP-2026-A18CC', payload:'REST/JSON · HMAC 已签名', attach:'对象存储链接', writeback:'处理中', note:'MQ 回执等待中'}]}
+];
+let LIVE_ADAPTERS = [];
+const OUTBOUND_API_MARKERS = ['/v1/adapters', '/queue', '/file']; // 接线标记：Adapter 列表 / 回执队列 / 沙箱建档
+function kpi(){
+  const nums = {wait:0, pushing:0, ok:0, bad:0, retry:0};
+  OUTBOUND_BATCHES.forEach(b=>{ if(b.status==='待出站') nums.wait+=b.docs; if(b.status==='推送中') nums.pushing+=b.docs; nums.ok+=b.ok; nums.bad+=b.fail; nums.retry+=b.retry; });
+  const cards=[['待出站',nums.wait,'进入 Adapter 前等待队列','text-primary'],['推送中',nums.pushing,'目标平台网关处理中','text-primary'],['建档成功',nums.ok,'已获回执并归档','text-success'],['失败/待人工',nums.bad+OUTBOUND_BATCHES.filter(b=>b.status==='待人工处理').length,'需处理后重推','text-danger'],['平均回写时延','2.1s','回执 → 案件时间线','text-warning']];
+  document.getElementById('kpi-cards').innerHTML = cards.map(c=>`<div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4"><div class="text-[13px] text-ink-2 dark:text-gray-400">${c[0]}</div><div class="mt-2 num text-[26px] font-semibold leading-none ${c[3]}">${c[1]}</div><div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">${c[2]}</div></div>`).join('');
+}
+function badge(st){ return `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS_STYLE[st]||''}">${st}</span>`; }
+function fillAdapterFilter(){ const sel=document.getElementById('f-adapter'); const names=[...new Set(OUTBOUND_BATCHES.map(b=>b.adapter))]; sel.innerHTML='<option value="">全部</option>'+names.map(n=>`<option>${n}</option>`).join(''); }
+function renderBatches(){
+  const fa=document.getElementById('f-adapter').value, fs=document.getElementById('f-status').value;
+  const rows=OUTBOUND_BATCHES.map((b,i)=>({b,i})).filter(({b})=>(!fa||b.adapter===fa)&&(!fs||b.status===fs));
+  document.getElementById('ob-tbody').innerHTML = rows.map(({b,i})=>`<tr class="hover:bg-surface dark:hover:bg-[#23282F]"><td class="px-5 py-3 num font-medium text-primary whitespace-nowrap">${b.id}</td><td class="px-3 py-3">${b.adapter}</td><td class="px-3 py-3 text-right num">${b.docs}</td><td class="px-3 py-3">${badge(b.status)}</td><td class="px-3 py-3 text-right num"><span class="text-success">${b.ok}</span> / <span class="${b.fail?'text-danger font-semibold':'text-ink-3'}">${b.fail}</span> / <span class="text-warning">${b.retry}</span></td><td class="px-3 py-3 num text-[12px] text-ink-2 dark:text-gray-400">${b.t}</td><td class="px-3 py-3 pr-5 text-right whitespace-nowrap"><button onclick="toggleDetail(${i})" class="text-primary text-[12px] hover:underline" id="ob-btn-${i}">查看明细 ▾</button></td></tr><tr id="ob-row-${i}" class="hidden"><td colspan="7" class="px-5 py-3 bg-surface dark:bg-[#23282F]"><div class="space-y-1.5">${b.detail.map(d=>`<div class="grid grid-cols-6 gap-3 px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-[12px]"><a href="case-detail.html?case=${d.caseId}" class="num text-primary hover:underline">${d.caseId}</a><span class="num text-ink-2 dark:text-gray-300">${d.receipt}</span><span class="truncate" title="${d.payload}">${d.payload}</span><span>${d.attach}</span><span>${d.writeback}</span><span class="truncate ${d.note.includes('超长')||d.note.includes('超时')?'text-warning':'text-ink-3 dark:text-gray-500'}" title="${d.note}">${d.note}</span></div>`).join('')}</div><button onclick="sandbox('${b.adapter_id}')" class="mt-2 px-2.5 py-1 rounded-card border border-primary text-primary text-[11.5px] hover:bg-primary hover:text-white">沙箱预演当前 Adapter</button> <button onclick="toast('重推需走受控确认：权限校验 + 风险提示 + 二次确认 + 审计留痕（本页演示不直接生产重推）')" class="mt-2 ml-2 px-2.5 py-1 rounded-card border border-line dark:border-dline text-[11.5px] hover:border-primary hover:text-primary">受控重推</button></td></tr>`).join('') || '<tr><td colspan="7" class="px-5 py-8 text-center text-[13px] text-ink-3">当前筛选条件下无出站批次</td></tr>';
+}
+function toggleDetail(i){ const r=document.getElementById('ob-row-'+i), btn=document.getElementById('ob-btn-'+i); const closed=r.classList.toggle('hidden'); btn.textContent=closed?'查看明细 ▾':'收起明细 ▴'; }
+function sandbox(adapter){ const c = OUTBOUND_BATCHES.find(b=>b.adapter_id===adapter)?.detail[0]?.caseId || 'INV-CN-2026-0387'; IHUB_API.postJSON(`/v1/adapters/${adapter}/file`, {case_id:c,is_sandbox:true,actor:IHUB_API.ACTOR.admin}, 15000).then(r=>toast(`沙箱预演完成：${r.adapter_name||adapter} · ${r.receipt_no} · ${r.steps.length} 步已归档测试审计`)).catch(e=>toast('沙箱预演未执行：'+(e.message_cn||e.message)+'（演示态可忽略）')); }
+function toggleDark(){ document.documentElement.classList.toggle('dark'); }
+function toast(msg){ const t=document.getElementById('toast'); t.innerHTML=msg; t.classList.remove('opacity-0','translate-y-2','pointer-events-none'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'),4200); }
+(async function boot(){ kpi(); fillAdapterFilter(); renderBatches(); try{ await IHUB_DEMO.probe(); if(IHUB_DEMO.isLive()){ const r=await IHUB_API.getJSON('/v1/adapters'); LIVE_ADAPTERS=r.adapters||[]; document.body.dataset.outboundLive='ok'; } }catch(e){ document.body.dataset.outboundLive='demo'; } })();
+</script>
+<script>
+(function(){ var key='outbound'; document.querySelectorAll('#sb a[data-k]').forEach(function(a){ if(a.getAttribute('data-k')===key) a.classList.add('sb-active'); }); })();
+function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); document.getElementById('sb-mask').classList.remove('hidden'); }
+function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
+</script>
+</body>
+</html>

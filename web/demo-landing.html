@@ -4,28 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>产品演示 · 全球采购平台票据智能与合规中台</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: { extend: {
-    colors: {
-      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF'},
-      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
-      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
-      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
-      purple:{DEFAULT:'#722ED1',light:'#F5E8FF'},
-      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
-      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
-    },
-    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
-    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',cardhover:'0 4px 16px rgba(29,33,41,.10)'},
-    borderRadius:{card:'8px'}
-  } }
-}
-</script>
+<link rel="stylesheet" href="css/invoice-hub.css">
 <style>
   body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
   .num{font-variant-numeric:tabular-nums;}
@@ -107,7 +86,7 @@ tailwind.config = {
           <div class="relative px-1">
             <div class="h-full rounded-card border-t-[3px] border-t-purple bg-card dark:bg-[#23282F] border border-line dark:border-dline px-2 py-3 text-center">
               <div class="text-[16px]">🔌</div>
-              <div class="text-[12px] font-semibold mt-1">Provider 编排</div>
+              <div class="text-[12px] font-semibold mt-1">Provider 能力编排</div>
               <div class="text-[10px] text-ink-3 dark:text-gray-500 mt-1 leading-snug">直读 / OCR / VLM 智能路由 · 降级</div>
             </div>
             <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-purple text-white shadow-card">可插拔 Provider</span>

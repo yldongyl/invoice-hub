@@ -4,33 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>票据接入与批次管理 · 全球采购平台票据智能与合规中台</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      colors: {
-        primary: { DEFAULT: '#165DFF', light: '#F0F5FF', mid: '#BEDAFF' },
-        success: { DEFAULT: '#00B42A', light: '#E8FFEA' },
-        warning: { DEFAULT: '#FF7D00', light: '#FFF7E8' },
-        danger:  { DEFAULT: '#F53F3F', light: '#FFECE8' },
-        ink:  { 1: '#1D2129', 2: '#4E5969', 3: '#86909C', 4: '#C9CDD4' },
-        line: '#E5E6EB',
-        surface: '#F7F8FA',
-        card: '#FFFFFF',
-        dcard: '#1D2129',
-        dline: '#333A45'
-      },
-      fontFamily: { sans: ['Inter', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'sans-serif'] },
-      boxShadow: { card: '0 2px 8px rgba(29,33,41,.06)', cardhover: '0 4px 16px rgba(29,33,41,.10)' },
-      borderRadius: { card: '8px' }
-    }
-  }
-}
-</script>
+<link rel="stylesheet" href="css/invoice-hub.css">
 <style>
   body { font-family: Inter, 'Noto Sans SC', 'Source Han Sans SC', sans-serif; }
   .num { font-variant-numeric: tabular-nums; }
@@ -76,12 +50,13 @@ tailwind.config = {
     <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
     <div class="sb-group">接入受理</div>
     <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
-    <div class="sb-group">复核运营</div>
-    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
-    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">案件与复核</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🧾</span><span>票据案件工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配准备与字段映射</span></a>
     <div class="sb-group">编排与适配</div>
-    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
-    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 能力编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>采购平台适配器</span></a>
+    <a href="outbound-filing.html" data-k="outbound" class="sb-item"><span class="sb-ico">🚚</span><span>出站建档与回写</span></a>
     <div class="sb-group">审计与平台</div>
     <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
     <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
@@ -89,7 +64,6 @@ tailwind.config = {
     <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
   </nav>
   <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
-    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
     <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
   </div>
 </aside>
@@ -116,12 +90,13 @@ tailwind.config = {
       class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
     </button>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 ihub-static-user">
       <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
       <div class="leading-tight">
         <div class="text-[13px] font-medium">陈铮 · 实施管理员</div>
         <div class="text-[11px] text-ink-3 dark:text-gray-500">接入与受理配置权限</div>
       </div>
+      <button type="button" onclick="try{IHUB_AUTH.logout()}catch(e){sessionStorage.removeItem('ihub.auth');location.href='login.html'}" class="px-2.5 py-1 rounded-card border border-danger text-danger bg-card hover:bg-danger-light text-[12px] font-medium">退出</button>
     </div>
   </div>
 </header>
@@ -185,6 +160,11 @@ tailwind.config = {
     </div>
   </section>
 
+  <!-- KPI 口径同源注记（CON-B4/B6 · 统计口径与审计中心 Tab2 同源，前端注释标明约束） -->
+  <div class="text-[11.5px] text-ink-3 dark:text-gray-500 flex items-center gap-1.5 px-1 -mt-2">
+    <span>ℹ️ 统计口径与审计中心 Tab2 同源（CON-B4/B6 · 接入总量/过滤细分/时延 P95 均与审计报表同源对账）</span>
+  </div>
+
   <!-- ═══════════════ ②③ 左主区（渠道 + 上传） + 右侧受理规则说明 ═══════════════ -->
   <section class="grid grid-cols-12 gap-4">
 
@@ -218,7 +198,7 @@ tailwind.config = {
               <span class="text-ink-3 dark:text-gray-500">非发票退回 <b class="num text-warning">5</b></span>
             </div>
             <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">定时 Job 每 15 分钟拉取 · 海外实例走 SAP DOX 桥接。信封解析：邮件头 / 多附件拆分为独立文件；非发票过滤：合同、对账单、报价单附件自动退回并通知供应商。</div>
-            <button onclick="toast('邮箱渠道配置项：IMAP 收件频率（15 分钟）· 发件域白名单 · 附件类型限制（XML/OFD/PDF/JPG/PNG）· 单附件 ≤20MB · 退回邮件模板 · 海外 DOX 桥接开关（演示入口）')"
+            <button onclick="ihOpenChannelConfig('供应商专用邮箱')"
               class="mt-3 w-full py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">⚙ 渠道配置</button>
           </div>
 
@@ -239,7 +219,7 @@ tailwind.config = {
               <span class="text-ink-3 dark:text-gray-500">同步 P95 <b class="num text-success">2.4s</b></span>
             </div>
             <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">同步模式 P95 &lt; 3s，仅限 XML / OFD / PDF 文本层<b class="text-ink-2 dark:text-gray-400">直读快速路径</b>；其余载体转异步，结果经 Webhook 回调。信封解析：校验 trace-id / 幂等键 / 签名，重复提交去重。</div>
-            <button onclick="toast('API 渠道配置项：AppKey 凭证（KMS 管理，界面不回显）· 限流 QPS · 同步直读路径开关 · Webhook 回调地址与重试策略 · 幂等键有效期（演示入口）')"
+            <button onclick="ihOpenChannelConfig('API 集成')"
               class="mt-3 w-full py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">⚙ 渠道配置</button>
           </div>
 
@@ -260,7 +240,7 @@ tailwind.config = {
               <span class="text-ink-3 dark:text-gray-500">非发票退回 <b class="num text-warning">2</b></span>
             </div>
             <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">拖拽 / 点击批量上传（见下方上传区）。信封解析：上传即受理，实时回执批次号；非发票过滤：疑似合同 / 对账单在受理阶段即提示上传人并拒绝入池。</div>
-            <button onclick="toast('门户渠道配置项：允许文件类型（XML/OFD/PDF/JPG/PNG）· 单文件上限 20MB · 单次批量上限 · 上传人权限组 · 受理回执通知方式（演示入口）')"
+            <button onclick="ihOpenChannelConfig('门户上传')"
               class="mt-3 w-full py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">⚙ 渠道配置</button>
           </div>
 
@@ -281,12 +261,12 @@ tailwind.config = {
               <span class="text-ink-3 dark:text-gray-500">非发票退回 <b class="num text-warning">3</b></span>
             </div>
             <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">海外 Supplier Invoice / Credit Note 经 DOX 通道进入海外实例。信封解析：Peppol / UBL 传输信封校验 · 参与方 ID 核对；非发票过滤：Order Response、对账类文档自动退回。</div>
-            <button onclick="toast('SAP DOX 渠道配置项：DOX 租户端点 · 参与方 ID（Lanwu SG）· Peppol AP 证书 · 传输信封校验级别 · 桥接轮询间隔 · 失败重试次数（演示入口）')"
+            <button onclick="ihOpenChannelConfig('SAP DOX')"
               class="mt-3 w-full py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">⚙ 渠道配置</button>
           </div>
         </div>
         <div class="px-5 py-2.5 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] text-[11.5px] text-ink-3 dark:text-gray-500">
-          ℹ️ XML / OFD / PDF 文本层直读为<b class="text-ink-2 dark:text-gray-400">平台内置解析能力（非 Provider、非自研 OCR）</b>；需模型识别的载体由 Provider 编排层路由（百望云 / 诺诺 / 客户自有 OCR / 自托管 OCR-VLM / 海外 e-invoicing / 人工兜底）。
+          ℹ️ XML / OFD / PDF 文本层直读为<b class="text-ink-2 dark:text-gray-400">平台内置解析能力（非 Provider、非自研 OCR）</b>；需模型识别的载体由 Provider 能力编排层路由（百望云 / 诺诺 / 客户自有 OCR / 自托管 OCR-VLM / 海外 e-invoicing / 人工兜底）。
         </div>
       </div>
 
@@ -379,7 +359,7 @@ tailwind.config = {
             <div class="font-semibold text-[13px] flex items-center gap-1.5"><span class="text-primary">🔀</span>载体检测分流</div>
             <ul class="mt-1.5 space-y-1.5 text-ink-2 dark:text-gray-400 leading-relaxed">
               <li>· <b>XML / OFD 原件</b> → 结构化直读路径（平台内置解析，不送 OCR，数据最小外发）</li>
-              <li>· <b>纸质扫描 / 图片</b> → OCR 路由（按 Provider 编排策略选择识别引擎）</li>
+              <li>· <b>纸质扫描 / 图片</b> → OCR 路由（按 Provider 能力编排策略选择识别引擎）</li>
               <li>· <b>加密件 / 损坏件</b> → 无法机读，转人工分拣并向来源渠道回执</li>
             </ul>
           </div>
@@ -458,10 +438,73 @@ tailwind.config = {
   </div>
 </div>
 
+<!-- 渠道配置编辑弹窗（FN-1-11 · 受控变更入口） -->
+<div id="channel-config-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+  <div class="w-[560px] max-h-[90vh] flex flex-col rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-3.5 border-b border-line dark:border-dline flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-[15px] font-semibold" id="ch-modal-title">渠道配置管理</span>
+        <span class="text-[11px] px-2 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-400 num" id="ch-modal-ver"></span>
+      </div>
+      <button onclick="ihCloseChannelConfig()" class="text-ink-3 hover:text-ink-1 dark:hover:text-white text-[16px]">✕</button>
+    </div>
+    <div class="p-5 overflow-y-auto space-y-3.5 text-[12.5px]" id="ch-modal-body"></div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
+      <span class="text-[11px] text-ink-3 dark:text-gray-500">🔒 凭证类配置由 KMS 托管不回显（演示桩口径）</span>
+      <div class="flex gap-2">
+        <button onclick="ihCloseChannelConfig()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] hover:border-primary">取消</button>
+        <button id="ch-btn-submit" onclick="ihSubmitChannelConfig()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">提交变更</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 渠道配置发布五要素二次确认弹窗（FN-0-08 / FN-1-11 · 五要素顺序与层级治理） -->
+<div id="channel-challenge-modal" class="hidden fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4">
+  <div class="w-[520px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover p-5 space-y-3.5">
+    <div class="text-[15px] font-semibold text-ink-1 dark:text-white flex items-center gap-2">
+      <span>🔐 受控配置发布 · 二次确认</span>
+      <span class="text-[11px] px-1.5 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary">五要素框架</span>
+    </div>
+
+    <!-- 要素① 权限校验 与 要素② 风险提示 -->
+    <div class="p-3 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11.5px] space-y-1.5">
+      <div><b>要素① 权限校验：</b><span id="ch-chal-perm" class="text-success font-medium">✓ 已验证操作人具备策略发布权限位</span></div>
+      <div><b>要素② 风险提示：</b><span id="ch-chal-risk" class="text-warning leading-relaxed"></span></div>
+    </div>
+
+    <!-- 要素③ 二次确认 + 本人执行勾选（FN-0-08 必须在处置意见之前完成本人意愿确认） -->
+    <div class="p-2.5 rounded-card bg-warning-light/20 dark:bg-[#3A2E1C]/20 border border-warning/30">
+      <label class="flex items-start gap-2 text-[12px] text-ink-1 dark:text-gray-200 cursor-pointer">
+        <input type="checkbox" id="ch-chal-confirm" class="mt-0.5 accent-primary" onchange="document.getElementById('ch-btn-publish').disabled = !this.checked">
+        <span><b>要素③ 本人执行确认：</b>我已核对渠道配置变更，确认由<b>本人</b>执行（AI / Agent / LLM 建议不自动执行）</span>
+      </label>
+    </div>
+
+    <!-- 要素④ 处置意见 -->
+    <div>
+      <label class="block text-[12px] text-ink-2 dark:text-gray-400 mb-1"><b>要素④ 处置意见（选填）</b></label>
+      <input type="text" id="ch-chal-opinion" placeholder="如：调整渠道接入参数与限制（业务需求）"
+        class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+    </div>
+
+    <!-- 要素⑤ 审计留痕 -->
+    <div class="text-[11px] text-ink-3 dark:text-gray-500">
+      <b>要素⑤ 审计留痕：</b>本次发布将递增配置版本，变更 diff 写入不可篡改审计链。
+    </div>
+
+    <div class="flex justify-end gap-2 pt-2 border-t border-line dark:border-dline">
+      <button onclick="ihCloseChannelChallenge(true)" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] hover:border-primary">返回上一步</button>
+      <button id="ch-btn-publish" onclick="ihConfirmPublishChannelConfig()" disabled
+        class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF] disabled:opacity-40 disabled:cursor-not-allowed">确认发布</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[640px]"></div>
 
 <script>
-/* ════════════════ 复用 dashboard 状态 / 置信度徽章 ════════════════ */
+/* ════════════════ 复用 dashboard 状态 / 置信度徽章 / 来源徽章（contracts/enum-registry.json 同源） ════════════════ */
 const STATUS = {
   RECOGNIZED:    { label:'RECOGNIZED 已识别',   cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
   VERIFYING:     { label:'VERIFYING 查验中',    cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
@@ -470,6 +513,22 @@ const STATUS = {
   RESOLVED:      { label:'RESOLVED 已解决',     cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30' },
   BLOCKED:       { label:'BLOCKED 已拦截',      cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30' }
 };
+const FIELD_SOURCE = {
+  xml_direct: { label:'XML 直读', cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' },
+  ocr:        { label:'OCR', cls:'bg-purple-100 dark:bg-[#2A1D3A] text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800' },
+  qr_code:    { label:'二维码解码', cls:'bg-success-light dark:bg-[#1C2E22] text-success border border-success/30' },
+  model:      { label:'VLM 模型', cls:'bg-purple-100 dark:bg-[#2A1D3A] text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800' },
+  manual:     { label:'人工', cls:'bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30' },
+  webhook:    { label:'外部查验回执', cls:'bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]' }
+};
+function fieldSourceBadge(src, isStub){
+  const item = FIELD_SOURCE[src] || { label: src || '直读', cls:'bg-surface border border-line text-ink-2' };
+  let html = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium ${item.cls}" title="field_source: ${src}">${item.label}</span>`;
+  if (isStub) {
+    html += ` <span class="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-medium bg-warning-light dark:bg-[#3A2E1C] text-warning border border-warning/30" title="演示口径：intake_pipeline _ocr_stub_recognize SPI stub">演示口径</span>`;
+  }
+  return html;
+}
 function confBadge(c){
   if (c >= 95) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success num">${c}%<i class="w-1.5 h-1.5 rounded-full bg-success inline-block"></i></span>`;
   if (c >= 80) return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-warning-light dark:bg-[#3A2E1C] text-warning num">${c}%<i class="w-1.5 h-1.5 rounded-full bg-warning inline-block"></i></span>`;
@@ -560,7 +619,7 @@ function renderBatches(){
       <td colspan="9" class="px-5 py-3 bg-surface dark:bg-[#23282F]">
         <div class="text-[11px] font-medium text-ink-3 dark:text-gray-500 mb-2">文件级受理明细（样例节选）· 批次 ${b.id} · 共 ${b.files} 件</div>
         <div class="space-y-1.5">
-          ${b.detail.map(d=>`
+          ${b.detail.map((d, dIdx)=>`
             <div class="flex items-center gap-3 px-3 py-2 rounded-card bg-card dark:bg-dcard border ${d.bad?'border-danger/40':'border-line dark:border-dline'} text-[12px]">
               <span class="num font-medium min-w-[240px] truncate ${d.bad?'text-danger':''}" title="${d.f}">${d.bad?'🛑 ':'📄 '}${d.f}</span>
               <span class="text-ink-3 dark:text-gray-500 min-w-[170px] whitespace-nowrap">${d.carrier}</span>
@@ -568,6 +627,11 @@ function renderBatches(){
               ${d.st ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[d.st].cls} whitespace-nowrap">${STATUS[d.st].label}</span>` : ''}
               ${d.conf!=null ? confBadge(d.conf) : ''}
               ${d.note ? `<span class="text-[11.5px] ${d.bad?'text-danger':'text-ink-3 dark:text-gray-500'} truncate" title="${d.note}">${d.note}</span>` : ''}
+              ${d.bad ? `
+                <span class="inline-flex items-center gap-1.5 ml-auto shrink-0">
+                  <span class="text-[10px] px-1 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-normal">演示口径</span>
+                  <button type="button" class="ihub-retry-steps-btn px-2 py-0.5 rounded text-[11px] font-medium border border-warning text-warning hover:bg-warning hover:text-white transition-colors" onclick="ihRetryFileSteps(event, '${b.id}', ${d.seq ?? dIdx}, ${i})">⏩ 只重试相关步骤</button>
+                </span>` : ''}
             </div>`).join('')}
         </div>
         <div class="mt-2 text-[11px] text-ink-3 dark:text-gray-500">明细中识别置信度来自 Provider / 直读解析输出，字段级证据（原文片段 / 坐标 / 模型版本）见案件详情；模型输出一律标注「AI 生成」，不自动执行业务操作。</div>
@@ -671,8 +735,11 @@ function startPipeline(){
   document.getElementById('pl-steps').innerHTML = steps.map((s,i)=>`
     <li class="pl-step flex items-start gap-2.5 p-2.5 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard" id="pl-${i}">
       <span class="mt-0.5 shrink-0 w-4 text-center" id="pl-ico-${i}"><span class="text-ink-4">○</span></span>
-      <div class="min-w-0">
-        <div class="text-[12.5px] font-medium leading-snug">${s.t}</div>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2">
+          <div class="text-[12.5px] font-medium leading-snug">${s.t}</div>
+          ${i === 4 ? fieldSourceBadge('xml_direct', false) : ''}
+        </div>
         <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5 leading-relaxed">${s.d}</div>
       </div>
     </li>`).join('');
@@ -688,8 +755,16 @@ function startPipeline(){
     if(i >= steps.length){
       document.getElementById('pl-state').innerHTML = '<span class="text-success font-medium">✓ 受理完成 · 耗时 3.0s</span>';
       document.getElementById('pl-status-badge').innerHTML =
-        `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS.RECOGNIZED.cls}">${STATUS.RECOGNIZED.label}</span>`;
-      document.getElementById('pl-done').classList.remove('hidden');
+        `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS.RECOGNIZED.cls}">${STATUS.RECOGNIZED.label}</span> ` +
+        fieldSourceBadge('xml_direct', false);
+      const donePanel = document.getElementById('pl-done');
+      if (!donePanel.querySelector('.ihub-demo-notice')) {
+        const dNotice = document.createElement('div');
+        dNotice.className = 'ihub-demo-notice mt-2 text-[11.5px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-card border border-amber-200 dark:border-amber-900/50';
+        dNotice.textContent = 'ℹ️ 演示数据：案件号与摘要为示意（ADR-0003 静态回退口径 · 数据为演示样例）';
+        donePanel.appendChild(dNotice);
+      }
+      donePanel.classList.remove('hidden');
       toast(`✓ 受理完成：案件 INV-CN-2026-0390 已创建（RECOGNIZED）· 操作已写入不可篡改审计日志`);
       plRunning = false;
       uploadFiles = [];
@@ -716,6 +791,7 @@ function toast(msg){
 
 renderBatches();
 </script>
+<script src="js/auth-guard.js"></script>
 <script src="js/api-client.js"></script>
 <script src="js/demo-mode.js"></script>
 <script>
@@ -728,6 +804,9 @@ renderBatches();
  * demo-mode 未连接：回落原型 mock 行为（fakeSha/假批次为 fallback）。ui-design 只读（ADR-0003）。 */
 let IH_UPLOAD = null;            // {token, inst, po_ref}——challenge 预检结果
 window._rawFiles = [];           // addFiles 同步留存原始 File（multipart 提交用）
+window._channelConfigs = [];
+let CURRENT_CH_EDIT = null;
+let CH_CHALLENGE = null;
 
 async function ihLoadKpi(){
   const k = await IHUB_API.getJSON('/v1/intake/kpi');
@@ -758,6 +837,7 @@ async function ihLoadKpi(){
 }
 async function ihLoadChannels(){
   const r = await IHUB_API.getJSON('/v1/intake/channels');
+  window._channelConfigs = r.items || [];
   const kpi = (await IHUB_API.getJSON('/v1/intake/kpi')).merged;
   const btns = Array.from(document.querySelectorAll('button')).filter(b => b.textContent.includes('渠道配置'));
   (r.items || []).forEach((ch, i) => {
@@ -768,12 +848,8 @@ async function ihLoadChannels(){
     if (bs[0] && recv != null) bs[0].textContent = recv;
     if (bs[1] && ch.channel !== 'API 集成' && ch.today && ch.today.filtered_return != null)
       bs[1].textContent = ch.today.filtered_return;
-    btn.onclick = () => {
-      const cfg = ch.config || {};
-      const lines = Object.entries(cfg).map(([k2, v]) => `${k2} = ${Array.isArray(v) ? v.join('/') : v}`);
-      toast(`${ch.channel} 配置项（当前生效版本 ${ch.config_version || '—'} · 变更=受控发布）：<br>` +
-            lines.join(' · ') + '（凭证类 KMS 托管不回显 · 演示口径）');
-    };
+    btn.innerHTML = `⚙ 渠道配置${ch.config_version ? ` <span class="text-[10px] num opacity-70">(${ch.config_version})</span>` : ''}`;
+    btn.onclick = () => ihOpenChannelConfig(ch.channel);
   });
 }
 async function ihLoadBadge(){
@@ -807,6 +883,31 @@ window.toggleDetail = function(i){
   const paint = (row) => {
     if (!row) return;
     IHUB_API.getJSON('/v1/batches/' + b.id).then(det => {
+      // 动态回填文件级明细条目（修复 UI-M3-F01：文件名/载体/案件深链/状态/置信度/备注 + FN-1-07 只重试相关步骤）
+      const listHost = row.querySelector('[class*="space-y"]');
+      if (listHost && (det.files_detail || []).length) {
+        b.detail = det.files_detail.map(f => ({
+          f: f.file, carrier: f.carrier || '—', case: f.case_id,
+          st: f.status_snapshot, conf: f.conf, note: f.note, bad: f.bad,
+          seq: f.seq, steps: f.steps, disposition: f.disposition
+        }));
+        listHost.innerHTML = b.detail.map((d, dIdx) => {
+          const hasFailedSteps = d.bad || d.disposition === 'FAILED' || (d.steps || []).some(s => s.status === 'FAILED');
+          return `
+          <div class="flex items-center gap-3 px-3 py-2 rounded-card bg-card dark:bg-dcard border ${d.bad?'border-danger/40':'border-line dark:border-dline'} text-[12px]">
+            <span class="num font-medium min-w-[240px] truncate ${d.bad?'text-danger':''}" title="${d.f}">${d.bad?'🛑 ':'📄 '}${d.f}</span>
+            <span class="text-ink-3 dark:text-gray-500 min-w-[170px] whitespace-nowrap">${d.carrier}</span>
+            ${d.case ? `<a href="case-detail.html?case=${d.case}" class="num text-primary hover:underline whitespace-nowrap">${d.case}</a>` : '<span class="text-ink-4 whitespace-nowrap">—</span>'}
+            ${d.st && STATUS[d.st] ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[d.st].cls} whitespace-nowrap">${STATUS[d.st].label}</span>` : ''}
+            ${d.conf!=null ? confBadge(d.conf) : ''}
+            ${d.note ? `<span class="text-[11.5px] ${d.bad?'text-danger':'text-ink-3 dark:text-gray-500'} truncate" title="${d.note}">${d.note}</span>` : ''}
+            ${hasFailedSteps ? `
+              <span class="inline-flex items-center gap-1.5 ml-auto shrink-0">
+                <button type="button" class="ihub-retry-steps-btn px-2 py-0.5 rounded text-[11px] font-medium border border-warning text-warning hover:bg-warning hover:text-white transition-colors" data-seq="${d.seq}" data-batch="${b.id}" onclick="ihRetryFileSteps(event, '${b.id}', ${d.seq}, ${i})">⏩ 只重试相关步骤</button>
+              </span>` : ''}
+          </div>`;
+        }).join('');
+      }
       const host = row.querySelector('td > div'); if (!host) return;
       (det.files_detail || []).forEach(f => {
         const d = document.createElement('div');
@@ -825,9 +926,197 @@ window.toggleDetail = function(i){
         }).catch(e => toast('续跑被拒：' + (e.message_cn || e.message)));
         (row.querySelector('td') || row).appendChild(btn);
       }
+      row.dataset.detailLoaded = 'true';
     }).catch(() => {});
   };
   if (b._loading) { b._loading = false; paint(document.getElementById('dt-row-' + i)); }
+};
+
+/* ── 渠道配置受控变更（FN-1-11 · 五要素框架） ── */
+window.ihOpenChannelConfig = function(chName) {
+  const item = (window._channelConfigs || []).find(c => c.channel === chName) || {
+    channel: chName,
+    config: {
+      "poll_interval_minutes": 15,
+      "max_file_size_mb": 20,
+      "max_batch_files": 50,
+      "allowed_types": ["xml", "ofd", "pdf", "jpg", "png"]
+    },
+    config_version: "v2026-10-21.1"
+  };
+  CURRENT_CH_EDIT = JSON.parse(JSON.stringify(item));
+  document.getElementById('ch-modal-title').textContent = `${chName} · 渠道配置 (FN-1-11)`;
+  document.getElementById('ch-modal-ver').textContent = `当前生效版本 ${item.config_version || '—'}`;
+
+  const role = (window.IHUB_AUTH && IHUB_AUTH.role()) || '实施管理员';
+  const roleKey = (window.IHUB_AUTH && IHUB_AUTH.roleKey()) || 'admin';
+  const canEdit = roleKey === 'admin' || roleKey === 'ops';
+
+  const cfg = item.config || {};
+  const entries = Object.entries(cfg);
+
+  const rowsHtml = entries.map(([k, v]) => {
+    const isMasked = typeof v === 'string' && (v.includes('KMS') || v.includes('******') || k.includes('credential') || k.includes('secret') || k.includes('key'));
+    const valStr = Array.isArray(v) ? v.join(', ') : (v != null ? String(v) : '');
+    return `
+      <div class="p-2.5 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] space-y-1">
+        <div class="flex items-center justify-between text-[11.5px]">
+          <span class="font-medium text-ink-1 dark:text-gray-200 num">${k}</span>
+          ${isMasked ? '<span class="text-[10px] text-primary">🔒 KMS 凭证托管</span>' : ''}
+        </div>
+        ${isMasked ? `
+          <input type="text" disabled value="******（KMS 托管 · 演示口径掩码）"
+            class="w-full px-2.5 py-1 text-[12px] num rounded border border-line dark:border-dline bg-card/60 dark:bg-dcard/60 text-ink-3 dark:text-gray-500 cursor-not-allowed">
+        ` : `
+          <input type="text" data-cfg-key="${k}" value="${valStr}" ${canEdit ? '' : 'disabled'}
+            class="w-full px-2.5 py-1 text-[12px] num rounded border border-line dark:border-dline bg-card dark:bg-dcard text-ink-1 dark:text-gray-100 focus:outline-none focus:border-primary">
+        `}
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('ch-modal-body').innerHTML = `
+    <div class="text-[11.5px] text-ink-3 dark:text-gray-500">
+      当前操作人：<b class="text-ink-2 dark:text-gray-300">${(window.IHUB_AUTH && IHUB_AUTH.actor('陈铮')) || '陈铮'}</b>（角色：${role}）· 受理渠道资产受控版本化治理（FN-1-11）
+    </div>
+    <div class="space-y-2 mt-2">
+      ${rowsHtml}
+    </div>
+  `;
+  document.getElementById('ch-btn-submit').style.display = canEdit ? 'inline-block' : 'none';
+  document.getElementById('channel-config-modal').classList.remove('hidden');
+};
+
+window.ihCloseChannelConfig = function() {
+  document.getElementById('channel-config-modal').classList.add('hidden');
+};
+
+window.ihCloseChannelChallenge = function(restoreConfig) {
+  document.getElementById('channel-challenge-modal').classList.add('hidden');
+  if (restoreConfig) {
+    document.getElementById('channel-config-modal').classList.remove('hidden');
+  }
+};
+
+window.ihSubmitChannelConfig = async function() {
+  if (!CURRENT_CH_EDIT) return;
+  const chName = CURRENT_CH_EDIT.channel;
+  const actor = (window.IHUB_AUTH && IHUB_AUTH.actor('陈铮')) || '陈铮';
+
+  const inputs = document.querySelectorAll('#ch-modal-body input[data-cfg-key]');
+  const updatedPayload = {};
+  inputs.forEach(inp => {
+    const k = inp.getAttribute('data-cfg-key');
+    let val = inp.value.trim();
+    if (val === 'true') val = true;
+    else if (val === 'false') val = false;
+    else if (/^\d+$/.test(val)) val = parseInt(val, 10);
+    else if (/^\d+\.\d+$/.test(val)) val = parseFloat(val);
+    else if (val.includes(',')) val = val.split(',').map(s => s.trim()).filter(Boolean);
+    updatedPayload[k] = val;
+  });
+  CURRENT_CH_EDIT.pendingPayload = updatedPayload;
+
+  if (IHUB_DEMO.isLive()) {
+    try {
+      const key = 'channel:' + chName;
+      const ch = await IHUB_API.postJSON(`/v1/config/${key}/risk-challenge`, {
+        actor: actor,
+        instance: 'CN',
+        action: 'publish'
+      });
+      CH_CHALLENGE = { ...ch, config_key: key };
+      document.getElementById('ch-chal-perm').textContent = `✓ 已验证操作人「${actor}」具备策略发布权限位（NAV_POLICY）`;
+      document.getElementById('ch-chal-risk').textContent = ch.risk_text || `发布后将覆盖 ${key} 配置，版本递增生效并实时刷新渠道卡。`;
+      document.getElementById('ch-chal-confirm').checked = false;
+      document.getElementById('ch-btn-publish').disabled = true;
+      document.getElementById('ch-chal-opinion').value = '收紧与调整渠道接入配置（业务受控变更）';
+      ihCloseChannelConfig();
+      document.getElementById('channel-challenge-modal').classList.remove('hidden');
+    } catch (e) {
+      toast('受控预检被拒：' + (e.message_cn || e.message));
+    }
+  } else {
+    document.getElementById('ch-chal-perm').textContent = `✓ 演示口径：操作人「${actor}」具备策略发布权限位`;
+    document.getElementById('ch-chal-risk').textContent = `发布后将覆盖 channel:${chName} 现行配置并全量生效（演示口径模拟）。`;
+    document.getElementById('ch-chal-confirm').checked = false;
+    document.getElementById('ch-btn-publish').disabled = true;
+    document.getElementById('ch-chal-opinion').value = '调整渠道接入参数（演示口径）';
+    CH_CHALLENGE = { token: 'demo-tok-' + Date.now(), config_key: 'channel:' + chName, isDemo: true };
+    ihCloseChannelConfig();
+    document.getElementById('channel-challenge-modal').classList.remove('hidden');
+  }
+};
+
+window.ihConfirmPublishChannelConfig = async function() {
+  if (!CURRENT_CH_EDIT || !CH_CHALLENGE) return;
+  const chName = CURRENT_CH_EDIT.channel;
+  const actor = (window.IHUB_AUTH && IHUB_AUTH.actor('陈铮')) || '陈铮';
+  const opinion = document.getElementById('ch-chal-opinion').value.trim() || '渠道配置受控变更';
+
+  if (CH_CHALLENGE.isDemo || !IHUB_DEMO.isLive()) {
+    ihCloseChannelChallenge();
+    ihCloseChannelConfig();
+    const demoVer = 'v2026-10-31.1';
+    CURRENT_CH_EDIT.config_version = demoVer;
+    toast(`✓ 渠道配置已受控发布（演示口径）：新版本 ${demoVer} · 已写入版本化资产与不可篡改审计日志`);
+    const btn = Array.from(document.querySelectorAll('button')).find(b => b.closest('.rounded-card')?.textContent.includes(chName) && b.textContent.includes('渠道配置'));
+    if (btn) btn.innerHTML = `⚙ 渠道配置 <span class="text-[10px] num opacity-70">(${demoVer})</span>`;
+    return;
+  }
+
+  try {
+    const res = await IHUB_API.postJSON('/v1/config/actions/publish', {
+      actor: actor,
+      instance: 'CN',
+      token: CH_CHALLENGE.token,
+      self_confirmed: true,
+      config_key: CH_CHALLENGE.config_key,
+      config_payload: CURRENT_CH_EDIT.pendingPayload,
+      opinion: opinion
+    });
+    ihCloseChannelChallenge();
+    ihCloseChannelConfig();
+    toast(`✓ 渠道配置受控发布完成：新版本 ${res.version} · 已写入不可篡改审计链`);
+    await ihLoadChannels();
+  } catch (e) {
+    toast('配置发布被拒：' + (e.message_cn || e.message));
+  }
+};
+
+/* ── 文件级「只重试相关步骤」执行（FN-1-07） ── */
+window.ihRetryFileSteps = async function(event, batchId, seq, batchIdx) {
+  if (event) event.stopPropagation();
+  if (IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.postJSON(`/v1/batches/${batchId}/files/${seq}/retry-steps`);
+      const stepsText = (res.retried_steps && res.retried_steps.length) ? `步骤 ${res.retried_steps.join('、')}` : '步骤';
+      toast(`✓ 文件步骤重试完成：批次 ${batchId} 文件序号 ${seq} ${stepsText} 已重新执行 → ${res.status || '成功'}`);
+      await ihLoadBatches();
+      const dtRow = document.getElementById('dt-row-' + batchIdx);
+      if (dtRow) {
+        window.toggleDetail(batchIdx);
+      }
+    } catch (e) {
+      toast('步骤重试被拒：' + (e.message_cn || e.message));
+    }
+  } else {
+    const b = BATCHES[batchIdx];
+    if (b && b.detail) {
+      const target = b.detail.find(d => d.bad) || b.detail[0];
+      if (target) {
+        target.bad = false;
+        target.note = '步骤③ 载体检测重试成功（演示口径模拟）';
+        if (b.err > 0) b.err--;
+        b.ok++;
+        if (b.err === 0) b.st = '已完成';
+      }
+    }
+    toast('✓ 文件步骤重试完成（演示口径）：已重试失败步骤，状态局部刷新');
+    _ihRenderBatches();
+    const dtRow = document.getElementById('dt-row-' + batchIdx);
+    if (dtRow) dtRow.classList.remove('hidden');
+  }
 };
 /* ── 上传五要素链 ── */
 const _ihAddFiles = window.addFiles;
@@ -901,6 +1190,30 @@ window.startPipeline = function(){
     const dupN = (out.duplicates || []).length;
     const okN = (out.files || []).filter(f => f.caseId).length;
     const stTxt = f0.status || f0.disposition || 'RECOGNIZED';
+    const s5 = (f0.steps && f0.steps.find(s => s.no === 5)) || {};
+    const isOcrStub = (s5.detail && s5.detail.route === 'L2_ocr_vlm') || f0.carrier_route === 'L2_ocr_vlm';
+    const srcCode = isOcrStub ? 'ocr' : 'xml_direct';
+    const sourceBadgeHtml = fieldSourceBadge(srcCode, isOcrStub);
+
+    document.getElementById('pl-batch').textContent = out.batch_id;
+    (f0.steps || []).forEach((s, i) => {
+      const ico = document.getElementById('pl-ico-' + i); if (!ico) return;
+      ico.innerHTML = s.status === 'DONE' ? '<span class="text-success">✔</span>'
+        : s.status === 'SKIPPED' ? '<span class="text-ink-4">⊘</span>' : '<span class="text-danger">✖</span>';
+      document.getElementById('pl-' + i)?.classList.add('pl-done');
+      const desc = document.getElementById('pl-desc-' + i);
+      if (desc) desc.textContent = (s.detail && (s.detail.d || s.detail.skipped_reason)) || s.name;
+      if (i === 4) {
+        const titleEl = document.querySelector(`#pl-${i} .leading-snug`);
+        if (titleEl && !titleEl.parentElement.querySelector('.ihub-source-badge')) {
+          const bSpan = document.createElement('span');
+          bSpan.className = 'ihub-source-badge ml-2';
+          bSpan.innerHTML = sourceBadgeHtml;
+          titleEl.parentElement.appendChild(bSpan);
+        }
+      }
+    });
+
     document.getElementById('pl-state').innerHTML =
       `<span class="text-success font-medium">✓ 受理完成 · 批次 ${out.batch_id} · 生成案件 ${okN} 个${dupN ? ` · 摘要幂等跳过 ${dupN} 件` : ''}</span>`;
     const done = document.getElementById('pl-done');
@@ -910,9 +1223,10 @@ window.startPipeline = function(){
         <span class="text-[13px]">已生成票据案件：</span>
         <span class="num text-[14px] font-semibold text-primary">${f0.caseId || '（无新案件）'}</span>
         <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[stTxt] ? STATUS[stTxt].cls : ''}">${stTxt}</span>
+        ${sourceBadgeHtml}
         ${f0.caseId ? `<a href="case-detail.html?case=${f0.caseId}" class="px-3 py-1.5 rounded-card border border-primary text-primary text-[12.5px] font-medium hover:bg-primary-light dark:hover:bg-[#1B2A4A]">查看案件 →</a>` : ''}
       </div>
-      <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">处置意见：${out.opinion || '（未填写处置意见）'} · 受理规则 ${out.intake_rules_version || '—'}</div>
+      <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">处置意见：${out.opinion || '（未填写处置意见）'} · 受理规则 ${out.intake_rules_version || '—'} · 数据来源：${srcCode === 'ocr' ? 'OCR（自托管 OCR-VLM · SPI stub 演示口径）' : '平台内置 XML/OFD 文本层直读（免 Provider）'}</div>
       <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed">
         ⚖️ 以上受理各步均为<b>规则引擎确定性判断（非模型推断）</b>；后续识别环节如含大模型输出，将一律标注「AI 生成」+ 来源模型版本 + 置信度 —— 大模型生成的建议不自动执行业务操作，请人工确认。<br>
         🧾 本次受理操作（操作人：${IHUB_API.ACTOR.admin} · 时间 · 文件 SHA-256 摘要 · 目标实例）已写入<b>不可篡改审计日志</b>。
@@ -922,7 +1236,14 @@ window.startPipeline = function(){
     ihLoadKpi(); ihLoadBatches();
   }).catch(e => {
     clearInterval(timer);
+    document.getElementById('pl-batch').innerHTML = '<span class="text-danger text-[13px]">（未生成批次 · 受控拦截）</span>';
     document.getElementById('pl-state').innerHTML = `<span class="text-danger font-medium">✖ 受理被拒：${e.message_cn || e.message}</span>`;
+    for (let sIdx = 0; sIdx < 5; sIdx++) {
+      const ico = document.getElementById('pl-ico-' + sIdx);
+      if (ico) ico.innerHTML = '<span class="text-ink-4">⊘</span>';
+      const desc = document.getElementById('pl-desc-' + sIdx);
+      if (desc) desc.textContent = '受理被拒 · 流水线中止（无新数据写入）';
+    }
     toast(`受控受理被拒：${e.message_cn || e.message} —— 本次未提交、案件数据未修改`);
     document.getElementById('btn-upload').disabled = false;
   });

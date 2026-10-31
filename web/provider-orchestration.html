@@ -3,29 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Provider 编排配置 · 全球采购平台票据智能与合规中台</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: { extend: {
-    colors: {
-      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF'},
-      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
-      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
-      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
-      purple:{DEFAULT:'#722ED1',light:'#F5E8FF'},
-      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
-      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
-    },
-    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
-    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',cardhover:'0 4px 16px rgba(29,33,41,.10)'},
-    borderRadius:{card:'8px'}
-  } }
-}
-</script>
+<title>Provider 能力编排 · 全球采购平台票据智能与合规中台</title>
+<link rel="stylesheet" href="css/invoice-hub.css">
+<script src="js/auth-guard.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/demo-mode.js"></script>
 <style>
   body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
   .num{font-variant-numeric:tabular-nums;}
@@ -70,12 +52,13 @@ tailwind.config = {
     <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
     <div class="sb-group">接入受理</div>
     <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
-    <div class="sb-group">复核运营</div>
-    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
-    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">案件与复核</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🧾</span><span>票据案件工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配准备与字段映射</span></a>
     <div class="sb-group">编排与适配</div>
-    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
-    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 能力编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>采购平台适配器</span></a>
+    <a href="outbound-filing.html" data-k="outbound" class="sb-item"><span class="sb-ico">🚚</span><span>出站建档与回写</span></a>
     <div class="sb-group">审计与平台</div>
     <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
     <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
@@ -83,7 +66,6 @@ tailwind.config = {
     <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
   </nav>
   <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
-    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
     <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
   </div>
 </aside>
@@ -99,9 +81,9 @@ tailwind.config = {
     <nav class="text-[13px] flex items-center gap-1.5">
       <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary">总览仪表盘</a>
       <span class="text-ink-4">›</span>
-      <span class="text-ink-3 dark:text-gray-500">平台配置</span>
+      <span class="text-ink-3 dark:text-gray-500">编排与适配</span>
       <span class="text-ink-4">›</span>
-      <b class="text-ink-1 dark:text-white">Provider 编排配置</b>
+      <b class="text-ink-1 dark:text-white">Provider 能力编排</b>
     </nav>
   </div>
   <div class="flex items-center gap-3">
@@ -109,12 +91,13 @@ tailwind.config = {
     <button onclick="toggleDark()" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="深色模式">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
     </button>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 ihub-static-user">
       <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
       <div class="leading-tight">
         <div class="text-[13px] font-medium">陈铮 · 实施管理员</div>
         <div class="text-[11px] text-ink-3 dark:text-gray-500">Provider 管理权限</div>
       </div>
+      <button type="button" onclick="try{IHUB_AUTH.logout()}catch(e){sessionStorage.removeItem('ihub.auth');location.href='login.html'}" class="px-2.5 py-1 rounded-card border border-danger text-danger bg-card hover:bg-danger-light text-[12px] font-medium">退出</button>
     </div>
   </div>
 </header>
@@ -128,7 +111,7 @@ tailwind.config = {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7" stroke-linecap="round"/></svg>
       </div>
       <div>
-        <div class="text-[15px] font-semibold">Provider 编排层 <span class="text-[11px] font-medium ml-1 px-1.5 py-0.5 rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">本层只是编排层 · 不绑定任何单一厂商</span></div>
+        <div class="text-[15px] font-semibold">Provider 能力编排层 <span class="text-[11px] font-medium ml-1 px-1.5 py-0.5 rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300">本层只是编排层 · 不绑定任何单一厂商</span></div>
         <div class="text-[12px] text-ink-2 dark:text-gray-300 mt-0.5">可插拔识别与查验服务编排：支持客户已有服务、商业厂商（百望云 / 诺诺 / 海外 e-invoicing）、私有化自托管 VLM / OCR。新增 Provider 只需实现 SPI 并注册路由，不改平台内核。</div>
       </div>
     </div>
@@ -252,7 +235,7 @@ tailwind.config = {
   </section>
 
   <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
-    Provider 编排与路由策略仅服务采购发票 / 供应商发票处理 · 变更全部记入审计日志（操作人 / 时间 / 前后值）· v1.2-candidate 蓝图口径
+    Provider 能力编排与路由策略仅服务采购发票 / 供应商发票处理 · 变更全部记入审计日志（操作人 / 时间 / 前后值）· v1.2-candidate 蓝图口径
   </footer>
 </main>
 
@@ -499,6 +482,114 @@ function toast(msg){
 
 renderProviders();
 renderRules();
+
+/* ═══════════════ M4 WP4.7 接线：API 优先 + demo-mode 回退 ═══════════════ */
+const PID_MAP = { bw: 'bwyun-cn', nn: 'nuonuo-cn', cust: 'customer-ocr', self: 'selfhosted-ocr-vlm', sg: 'overseas-einv-sg', man: 'human-fallback' };
+
+const _pvOrigToggle = window.togglePv;
+window.togglePv = async function(i) {
+  if (!IHUB_DEMO.isLive()) { _pvOrigToggle(i); return; }
+  const p = PROVIDERS[i];
+  if (p.lock) { toast('「人工兜底」是所有降级链路的最终兜底，不可停用'); return; }
+  const pid = PID_MAP[p.id] || p.id;
+  try {
+    const res = await IHUB_API.postJSON('/v1/providers/' + pid + '/toggle', { enabled: !p.on, actor: '陈铮' });
+    p.on = res.enabled;
+    renderProviders();
+    toast(res.message);
+  } catch (e) {
+    toast(`操作被拒：${e.message_cn || e.message}`);
+  }
+};
+
+const _pvOrigTest = window.testPv;
+window.testPv = async function(i) {
+  if (!IHUB_DEMO.isLive()) { _pvOrigTest(i); return; }
+  const p = PROVIDERS[i], btn = document.getElementById('test-' + p.id);
+  btn.disabled = true; btn.textContent = '测试中…'; btn.classList.add('opacity-60');
+  const pid = PID_MAP[p.id] || p.id;
+  try {
+    const res = await IHUB_API.postJSON('/v1/providers/' + pid + '/test', { actor: '陈铮' });
+    toast(res.message);
+  } catch (e) {
+    toast(`连通测试失败：${e.message_cn || e.message}`);
+  } finally {
+    btn.disabled = false; btn.textContent = '测试连通'; btn.classList.remove('opacity-60');
+  }
+};
+
+const _pvOrigSim = window.runSim;
+window.runSim = async function() {
+  if (!IHUB_DEMO.isLive()) { _pvOrigSim(); return; }
+  const region = document.getElementById('sim-region').value;
+  const type   = document.getElementById('sim-type').value;
+  const carrier= document.getElementById('sim-carrier').value;
+  const out = document.getElementById('sim-out');
+  out.innerHTML = '<div class="text-[12px] text-ink-3 p-3">推演评估中…</div>';
+  try {
+    const res = await IHUB_API.postJSON('/v1/routing/simulate', {
+      region: region, invoice_type: type, carrier: carrier, doc_type_hint: type
+    });
+    const steps = res.steps;
+    out.innerHTML = `
+      <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-2 num">模拟输入：${region} | ${type} | ${carrier} · 基于当前策略推演（API 返回）</div>
+      <ol class="space-y-2">${steps.map((s, i) => `
+        <li class="sim-step" style="transition-delay:${i*180}ms">
+          <div class="flex items-start gap-2 p-2.5 rounded-card border ${
+            s.st==='ok'||s.st==='done' ? 'border-success/30 bg-success-light dark:bg-[#1C2E22]' :
+            s.st==='fail' ? 'border-warning/30 bg-warning-light dark:bg-[#2E2417]' :
+            s.st==='manual' ? 'border-warning/40 bg-warning-light dark:bg-[#2E2417]' :
+            s.st==='skip' ? 'border-dashed border-line dark:border-dline bg-surface dark:bg-[#23282F] opacity-70' :
+            'border-primary-mid dark:border-[#2A3F6B] bg-primary-light dark:bg-[#1B2A4A]'}">
+            <span class="mt-0.5 shrink-0">${
+              s.st==='ok'?'<span class="text-success">●</span>': s.st==='done'?'<span class="text-success">✔</span>':
+              s.st==='fail'?'<span class="text-warning">▼</span>': s.st==='manual'?'<span class="text-warning">🙋</span>':
+              s.st==='skip'?'<span class="text-ink-4">○</span>':'<span class="text-primary">ℹ</span>'}</span>
+            <div class="min-w-0 flex-1">
+              <div class="text-[12.5px] font-medium leading-snug">${s.t}</div>
+              <div class="text-[11.5px] text-ink-2 dark:text-gray-400 mt-0.5 leading-relaxed">${s.d}</div>
+              ${s.ms||s.cost?`<div class="text-[10.5px] text-ink-3 dark:text-gray-500 mt-1 num">⏱ ${s.ms||'—'} · 💰 ${s.cost||'—'}</div>`:''}
+            </div>
+          </div>
+        </li>`).join('')}
+      </ol>
+      <div class="sim-step mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed" style="transition-delay:${steps.length*180}ms">
+        ⚖️ 模拟为只读预演，不产生真实 Provider 调用与费用；发布策略后变更 diff 记入审计日志。阈值与路由基于实测准确率持续校准。
+      </div>`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      out.querySelectorAll('.sim-step').forEach(el=>el.classList.add('show'));
+    }));
+  } catch (e) {
+    _pvOrigSim();
+  }
+};
+
+(async function pvBoot(){
+  try {
+    await IHUB_DEMO.probe();
+    if (IHUB_DEMO.isLive()) {
+      const pvData = await IHUB_API.getJSON('/v1/providers');
+      if (pvData && pvData.providers) {
+        pvData.providers.forEach(p => {
+          const match = PROVIDERS.find(x => PID_MAP[x.id] === p.provider_id);
+          if (match) {
+            match.on = p.enabled;
+            match.lock = p.lock;
+          }
+        });
+        renderProviders();
+      }
+      const pol = await IHUB_API.getJSON('/v1/routing/policy');
+      if (pol && pol.version) {
+        const el = document.getElementById('policy-ver');
+        if (el) el.textContent = `策略版本 ${pol.version} · 已发布`;
+      }
+    }
+    document.body.dataset.ihubWp47 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';
+  } catch (e) {
+    document.body.dataset.ihubWp47 = 'demo';
+  }
+})();
 </script>
 <script>
 /* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */

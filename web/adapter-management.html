@@ -3,29 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>平台适配器管理 · 全球采购平台票据智能与合规中台</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: { extend: {
-    colors: {
-      primary:{DEFAULT:'#165DFF',light:'#F0F5FF',mid:'#BEDAFF'},
-      success:{DEFAULT:'#00B42A',light:'#E8FFEA'},
-      warning:{DEFAULT:'#FF7D00',light:'#FFF7E8'},
-      danger:{DEFAULT:'#F53F3F',light:'#FFECE8'},
-      purple:{DEFAULT:'#722ED1',light:'#F5E8FF'},
-      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
-      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
-    },
-    fontFamily:{sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif']},
-    boxShadow:{card:'0 2px 8px rgba(29,33,41,.06)',cardhover:'0 4px 16px rgba(29,33,41,.10)'},
-    borderRadius:{card:'8px'}
-  } }
-}
-</script>
+<title>采购平台适配器 · 全球采购平台票据智能与合规中台</title>
+<link rel="stylesheet" href="css/invoice-hub.css">
+<script src="js/auth-guard.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/demo-mode.js"></script>
 <style>
   body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
   .num{font-variant-numeric:tabular-nums;}
@@ -64,12 +46,13 @@ tailwind.config = {
     <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
     <div class="sb-group">接入受理</div>
     <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
-    <div class="sb-group">复核运营</div>
-    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
-    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">案件与复核</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🧾</span><span>票据案件工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配准备与字段映射</span></a>
     <div class="sb-group">编排与适配</div>
-    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
-    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 能力编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>采购平台适配器</span></a>
+    <a href="outbound-filing.html" data-k="outbound" class="sb-item"><span class="sb-ico">🚚</span><span>出站建档与回写</span></a>
     <div class="sb-group">审计与平台</div>
     <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
     <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
@@ -77,7 +60,6 @@ tailwind.config = {
     <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
   </nav>
   <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
-    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
     <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
   </div>
 </aside>
@@ -93,9 +75,9 @@ tailwind.config = {
     <nav class="text-[13px] flex items-center gap-1.5">
       <a href="dashboard-overview.html" class="text-ink-3 dark:text-gray-500 hover:text-primary">总览仪表盘</a>
       <span class="text-ink-4">›</span>
-      <span class="text-ink-3 dark:text-gray-500">平台配置</span>
+      <span class="text-ink-3 dark:text-gray-500">编排与适配</span>
       <span class="text-ink-4">›</span>
-      <b class="text-ink-1 dark:text-white">适配器管理</b>
+      <b class="text-ink-1 dark:text-white">采购平台适配器</b>
     </nav>
   </div>
   <div class="flex items-center gap-3">
@@ -103,12 +85,13 @@ tailwind.config = {
     <button onclick="toggleDark()" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="深色模式">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
     </button>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 ihub-static-user">
       <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">陈铮</div>
       <div class="leading-tight">
         <div class="text-[13px] font-medium">陈铮 · 实施管理员</div>
         <div class="text-[11px] text-ink-3 dark:text-gray-500">Adapter 管理权限</div>
       </div>
+      <button type="button" onclick="try{IHUB_AUTH.logout()}catch(e){sessionStorage.removeItem('ihub.auth');location.href='login.html'}" class="px-2.5 py-1 rounded-card border border-danger text-danger bg-card hover:bg-danger-light text-[12px] font-medium">退出</button>
     </div>
   </div>
 </header>
@@ -165,7 +148,7 @@ tailwind.config = {
   </section>
 
   <footer class="pb-2 pt-1 text-center text-[11px] text-ink-3 dark:text-gray-600">
-    平台适配器管理仅服务供应商采购发票建档与数据输出 · 真实建档为受控写操作（二次确认 + 权限校验 + 审计留痕）· 数据为演示样例 · v1.2-candidate 蓝图口径
+    采购平台适配器仅服务供应商采购发票建档与数据输出 · 真实建档为受控写操作（二次确认 + 权限校验 + 审计留痕）· 数据为演示样例 · v1.2-candidate 蓝图口径
   </footer>
 </main>
 
@@ -682,6 +665,72 @@ function toast(msg){
 /* 初始化：默认选中 SAP Ariba */
 renderCards();
 renderDetail();
+
+/* ════════════════ M4 WP4.7 接线：API 优先 + demo-mode 回退 ════════════════ */
+const _origRunTest = window.runTest;
+window.runTest = async function(){
+  if (!IHUB_DEMO.isLive()) { _origRunTest(); return; }
+  if (!simAdapter || simRunning) return;
+  simRunning = true;
+  const s = simAdapter.sim;
+  const run = document.getElementById('tm-run');
+  run.disabled = true; run.textContent = '测试执行中…'; run.classList.add('opacity-60');
+
+  try {
+    const fRes = await IHUB_API.postJSON('/v1/adapters/' + simAdapter.id + '/file', {
+      case_id: s.caseId, is_sandbox: true, actor: '陈铮'
+    });
+
+    // 逐步展示动画
+    const steps = fRes.steps || s.steps;
+    steps.forEach((st, i) => {
+      simTimers.push(setTimeout(() => {
+        if (i > 0) setStep(i - 1, 'done');
+        setStep(i, 'active');
+        document.getElementById('tm-step-detail').innerHTML =
+          `<b class="text-primary">步骤 ${i+1}/${steps.length} · ${st.t}</b> —— ${st.d}<br><span class="text-[11px] text-ink-3 dark:text-gray-500">测试通道，不影响生产数据；真实建档为受控写操作，需人工确认后执行。</span>`;
+      }, 300 + i * 500));
+    });
+
+    simTimers.push(setTimeout(() => {
+      setStep(steps.length - 1, 'done');
+      document.getElementById('tm-step-detail').innerHTML = `<b class="text-success">✓ 全链路推演完成</b> —— 步骤 ${steps.length}/${steps.length} · ${steps[steps.length-1].t}`;
+      const res = document.getElementById('tm-result');
+      const rcpt = fRes.receipt_no;
+      res.innerHTML = `✓ 测试建档成功 · ${simAdapter.name} 回执号: <b class="num">${rcpt}</b> · 回执已归档案件时间线<br><span class="text-[11px] text-ink-3 dark:text-gray-500 mt-1 block">本次为沙箱模拟：未写回案件状态、未触发生产建档；操作记录（操作人：陈铮 · 时间 · 报文摘要）已留痕。</span>`;
+      res.classList.remove('hidden');
+      run.textContent = '✓ 测试完成';
+      simRunning = false;
+      toast(`✓ 测试建档成功 · 回执号 ${rcpt}（测试通道 · 已留痕）`);
+    }, 300 + steps.length * 500 + 400));
+  } catch (e) {
+    run.disabled = false; run.textContent = '▶ 开始测试建档'; run.classList.remove('opacity-60');
+    simRunning = false;
+    toast(`测试建档被拒：${e.message_cn || e.message}`);
+  }
+};
+
+(async function adBoot(){
+  try {
+    await IHUB_DEMO.probe();
+    if (IHUB_DEMO.isLive()) {
+      const adRes = await IHUB_API.getJSON('/v1/adapters');
+      if (adRes && adRes.adapters) {
+        // 同步状态与指标
+        adRes.adapters.forEach(remote => {
+          const local = ADAPTERS.find(x => x.id === remote.id);
+          if (local && remote.metrics) {
+            local.metrics = remote.metrics;
+          }
+        });
+        renderCards();
+      }
+    }
+    document.body.dataset.ihubWp47 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';
+  } catch (e) {
+    document.body.dataset.ihubWp47 = 'demo';
+  }
+})();
 </script>
 <script>
 /* 全局菜单：悬浮抽屉（不占布局）+ 当前页高亮 · 遮罩/×/Esc 关闭 */

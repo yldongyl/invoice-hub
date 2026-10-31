@@ -36,6 +36,20 @@ ROOT = Path(__file__).resolve().parents[1]        # invoice-hub/
 BACKEND = ROOT / "backend"
 RUNTIME_DB = ROOT / "runtime" / "invoice_hub.db"
 
+
+def _find_python() -> str:
+    """优先使用 backend/.venv 解释器（修复 M-M3-MINOR-01：避免 Windows 系统 Python 缺少项目依赖）。"""
+    for venv_py in (
+        BACKEND / ".venv" / "Scripts" / "python.exe",  # Windows
+        BACKEND / ".venv" / "bin" / "python",         # POSIX
+    ):
+        if venv_py.exists():
+            return str(venv_py)
+    return sys.executable
+
+
+PYTHON_BIN = _find_python()
+
 # Windows 控制台 UTF-8 兜底（与 seed_loader/tools 同口径）：env 供子进程继承，本进程 stdout 亦强制
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 if hasattr(sys.stdout, "reconfigure"):
@@ -49,11 +63,11 @@ def _run(argv, cwd=BACKEND):
 
 
 def cmd_seed(a):
-    return _run([sys.executable, "-m", "app.services.seed_loader"])
+    return _run([PYTHON_BIN, "-m", "app.services.seed_loader"])
 
 
 def cmd_run(a):
-    argv = [sys.executable, "-m", "uvicorn", "app.main:app",
+    argv = [PYTHON_BIN, "-m", "uvicorn", "app.main:app",
             "--host", a.host, "--port", str(a.port)]
     if a.reload:
         argv.append("--reload")
@@ -61,15 +75,17 @@ def cmd_run(a):
 
 
 def cmd_run_agent(a):
-    print("agent/ = LangGraph 域（ADR-0001）：M5 实装。当前无可启动目标（占位），不阻塞 backend。")
-    print("端口约定：8001（agent 服务，仅消费 backend API）。")
-    return 0
+    print("启动 agent 服务（LangGraph 域 · 端口 8001 · 零 DB 直连）...")
+    argv = [PYTHON_BIN, "-m", "uvicorn", "agent.main:app",
+            "--host", getattr(a, "host", "0.0.0.0"), "--port", str(getattr(a, "port", 8001))]
+    return _run(argv)
 
 
 def cmd_run_mcp(a):
-    print("mcp/ = MCP Server 六工具（FN-A-04）：M5 实装。当前无可启动目标（占位），不阻塞 backend。")
-    print("端口约定：8002（streamable-http）。")
-    return 0
+    print("启动 MCP Server（streamable-http 协议 · 端口 8002 · 零 DB 直连）...")
+    argv = [PYTHON_BIN, "-m", "uvicorn", "mcp.main:app",
+            "--host", getattr(a, "host", "0.0.0.0"), "--port", str(getattr(a, "port", 8002))]
+    return _run(argv)
 
 
 def cmd_run_workers(a):
@@ -79,46 +95,68 @@ def cmd_run_workers(a):
 
 
 def cmd_test(a):
-    return _run([sys.executable, "-m", "pytest", "-q"])
+    return _run([PYTHON_BIN, "-m", "pytest", "-q"], cwd=ROOT)
 
 
 def cmd_test_e2e(a):
-    # M3 起：场景断言以 pytest -m scenario 承载（backend/tests/test_scenarios_*.py），
-    # 方法论参考旧 S01~S16（仅方法论，代码不复用）；tests/scenarios/README.md 维护场景台账。
-    return _run([sys.executable, "-m", "pytest", "-q", "-m", "scenario"])
+    # 场景断言以 pytest -m scenario 承载（tests/scenarios/ 与 backend/tests/），
+    # 完整场景集 = 17 条（M3×5 + M4×5 + M5×7，P08 §1.3）；tests/scenarios/README.md 维护场景台账。
+    return _run([PYTHON_BIN, "-m", "pytest", "-q", "-m", "scenario"], cwd=ROOT)
 
 
 def cmd_test_redline(a):
-    # 红线回归集 R-01~R-06（P08 §1.4）：每里程碑门禁必跑；本里程碑不适用项标 skip 并注明移交里程碑
-    return _run([sys.executable, "-m", "pytest", "-q", "-m", "redline"])
+    # 红线回归集 R-01~R-06（P08 §1.4）：每里程碑门禁必跑，零 skip 全量激活
+    return _run([PYTHON_BIN, "-m", "pytest", "-q", "-m", "redline"], cwd=ROOT)
+
+
+def cmd_demo_replay(a):
+    # 蓝图 §13.2 八大 Demo 场景回放（输出演示步骤对照表 · P08 §1.3）
+    return _run([PYTHON_BIN, str(ROOT / "scripts" / "demo_replay.py")], cwd=ROOT)
 
 
 def cmd_intake_poll_mailbox(a):
-    return _run([sys.executable, "-m", "app.workers.jobs_cli", "mailbox"])
+    return _run([PYTHON_BIN, "-m", "app.workers.jobs_cli", "mailbox"])
 
 
 def cmd_intake_poll_dox(a):
-    return _run([sys.executable, "-m", "app.workers.jobs_cli", "dox"])
+    return _run([PYTHON_BIN, "-m", "app.workers.jobs_cli", "dox"])
 
 
 def cmd_intake_demo_drop(a):
-    return _run([sys.executable, "-m", "app.workers.jobs_cli", "demo-drop"])
+    return _run([PYTHON_BIN, "-m", "app.workers.jobs_cli", "demo-drop"])
 
 
 def cmd_verify_enums(a):
-    return _run([sys.executable, str(ROOT / "tools" / "check_enums.py")], cwd=ROOT)
+    return _run([PYTHON_BIN, str(ROOT / "tools" / "check_enums.py")], cwd=ROOT)
 
 
 def cmd_verify_contracts(a):
-    return _run([sys.executable, str(ROOT / "tools" / "validate_contracts.py")], cwd=ROOT)
+    return _run([PYTHON_BIN, str(ROOT / "tools" / "validate_contracts.py")], cwd=ROOT)
 
 
 def cmd_verify_ui(a):
-    return _run([sys.executable, str(ROOT / "tools" / "check_seeds_vs_ui.py")], cwd=ROOT)
+    return _run([PYTHON_BIN, str(ROOT / "tools" / "check_seeds_vs_ui.py")], cwd=ROOT)
+
+
+def cmd_verify_contracts_sync(a):
+    """api-portal 页面文案与 contracts 契约文件同步性抽查校验（FN-A-09 · CI 门禁）。"""
+    rc1 = _run([PYTHON_BIN, str(ROOT / "tools" / "verify_portal_sync.py")], cwd=ROOT)
+    if rc1:
+        return rc1
+    return _run([PYTHON_BIN, str(ROOT / "tools" / "check_breaking_changes.py")], cwd=ROOT)
+
+
+def cmd_verify(a):
+    """全量一致性校验依次执行（收工检查单与 CI 前置门禁四项合一）。"""
+    for name in ("verify:enums", "verify:contracts", "verify:ui", "verify:contracts-sync"):
+        rc = main_one(name, a)
+        if rc:
+            return rc
+    return 0
 
 
 def cmd_smoke(a):
-    return _run([sys.executable, str(ROOT / "tools" / "smoke.py"), "--base", a.base], cwd=ROOT)
+    return _run([PYTHON_BIN, str(ROOT / "tools" / "smoke.py"), "--base", a.base], cwd=ROOT)
 
 
 def cmd_clean(a):
@@ -131,10 +169,9 @@ def cmd_clean(a):
             extra.unlink()
             removed.append(str(extra))
     except PermissionError as e:
-        print(f"clean 受阻（文件被占用）：{e}\n"
-              "请先停止 backend 进程（RUNBOOK §8）；若仅想恢复演示态，可直接重跑 seed——"
-              "make seed 本身即表级重建，无需删文件。")
-        return 1
+        print(f"clean 提示（文件被占用）：{e}\n"
+              "backend 进程运行中；物理文件保持，下一步 seed 将自动执行表级 DROP/CREATE 重建与数据重置。")
+        return 0
     print("clean 完成，删除：" + ("、".join(removed) if removed else "（无数据文件，已是干净态）"))
     print("恢复初始演示态：python scripts/hub.py seed")
     return 0
@@ -148,7 +185,9 @@ def main():
     p = sub.add_parser("run"); p.add_argument("--host", default="127.0.0.1"); p.add_argument("--port", type=int, default=8000); p.add_argument("--reload", action="store_true")
     sub.add_parser("run-agent"); sub.add_parser("run-mcp"); sub.add_parser("run-workers")
     sub.add_parser("test"); sub.add_parser("test-e2e"); sub.add_parser("test-redline")
+    sub.add_parser("demo-replay")
     sub.add_parser("verify:enums"); sub.add_parser("verify:contracts"); sub.add_parser("verify:ui")
+    sub.add_parser("verify:contracts-sync")
     sub.add_parser("verify")
     p = sub.add_parser("smoke"); p.add_argument("--base", default="http://127.0.0.1:8000")
     sub.add_parser("clean")
@@ -159,11 +198,7 @@ def main():
     a = ap.parse_args()
 
     if a.cmd == "verify":
-        for name in ("verify:enums", "verify:contracts", "verify:ui"):
-            rc = main_one(name, a)
-            if rc:
-                return rc
-        return 0
+        return cmd_verify(a)
     if a.cmd == "all":
         for name in ("clean", "seed", "verify", "test", "test-redline"):
             rc = main_one(name, a)
@@ -178,9 +213,10 @@ def main_one(name, a):
     return {
         "seed": cmd_seed, "run": cmd_run, "run-agent": cmd_run_agent, "run-mcp": cmd_run_mcp,
         "run-workers": cmd_run_workers, "test": cmd_test, "test-e2e": cmd_test_e2e,
-        "test-redline": cmd_test_redline,
+        "test-redline": cmd_test_redline, "demo-replay": cmd_demo_replay,
         "verify:enums": cmd_verify_enums, "verify:contracts": cmd_verify_contracts,
-        "verify:ui": cmd_verify_ui, "smoke": cmd_smoke, "clean": cmd_clean,
+        "verify:ui": cmd_verify_ui, "verify:contracts-sync": cmd_verify_contracts_sync,
+        "verify": cmd_verify, "smoke": cmd_smoke, "clean": cmd_clean,
         "intake:poll-mailbox": cmd_intake_poll_mailbox, "intake:poll-dox": cmd_intake_poll_dox,
         "intake:demo-drop": cmd_intake_demo_drop,
     }[name](a)

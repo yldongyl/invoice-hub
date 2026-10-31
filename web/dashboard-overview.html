@@ -4,33 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>总览仪表盘 · 全球采购平台票据智能与合规中台</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      colors: {
-        primary: { DEFAULT: '#165DFF', light: '#F0F5FF', mid: '#BEDAFF' },
-        success: { DEFAULT: '#00B42A', light: '#E8FFEA' },
-        warning: { DEFAULT: '#FF7D00', light: '#FFF7E8' },
-        danger:  { DEFAULT: '#F53F3F', light: '#FFECE8' },
-        ink:  { 1: '#1D2129', 2: '#4E5969', 3: '#86909C', 4: '#C9CDD4' },
-        line: '#E5E6EB',
-        surface: '#F7F8FA',
-        card: '#FFFFFF',
-        dcard: '#1D2129',
-        dline: '#333A45'
-      },
-      fontFamily: { sans: ['Inter', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'sans-serif'] },
-      boxShadow: { card: '0 2px 8px rgba(29,33,41,.06)', cardhover: '0 4px 16px rgba(29,33,41,.10)' },
-      borderRadius: { card: '8px' }
-    }
-  }
-}
-</script>
+<link rel="stylesheet" href="css/invoice-hub.css">
 <style>
   body { font-family: Inter, 'Noto Sans SC', 'Source Han Sans SC', sans-serif; }
   .num { font-variant-numeric: tabular-nums; }
@@ -74,12 +48,13 @@ tailwind.config = {
     <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
     <div class="sb-group">接入受理</div>
     <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
-    <div class="sb-group">复核运营</div>
-    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
-    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">案件与复核</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🧾</span><span>票据案件工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配准备与字段映射</span></a>
     <div class="sb-group">编排与适配</div>
-    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
-    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 能力编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>采购平台适配器</span></a>
+    <a href="outbound-filing.html" data-k="outbound" class="sb-item"><span class="sb-ico">🚚</span><span>出站建档与回写</span></a>
     <div class="sb-group">审计与平台</div>
     <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
     <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
@@ -87,7 +62,6 @@ tailwind.config = {
     <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
   </nav>
   <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
-    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
     <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
   </div>
 </aside>
@@ -124,11 +98,12 @@ tailwind.config = {
       class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
       <svg id="icon-theme" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
     </button>
-    <button class="relative w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="消息">
+    <a href="audit-reports.html" onclick="toast('消息中心接入实时告警计数（CON-14 决议降级为告警入口）');"
+      class="relative w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="告警中心入口 · CON-14 决议降级">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9z"/><path d="M10 18a2 2 0 0 0 4 0" stroke-linecap="round"/></svg>
-      <span class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-danger text-white text-[10px] leading-4 text-center num">5</span>
-    </button>
-    <div class="flex items-center gap-2">
+      <span id="msg-bell-badge" class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-danger text-white text-[10px] leading-4 text-center num">5</span>
+    </a>
+    <div class="flex items-center gap-2 ihub-static-user">
       <div class="w-8 h-8 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[12px] font-semibold">王莉</div>
       <div class="leading-tight">
         <div class="text-[13px] font-medium">王莉 · 财务经理</div>
@@ -292,7 +267,7 @@ tailwind.config = {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7.5L11 16M16 7.5L13 16M8.5 6h7" stroke-linecap="round"/></svg>
             </span>
             <span>
-              <span class="block text-[13px] font-medium group-hover:text-primary">Provider 编排配置</span>
+              <span class="block text-[13px] font-medium group-hover:text-primary">Provider 能力编排</span>
               <span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">路由策略 · 降级 · 成本</span>
             </span>
           </a>
@@ -301,7 +276,7 @@ tailwind.config = {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7" stroke-linecap="round"/></svg>
             </span>
             <span>
-              <span class="block text-[13px] font-medium group-hover:text-primary">适配器管理</span>
+              <span class="block text-[13px] font-medium group-hover:text-primary">采购平台适配器</span>
               <span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">Ariba / Oracle / Coupa</span>
             </span>
           </a>
@@ -367,6 +342,7 @@ tailwind.config = {
 </main>
 
 <!-- M2 WP2.3 接线：REST 消费 + demo-mode 回退（ui-design 原型脚本保留为 fallback 数据源） -->
+<script src="js/auth-guard.js"></script>
 <script src="js/api-client.js"></script>
 <script src="js/demo-mode.js"></script>
 <script>

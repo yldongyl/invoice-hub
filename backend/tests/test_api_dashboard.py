@@ -159,9 +159,14 @@ def test_alerts_ai_advice_note_discipline(client):
 def test_alerts_case_ref_and_dashboard_same_source(client):
     """告警引用案件存在（或已登记豁免）；dashboard.alerts 与 /v1/alerts 同源一致（单一 builder）。"""
     al = client.get("/v1/alerts", params={"instance": "CN"}).json()["items"]
-    assert {a["case_ref"] for a in al if a["case_ref"]} <= {"INV-CN-2026-0385", "INV-CN-2026-0381"}
+    assert {a["case_ref"] for a in al if a["case_ref"]} == {"INV-CN-2026-0385", "INV-CN-2026-0381"}
     d = client.get("/v1/dashboard", params={"instance": "CN"}).json()["alerts"]
     assert d == al
+
+    al_os = client.get("/v1/alerts", params={"instance": "OS"}).json()["items"]
+    assert {a["case_ref"] for a in al_os if a["case_ref"]} == {
+        "INV-SG-2026-0122", "INV-SG-2026-0125", "INV-SG-2026-0123"
+    }
 
 
 def test_alerts_bad_ref_raises(fresh_session, monkeypatch):

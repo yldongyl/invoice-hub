@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 from app.domain import models as m
 from app.domain.registry import get_registry
-from app.services import audit_chain, config_center, state_machine
+from app.services import audit_chain, config_center, rbac_service, state_machine
 from app.services.state_machine import STATUS
 from app.services.audit_chain import append_block, new_trace_id, now_iso
 from app.services.errors import (E_AUDIT_WRITE_FAILED, E_CONFIRM_INVALID,
@@ -134,6 +134,7 @@ def _consume_token(session, token: str | None, actor: str, action: str, scope_re
 
 
 def _require_user(session, actor: str) -> m.UserAccount:
+    rbac_service.assert_not_ai_agent(actor)
     user = session.get(m.UserAccount, actor)
     if user is None:
         raise CommandError(E_PERM_DENIED,
@@ -145,28 +146,16 @@ def _require_user(session, actor: str) -> m.UserAccount:
 
 
 def _resolve_role_name(session, user: m.UserAccount) -> str:
-    """UserAccount.role 为展示串（如「复核员 · 财务经理」），RoleDef.name 为矩阵名——取最长包含匹配。"""
-    names = [r.name for r in session.scalars(select(m.RoleDef)) if r.name in (user.role or "")]
-    if not names:
-        raise CommandError(E_PERM_DENIED, f"无法解析用户角色：{user.role!r}", http=403)
-    return max(names, key=len)
+    """UserAccount.role 为展示串（如「复核员 · 财务经理」），RoleDef.name 为矩阵名——委托 rbac_service 解析。"""
+    return rbac_service.resolve_role_name(session, user)
 
 
 def require_permission(session, actor: str, action: str) -> tuple[m.UserAccount, str]:
-    """要素①：权限位校验（矩阵暂用 users_roles.json，M5 实装 RBAC 服务）。"""
-    user = _require_user(session, actor)
+    """要素①：权限位校验（实装 RBAC 服务，替换 M1 临时桩）。"""
+    if action not in ACTION_PERMS:
+        raise CommandError(E_PERM_DENIED, f"未定义动作 {action!r} 的权限映射", http=403)
     perm = ACTION_PERMS[action]
-    meta = session.get(m.SeedMeta, "permissions")
-    perms = (meta.payload.get("permissions") if meta else None) or []
-    if perm not in perms:
-        raise CommandError(E_PERM_DENIED, f"权限位 {perm!r} 不在 users_roles 权限矩阵", http=403)
-    role_name = _resolve_role_name(session, user)
-    role = session.get(m.RoleDef, role_name)
-    grants = role.grants or []
-    if perms.index(perm) >= len(grants) or grants[perms.index(perm)] != 1:
-        raise CommandError(E_PERM_DENIED,
-                           f"角色 {role_name} 不具备权限位「{perm}」（FN-9-02 矩阵 / FN-0-08 要素①）", http=403)
-    return user, role_name
+    return rbac_service.require_permission(session, actor, perm)
 
 
 def _op(user: m.UserAccount) -> str:
@@ -377,12 +366,14 @@ def _do_advice_reject(session, case, user, role, *, advice_id, reason):
 
 
 def _asset_type_for(key: str) -> str:
-    """受控发布资产域路由（M3：channel:* → 渠道配置；intake_rules → 受理规则版本资产）。"""
+    """受控发布资产域路由（M3：channel:* → 渠道配置；intake_rules → 受理规则版本资产；M4: routing_policy → 路由策略）。"""
     from app.services import versioning
     if key.startswith("channel:"):
         return "channel_config"
     if key == "intake_rules":
         return "intake_rules"
+    if key == "routing_policy" or key.startswith("routing:"):
+        return "routing_policy"
     return versioning.ASSET_CONFIG
 
 

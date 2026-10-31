@@ -6,11 +6,11 @@
 演示口径：risk-challenge 为本地凭据桩（SSO/MFA 真实身份属 M5）。
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.services import case_repository as repo
-from app.services import governed_commands as gc
+from app.services import governed_commands as gc, identity_service
 from app.services.errors import CommandError
 from app.services.persistence import get_session
 from app.services.tenant import TenantContext
@@ -57,50 +57,55 @@ def _fail(e: CommandError):
 
 
 @router.post("/cases/{case_id}/risk-challenge")
-def risk_challenge(case_id: str, body: ChallengeBody):
+def risk_challenge(case_id: str, body: ChallengeBody, request: Request):
     with get_session() as session:
         try:
+            actor = identity_service.bind_actor(request.state.ihub_session, body.actor)
             ctx = TenantContext.of(body.instance)
             if repo.get_case_row(session, ctx, case_id) is None:
                 raise HTTPException(404, detail={"error_code": "CASE_NOT_FOUND",
                                                  "message": f"案件 {case_id} 不存在"})
-            return gc.issue_risk_challenge(session, body.actor, body.action, case_id)
+            return gc.issue_risk_challenge(session, actor, body.action, case_id)
         except CommandError as e:
             _fail(e)
 
 
 @router.post("/batch/risk-challenge")
-def batch_risk_challenge(body: ChallengeBody):
+def batch_risk_challenge(body: ChallengeBody, request: Request):
     scope = gc.scope_ref(body.action, None, body.case_ids)
     with get_session() as session:
         try:
-            return gc.issue_risk_challenge(session, body.actor, body.action, scope)
+            actor = identity_service.bind_actor(request.state.ihub_session, body.actor)
+            return gc.issue_risk_challenge(session, actor, body.action, scope)
         except CommandError as e:
             _fail(e)
 
 
 @router.post("/audit/risk-challenge")
-def export_risk_challenge(body: ChallengeBody):
+def export_risk_challenge(body: ChallengeBody, request: Request):
     with get_session() as session:
         try:
-            return gc.issue_risk_challenge(session, body.actor, "export", "audit-export")
+            actor = identity_service.bind_actor(request.state.ihub_session, body.actor)
+            return gc.issue_risk_challenge(session, actor, "export", "audit-export")
         except CommandError as e:
             _fail(e)
 
 
 @router.post("/config/{key}/risk-challenge")
-def config_risk_challenge(key: str, body: ChallengeBody):
+def config_risk_challenge(key: str, body: ChallengeBody, request: Request):
     with get_session() as session:
         try:
+            actor = identity_service.bind_actor(request.state.ihub_session, body.actor)
             return gc.issue_risk_challenge(
-                session, body.actor, body.action, gc.scope_ref(body.action, config_key=key))
+                session, actor, body.action, gc.scope_ref(body.action, config_key=key))
         except CommandError as e:
             _fail(e)
 
 
-def _execute(session, body: ActionBody, action: str, case_id: str | None = None,
+def _execute(session, body: ActionBody, action: str, request: Request, case_id: str | None = None,
              case_ids: list[str] | None = None):
-    return gc.execute(session, actor=body.actor, action=action, instance=body.instance,
+    actor = identity_service.bind_actor(request.state.ihub_session, body.actor)
+    return gc.execute(session, actor=actor, action=action, instance=body.instance,
                       case_id=case_id, case_ids=case_ids, token=body.token,
                       self_confirmed=body.self_confirmed, opinion=body.opinion,
                       co_signer=body.co_signer, co_signer_self=body.co_signer_self,
@@ -111,13 +116,13 @@ def _execute(session, body: ActionBody, action: str, case_id: str | None = None,
 
 
 @router.post("/cases/{case_id}/actions/{action}")
-def case_action(case_id: str, action: str, body: ActionBody):
+def case_action(case_id: str, action: str, body: ActionBody, request: Request):
     if action not in gc.ACTION_PERMS or action.startswith("batch_") or action == "intake":
         raise HTTPException(400, detail={"error_code": "UNKNOWN_ACTION",
                                          "message": f"不支持的单案动作 {action!r}"})
     with get_session() as session:
         try:
-            out = _execute(session, body, action, case_id=case_id)
+            out = _execute(session, body, action, request, case_id=case_id)
             # §3 收尾：响应附契约合规 full 聚合（校验面=case 字段，信封为服务层结果）
             ctx = TenantContext.of(body.instance)
             agg = repo.aggregate_case(session, ctx, case_id)
@@ -131,24 +136,24 @@ def case_action(case_id: str, action: str, body: ActionBody):
 
 
 @router.post("/batch/actions/{action}")
-def batch_action(action: str, body: BatchActionBody):
+def batch_action(action: str, body: BatchActionBody, request: Request):
     if action not in ("batch_claim", "batch_release"):
         raise HTTPException(400, detail={"error_code": "UNKNOWN_ACTION",
                                          "message": f"不支持的批量动作 {action!r}"})
     with get_session() as session:
         try:
-            return _execute(session, body, action, case_ids=body.case_ids)
+            return _execute(session, body, action, request, case_ids=body.case_ids)
         except CommandError as e:
             _fail(e)
 
 
 @router.post("/config/actions/{action}")
-def config_action(action: str, body: ActionBody):
+def config_action(action: str, body: ActionBody, request: Request):
     if action not in ("publish", "rollback"):
         raise HTTPException(400, detail={"error_code": "UNKNOWN_ACTION",
                                          "message": f"不支持的配置动作 {action!r}"})
     with get_session() as session:
         try:
-            return _execute(session, body, action)
+            return _execute(session, body, action, request)
         except CommandError as e:
             _fail(e)

@@ -4,28 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>票据案件详情 · InvoiceCase · 全球采购平台票据智能与合规中台</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: { extend: {
-    colors: {
-      primary: { DEFAULT:'#165DFF', light:'#F0F5FF', mid:'#BEDAFF' },
-      success: { DEFAULT:'#00B42A', light:'#E8FFEA' },
-      warning: { DEFAULT:'#FF7D00', light:'#FFF7E8' },
-      danger:  { DEFAULT:'#F53F3F', light:'#FFECE8' },
-      purple:  { DEFAULT:'#722ED1', light:'#F5E8FF' },
-      ink:{1:'#1D2129',2:'#4E5969',3:'#86909C',4:'#C9CDD4'},
-      line:'#E5E6EB', surface:'#F7F8FA', card:'#FFFFFF', dcard:'#1D2129', dline:'#333A45'
-    },
-    fontFamily:{ sans:['Inter','Noto Sans SC','Source Han Sans SC','PingFang SC','sans-serif'] },
-    boxShadow:{ card:'0 2px 8px rgba(29,33,41,.06)', cardhover:'0 4px 16px rgba(29,33,41,.10)' },
-    borderRadius:{ card:'8px' }
-  } }
-}
-</script>
+<link rel="stylesheet" href="css/invoice-hub.css">
 <style>
   body{font-family:Inter,'Noto Sans SC','Source Han Sans SC',sans-serif;}
   .num{font-variant-numeric:tabular-nums;}
@@ -67,12 +46,13 @@ tailwind.config = {
     <a href="dashboard-overview.html" data-k="dashboard" class="sb-item"><span class="sb-ico">📊</span><span>总览仪表盘</span></a>
     <div class="sb-group">接入受理</div>
     <a href="invoice-intake.html" data-k="intake" class="sb-item"><span class="sb-ico">📥</span><span>票据接入与批次</span></a>
-    <div class="sb-group">复核运营</div>
-    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🤖</span><span>Agent 对话工作台</span></a>
-    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配就绪与字段映射</span></a>
+    <div class="sb-group">案件与复核</div>
+    <a href="agent-workbench.html" data-k="workbench" class="sb-item"><span class="sb-ico">🧾</span><span>票据案件工作台</span></a>
+    <a href="matching-mapping.html" data-k="matching" class="sb-item"><span class="sb-ico">🎯</span><span>匹配准备与字段映射</span></a>
     <div class="sb-group">编排与适配</div>
-    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 编排</span></a>
-    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>适配器管理</span></a>
+    <a href="provider-orchestration.html" data-k="provider" class="sb-item"><span class="sb-ico">🔌</span><span>Provider 能力编排</span></a>
+    <a href="adapter-management.html" data-k="adapter" class="sb-item"><span class="sb-ico">🔗</span><span>采购平台适配器</span></a>
+    <a href="outbound-filing.html" data-k="outbound" class="sb-item"><span class="sb-ico">🚚</span><span>出站建档与回写</span></a>
     <div class="sb-group">审计与平台</div>
     <a href="audit-reports.html" data-k="audit" class="sb-item"><span class="sb-ico">🧾</span><span>审计与报表</span></a>
     <a href="platform-admin.html" data-k="admin" class="sb-item"><span class="sb-ico">⚙️</span><span>平台支撑管理</span></a>
@@ -80,7 +60,6 @@ tailwind.config = {
     <a href="api-portal.html" data-k="api" class="sb-item"><span class="sb-ico">Ⓜ️</span><span>接口与 MCP 门户</span></a>
   </nav>
   <div class="shrink-0 border-t border-line dark:border-dline p-2 space-y-0.5">
-    <a href="demo-landing.html" class="sb-item"><span class="sb-ico">🎤</span><span>演示宣讲首页</span></a>
     <a href="login.html" class="sb-item"><span class="sb-ico">🔐</span><span>登录页</span></a>
   </div>
 </aside>
@@ -188,6 +167,7 @@ tailwind.config = {
           ⚖️ <b class="text-ink-2 dark:text-gray-400">受控写操作</b>：所有 Action 需复核员权限 + 二次确认，写入时间线并留痕；<br>LLM / AI 建议<b class="text-danger">不会自动执行</b>任何业务动作（付款、审批、银行信息修改属高风险，保留企业授权）。
         </div>
         <div class="flex items-center gap-2.5 shrink-0">
+          <button onclick="openManualVerifyModal()" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-success hover:text-success transition-colors" title="查验超时/失败人工查验登记（CON-13 决议）">🔍 人工查验</button>
           <button onclick="openEdit()" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">✎ 人工修正字段</button>
           <button onclick="openAction('return')" class="px-3.5 py-2 rounded-card border border-warning text-warning text-[13px] font-medium hover:bg-warning-light dark:hover:bg-[#2E2417] transition-colors">退回供应商</button>
           <button onclick="openAction('hold')" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-warning hover:text-warning transition-colors">挂起调查</button>
@@ -294,6 +274,7 @@ tailwind.config = {
 <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2"></div>
 
 <!-- M2 WP2.3 接线：REST 消费 + demo-mode 回退（ui-design 原型脚本保留为 fallback 数据源） -->
+<script src="js/auth-guard.js"></script>
 <script src="js/api-client.js"></script>
 <script src="js/demo-mode.js"></script>
 <script>
@@ -1326,6 +1307,75 @@ function ensureUnblockBtn(){
 { // 渲染收尾挂点：每次 loadCase 后同步解除按钮显隐（原型函数零改动，包装不改语义）
   const _origLoadCase = loadCase;
   window.loadCase = function(id){ const r = _origLoadCase(id); ensureUnblockBtn(); return r; };
+}
+
+/* 人工查验工作台（FN-8-15 / CON-13 决议：查验超时/失败人工查验登记，method=manual 留痕） */
+let _mvOverlay = null;
+function openManualVerifyModal(){
+  _mvOverlay = document.createElement('div');
+  _mvOverlay.className = 'fixed inset-0 z-50 bg-black/40 flex items-center justify-center';
+  _mvOverlay.innerHTML = `
+  <div class="w-[480px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover p-5">
+    <div class="text-[15px] font-semibold">🔍 人工查验登记（CON-13 决议 · method=manual）</div>
+    <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">
+      针对税局查验超时（NOT_VERIFIED）或验真异常件，复核员可前往税局查验平台/官方名录手工核验并留存结果
+    </div>
+    <div class="mt-3 space-y-3 text-[12px]">
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1">查验渠道</label>
+        <select id="mv-channel" class="w-full text-[13px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2">
+          <option>国家税务总局全国增值税发票查验平台（手工查验）</option>
+          <option>Singapore IRAS / ACRA UEN 名录手工查询</option>
+          <option>供应商邮件二次确认</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1">查验结论</label>
+        <select id="mv-result" class="w-full text-[13px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2">
+          <option value="PASSED">✓ 查验通过 · 发票信息真实有效</option>
+          <option value="FAILED">✗ 查验不符 · 疑似虚开/篡改发票</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1">手工查验流水号 / 回执编号</label>
+        <input id="mv-receipt" placeholder="如 manual-rcpt-20261021-001" class="w-full text-[13px] num rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1">查验说明 / 备注 <span class="text-danger">*</span></label>
+        <textarea id="mv-note" rows="2" placeholder="填写人工核实详情（查验截图已留存归档）" class="w-full text-[13px] rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 resize-none"></textarea>
+      </div>
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <button onclick="closeManualVerifyModal()" class="px-4 py-2 rounded-card border border-line dark:border-dline text-[13px]">取消</button>
+      <button onclick="doManualVerify()" class="px-4 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF]">确认登记并留痕</button>
+    </div>
+  </div>`;
+  document.body.appendChild(_mvOverlay);
+}
+function closeManualVerifyModal(){ if(_mvOverlay){ _mvOverlay.remove(); _mvOverlay = null; } }
+function doManualVerify(){
+  const channel = _mvOverlay.querySelector('#mv-channel').value;
+  const res = _mvOverlay.querySelector('#mv-result').value;
+  const receipt = _mvOverlay.querySelector('#mv-receipt').value.trim() || 'manual-rcpt-' + Date.now();
+  const note = _mvOverlay.querySelector('#mv-note').value.trim();
+  if(!note){ toast('查验说明为必填项（CON-13 审计要求）'); return; }
+  closeManualVerifyModal();
+  const authCheck = cur.checks.find(c => c.k.includes('authenticity'));
+  if(authCheck){
+    authCheck.v = res;
+    authCheck.note = `人工查验登记（${channel} · 回执: ${receipt}）：${note} · 操作人: 王莉 (method=manual)`;
+  }
+  cur.timeline.push({
+    t: nowStr(),
+    a: 'human',
+    act: res === 'PASSED' ? 'SM2_VERIFY' : 'SM2_VERIFY_FAILED',
+    d: `人工查验登记（${res} · method=manual）`,
+    x: `渠道：${channel} · 回执：${receipt} · 备注：${note} · CON-13 决议落地`,
+    v: 'manual-verify v1.0'
+  });
+  renderChecks();
+  renderTimeline();
+  toast(`✓ 已登记人工查验结果（${res} · method=manual · CON-13 决议）· 操作人王莉 · 已写入不可篡改时间线`);
 }
 
 /* ═══════════════ 工具 ═══════════════ */

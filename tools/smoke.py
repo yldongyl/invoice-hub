@@ -42,11 +42,13 @@ def record(step, name, ok, msg=""):
     return ok
 
 
-def http_json(base, path, method="GET", body=None, timeout=15):
+def http_json(base, path, method="GET", body=None, timeout=15, headers=None):
     url = base + path
     data = json.dumps(body).encode("utf-8") if body is not None else None
-    req = urllib.request.Request(url, data=data, method=method,
-                                 headers={"Content-Type": "application/json"} if data else {})
+    req_headers = dict(headers or {})
+    if data:
+        req_headers.setdefault("Content-Type", "application/json")
+    req = urllib.request.Request(url, data=data, method=method, headers=req_headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             raw = r.read().decode("utf-8")
@@ -101,21 +103,37 @@ def main():
     print(f"invoice-hub 冒烟检查 @ {base}")
     fails = 0
 
+    auth_headers = {}
+    code_mfa, mfa = http_json(base, "/api/platform/auth/mfa/challenge", "POST", {
+        "username": "王莉",
+        "tenant_id": "TENANT-CN-LANWU-001",
+    })
+    code, login = http_json(base, "/api/platform/auth/login", "POST", {
+        "username": "王莉",
+        "password": "demo-password",
+        "tenant_id": "TENANT-CN-LANWU-001",
+        "mfa_challenge_id": mfa.get("challenge_id") if isinstance(mfa, dict) else None,
+        "mfa_code": mfa.get("dev_code") if isinstance(mfa, dict) else None,
+        "remember_device": True,
+    })
+    if code == 200 and isinstance(login, dict) and login.get("session_token"):
+        auth_headers = {"Authorization": "Bearer " + login["session_token"]}
+
     # 01 healthz
     code, h = http_json(base, "/healthz")
     fails += not record("01", "healthz", code == 200 and isinstance(h, dict) and h.get("status") == "ok",
                         f"status={code} body={str(h)[:120]}")
 
     # 02 seed 装载断言（11 案件：CN 7 + OS 4）
-    c1, cn = http_json(base, "/v1/cases?instance=CN")
-    c2, os_ = http_json(base, "/v1/cases?instance=OS")
+    c1, cn = http_json(base, "/v1/cases?instance=CN", headers=auth_headers)
+    c2, os_ = http_json(base, "/v1/cases?instance=OS", headers=auth_headers)
     ok = c1 == 200 and c2 == 200 and cn.get("total") == 7 and os_.get("total") == 4
     fails += not record("02", "seed 装载断言（11 案件在库）", ok,
                         f"CN total={cn.get('total') if isinstance(cn, dict) else cn} OS total={os_.get('total') if isinstance(os_, dict) else os_}")
 
     # 03 dashboard 双实例
-    b1, d1 = http_json(base, "/v1/dashboard?instance=cn")
-    b2, d2 = http_json(base, "/v1/dashboard?instance=os")
+    b1, d1 = http_json(base, "/v1/dashboard?instance=cn", headers=auth_headers)
+    b2, d2 = http_json(base, "/v1/dashboard?instance=os", headers=auth_headers)
     ok = (b1 == 200 and b2 == 200
           and d1["kpi"]["total"] and d2["kpi"]["total"]
           and isinstance(d1["kpi"]["false_auto"]["within_redline"], bool)
@@ -134,7 +152,7 @@ def main():
         print(f"        ℹ Schema 校验器构建失败（降级结构断言）：{e}")
     bad = []
     for cid, inst in full_ids:
-        code, agg = http_json(base, f"/v1/cases/{cid}?view=full&instance={inst}")
+        code, agg = http_json(base, f"/v1/cases/{cid}?view=full&instance={inst}", headers=auth_headers)
         if code != 200:
             bad.append(f"{cid} HTTP {code}")
             continue
@@ -153,7 +171,7 @@ def main():
         print(f"        ℹ {note}")
 
     # 05 证据查询（七要素 = FN-3-02 验收口径）
-    code, ev = http_json(base, "/v1/cases/INV-CN-2026-0387/evidence?field=total.gross_amount&instance=CN")
+    code, ev = http_json(base, "/v1/cases/INV-CN-2026-0387/evidence?field=total.gross_amount&instance=CN", headers=auth_headers)
     ok = code == 200 and ev.get("total", 0) >= 1
     if ok:
         e = ev["items"][0]
@@ -165,7 +183,7 @@ def main():
     # 06 时间线事件码 ∈ registry
     reg = json.loads((CONTRACTS / "enum-registry.json").read_text(encoding="utf-8"))
     act_vocab = {v["code"] for v in reg["categories"]["timeline_event"]["values"]}
-    code, tl = http_json(base, "/v1/cases/INV-CN-2026-0387/timeline?instance=CN")
+    code, tl = http_json(base, "/v1/cases/INV-CN-2026-0387/timeline?instance=CN", headers=auth_headers)
     ok = code == 200 and tl.get("total") == 11 and all(t["act"] in act_vocab for t in tl.get("items", []))
     fails += not record("06", "时间线查询（11 事件·事件码 ∈ enum-registry）", ok, str(tl)[:160] if not ok else "")
 
@@ -189,7 +207,7 @@ def main():
     # 08 受控写拒绝路径（缺有效凭据的 release → 受控框架拒绝）
     code, rej = http_json(base, "/v1/cases/INV-CN-2026-0379/actions/release", "POST",
                           {"actor": "王莉", "instance": "CN", "token": "smoke-invalid-token",
-                           "self_confirmed": True})
+                           "self_confirmed": True}, headers=auth_headers)
     ec = rej.get("detail", {}).get("error_code") if isinstance(rej, dict) else None
     ok = code in (400, 401, 403, 409, 422, 428) and ec in ("E_CONFIRM_INVALID", "E_RISK_NOT_SHOWN",
                                                             "E_PERM_DENIED", "E_SELF_CONFIRM_REQUIRED",
@@ -197,23 +215,30 @@ def main():
     fails += not record("08", "受控写拒绝路径（无有效凭据 release 被拒·五要素守门）", ok,
                         f"status={code} error_code={ec}")
 
-    # 09 web 首页与静态资源可达
+    # 09 web 首页与本地静态资源可达（Tailwind 已本地构建，禁止运行时依赖 CDN）
     code, _ = http_json(base, "/")
     ok9a = code == 200  # urllib 默认跟随 307 → 200
     code2, _ = http_json(base, "/web/js/api-client.js")
-    fails += not record("09", "web 首页（307→dashboard 200）与共享 js 可达", ok9a and code2 == 200,
-                        f"root={code} api-client.js={code2}")
+    code_guard, guard = http_json(base, "/web/js/auth-guard.js")
+    code3, css = http_json(base, "/web/css/invoice-hub.css")
+    ok_guard = code_guard == 200 and isinstance(guard, str) and "/api/platform/auth/session" in guard
+    ok_css = code3 == 200 and isinstance(css, str) and ".bg-surface" in css and ".rounded-card" in css
+    fails += not record("09", "web 首页（307→login 200）与本地 js/css 可达", ok9a and code2 == 200 and ok_guard and ok_css,
+                        f"root={code} api-client.js={code2} auth-guard.js={code_guard} invoice-hub.css={code3}")
 
-    # 10 demo-mode 探测（HTTP 直查 js 逻辑；独立演示态见 RUNBOOK §3）
+    # 10 demo-mode 探测（HTTP 直查 js 逻辑；独立演示态见 RUNBOOK §3）+ 本地 CSS 引用纪律
     code, dm = http_json(base, "/web/js/demo-mode.js")
     ok = (code == 200 and isinstance(dm, str) and "/healthz" in dm
           and "演示模式（未连接后台）" in dm)
     if ok:
         for page in ("/web/dashboard-overview.html", "/web/case-detail.html"):
             pc, ph = http_json(base, page)
-            ok = ok and pc == 200 and "js/demo-mode.js" in ph
-    fails += not record("10", "demo-mode 回退在位（healthz 探测+角标口径+三页引用）", ok,
-                        "demo-mode.js 或页面引用缺失" if not ok else "")
+            ok = (ok and pc == 200 and "js/auth-guard.js" in ph and "js/demo-mode.js" in ph
+                  and 'href="css/invoice-hub.css"' in ph
+                  and "cdn.tailwindcss.com" not in ph
+                  and "fonts.googleapis.com" not in ph)
+    fails += not record("10", "demo-mode 回退在位 + 登录守卫 + 本地 CSS 引用（无 CDN 依赖）", ok,
+                        "auth-guard.js、demo-mode.js、本地 CSS 引用缺失，或页面仍引用外部 CDN" if not ok else "")
 
     print("-" * 70)
     print(f"冒烟结果：{len(RESULTS) - len([r for r in RESULTS if not r[2]])}/{len(RESULTS)} PASS")

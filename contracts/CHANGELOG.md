@@ -62,6 +62,11 @@
 - **内容**：P04 WP3.3 合规服务实装所需基线增补。① **依赖**：SM2=算法真实、证书链模拟（P00 §6）——选 gmssl（纯 Python，无 FFI，符合 ADR-0002 零外部服务强依赖；组件选型留注 `sm2_service.py` 头注，正式 CA/KMS 属 FR-L1-05 阶段一 + TODO(FN-9-10)）；② **配置键**：`dedup_similarity_threshold`（默认 1.0=仅硬命中；边界语义 sim≥阈值含等于，FN-5-04）、`auth_verify_channel_mode`（pass/timeout/off 三态演示桩，FN-5-02）、`fusion_adoption_policy`（priority 首元素=采信来源，默认 xml_direct 结构化原件优先；conflict_fields+degrade_to=82 为 0381 案口径，FN-4-02）——三键均入 ConfigItem 装载链与 AssetRevision 基线（受控发布可改）；③ **名录种子**：`tax_directory.json` 为 FN-5-03 海外名录校验的**模拟 webhook 数据源**（演示口径，正式=授权名录通道），入 SeedMeta 由服务层消费；④ 事件码全量复用 timeline_event 既有 30 码（SM2_VERIFY/SM2_VERIFY_FAILED/AUTH_QUERY_TIMEOUT/DEDUP_*/OCR_CROSS_CHECK(_CONFLICT)/TAXID_CHECK），**未新增枚举值**；gm-rcpt 回执发号沿用 id_format 既有 pattern。
 - **依据**：清单 FN-5-01~05/FN-4-02/03 + CON-05/CON-12；P04 WP3.3；docs/gate-reports/M3-self-check.md §8。
 
+### ⑩ 2026-10-28 · SYNC（治理增强） · P08 全量测试体系化：三层契约测试 + v1 冻结破坏性变更检测工具落仓（契约文件零改动）
+- **影响文件**：新增 `tools/check_breaking_changes.py`、扩展 `backend/tests/test_contracts.py`（结构/语义/版本兼容三层）、新增 `docs/TESTING.md`、新增 `docs/test-reports/P08-full-test-report.md`、新增 `.github/workflows/ci.yml` 与 `.gitlab-ci.yml`、`contracts/` 契约定义**零改动**。
+- **内容**：按清单 FN-A-08 与实施规划 §7 建立完整测试体系：① 结构层验证全量 9 个 Schema Draft 2020-12 可编译性与 openapi.yaml 规范性；② 语义层覆盖核心 API 响应 Schema 验证、枚举值 ∈ enum-registry、发号正则匹配规则与非法流转拒绝语义；③ 版本兼容层建立破坏性变更检测器（检测字段删除、类型篡改、必填新增、枚举删除），反向用例断言检测器有效性；④ 校验工具全量接入 CI 前置门禁。
+- **依据**：细化功能清单 FN-A-08 / FN-A-07 / FN-0-13；实施规划 §7；P08 阶段任务。
+
 ---
 
 ## TODO 未决项登记（冻结不阻塞，实现标注纪律）

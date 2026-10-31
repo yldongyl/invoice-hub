@@ -1,0 +1,60 @@
+# GitLab CI/CD Pipeline Configuration for invoice-hub
+# 包含：一致性校验前置门禁 -> 契约测试 -> 红线回归 -> 场景断言 -> 单测覆盖率 -> Demo 回放
+
+stages:
+  - consistency-gate
+  - contract-tests
+  - redline-tests
+  - scenario-tests
+  - unit-coverage
+  - demo-replay
+
+default:
+  image: python:3.11-slim
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -e "backend[dev]"
+
+# ── 1. 一致性前置门禁（verify-enums / verify-contracts / verify-ui / verify-contracts-sync） ──
+consistency_check:
+  stage: consistency-gate
+  script:
+    - python scripts/hub.py verify:enums
+    - python scripts/hub.py verify:contracts
+    - python scripts/hub.py verify:ui
+    - python scripts/hub.py verify:contracts-sync
+
+# ── 2. 契约测试门禁（三层：结构 / 语义 / 版本兼容） ──
+contract_testing:
+  stage: contract-tests
+  script:
+    - python -m pytest backend/tests/test_contracts.py -v -m contract
+
+# ── 3. 红线回归集门禁（R-01~R-06 零 skip） ──
+redline_regression:
+  stage: redline-tests
+  script:
+    - python scripts/hub.py test-redline
+
+# ── 4. E2E 场景断言门禁（17 条场景） ──
+e2e_scenarios:
+  stage: scenario-tests
+  script:
+    - python scripts/hub.py test-e2e
+
+# ── 5. 全量单测与覆盖率校验（domain + services 覆盖率 ≥80%） ──
+unit_tests_coverage:
+  stage: unit-coverage
+  script:
+    - cd backend
+    - python -m pytest --cov=app.domain --cov=app.services --cov-report=term --cov-report=json:../docs/test-reports/coverage.json -q
+  artifacts:
+    paths:
+      - docs/test-reports/coverage.json
+    expire_in: 7 days
+
+# ── 6. 蓝图 8 大 Demo 场景回放 ──
+demo_replay_validation:
+  stage: demo-replay
+  script:
+    - python scripts/hub.py demo-replay
