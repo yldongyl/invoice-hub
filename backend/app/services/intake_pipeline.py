@@ -543,14 +543,16 @@ def _derive_case(session, batch, frow, doc, route, sha, trace,
          f"分流至 {route}（规则引擎确定性判断 · carrier_route_detect）", _V_ROUTE),
     ]
     if parse_event:
-        timeline_evts.append((parse_event,
-                              "OCR识别（Provider，字段带坐标+原文证据）" if parse_event == "OCR_RECOGNIZED"
-                              else "XML结构化直读解析完成（演示口径关键字段子集，完整23字段归FN-2-01/M4）",
-                              f"载体字节外发登记 {len(session.scalars(select(m.EgressLog).where(
-                                  m.EgressLog.batch_id == batch.batch_id,
-                                  m.EgressLog.file_seq == frow.seq)).all())} 条" if parse_event == "OCR_RECOGNIZED"
-                              else f"Schema 归一前置：{provider_disp}",
-                              parse_v))
+        if parse_event == "OCR_RECOGNIZED":
+            egress_count = len(session.scalars(select(m.EgressLog).where(
+                m.EgressLog.batch_id == batch.batch_id,
+                m.EgressLog.file_seq == frow.seq)).all())
+            parse_desc = "OCR识别（Provider，字段带坐标+原文证据）"
+            parse_note = f"载体字节外发登记 {egress_count} 条"
+        else:
+            parse_desc = "XML结构化直读解析完成（演示口径关键字段子集，完整23字段归FN-2-01/M4）"
+            parse_note = f"Schema 归一前置：{provider_disp}"
+        timeline_evts.append((parse_event, parse_desc, parse_note, parse_v))
     timeline_evts.append(("INBOUND_ACCEPTED", "识别结果接收 · Schema归一化",
                           f"{len(evidence)} 字段入证据链 · source={source_code} · trace {trace}", _V_NORMALIZE))
     for act, d, x, comp in timeline_evts:
