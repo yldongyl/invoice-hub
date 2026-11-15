@@ -72,6 +72,11 @@ def get_batch_detail(session, batch_id: str, *, instance: str | None = None) -> 
                       "sha256_display": (f"{r.sha256[:4]}…{r.sha256[-4:]}" if r.sha256 else None),
                       "accepted_ts": r.accepted_ts, "digest_ts": r.digest_ts,
                       "bad": bool(ir.get("bad")),
+                      "needs_review": bool(ir.get("needs_review")),
+                      "supporting_badge": ir.get("supporting_badge"),
+                      "supporting_pages_count": ir.get("supporting_pages_count", 0),
+                      "has_supporting_docs": bool(ir.get("has_supporting_docs")),
+                      "total_pages": ir.get("total_pages", 1),
                       "steps": [{"no": s.step_no, "name": intake_pipeline.STEP_NAMES[s.step_no],
                                  "status": s.status, "detail": s.detail_raw} for s in steps]})
     head = list_batches(session, instance=instance, limit=10000)

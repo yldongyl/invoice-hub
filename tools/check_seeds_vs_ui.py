@@ -713,6 +713,36 @@ def check_switcher(r, case_detail_html, seed_by_id):
     r.ok(f"case-detail 切换器 {len(opts)} 案（号+票种短形+状态）与 cases.json full 案件逐案一致（装载序）")
 
 
+def check_outbound_filing(r, web_dir, outbound_seed):
+    """断言新增出站建档与回写页（web/outbound-filing.html）常数与 seeds/outbound_batches.json 同源保真（FN-7-06）。"""
+    ob_path = os.path.join(web_dir, "outbound-filing.html")
+    if not os.path.exists(ob_path):
+        r.fail(f"web/outbound-filing.html 缺失: {ob_path}")
+        return
+    with open(ob_path, encoding="utf-8") as f:
+        html = f.read()
+    page_batches = extract_const(html, "OUTBOUND_BATCHES")
+    seed_batches = outbound_seed.get("batches", [])
+    if len(page_batches) != len(seed_batches):
+        r.fail(f"outbound-filing.html 页面批次数 {len(page_batches)} vs seed {len(seed_batches)}")
+        return
+    for pb, sb in zip(page_batches, seed_batches):
+        cmp_field(r, f"OUTBOUND[{pb['id']}].adapter", pb["adapter"], sb["adapter"])
+        cmp_field(r, f"OUTBOUND[{pb['id']}].docs", pb["docs"], sb["docs"])
+        cmp_field(r, f"OUTBOUND[{pb['id']}].status", pb["status"], sb["status"])
+        cmp_field(r, f"OUTBOUND[{pb['id']}].ok", pb["ok"], sb["ok"])
+        cmp_field(r, f"OUTBOUND[{pb['id']}].fail", pb["fail"], sb["fail"])
+        cmp_field(r, f"OUTBOUND[{pb['id']}].retry", pb["retry"], sb["retry"])
+        p_details = pb.get("detail", [])
+        s_details = sb.get("detail", [])
+        if len(p_details) != len(s_details):
+            r.fail(f"OUTBOUND[{pb['id']}].detail 明细数 页面={len(p_details)} vs seed={len(s_details)}")
+        for pd, sd in zip(p_details, s_details):
+            cmp_field(r, f"OUTBOUND[{pb['id']}][{pd['caseId']}].docType", pd.get("docType"), sd.get("docType"))
+            cmp_field(r, f"OUTBOUND[{pb['id']}][{pd['caseId']}].receipt", pd.get("receipt"), sd.get("receipt"))
+    r.ok(f"outbound-filing.html OUTBOUND_BATCHES {len(page_batches)} 批次与 seeds/outbound_batches.json 逐案一致（含 4 类单据枚举）")
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 5) 主流程
 # ──────────────────────────────────────────────────────────────────────────────
@@ -755,6 +785,8 @@ def main():
     kpi_seed = load_json(os.path.join(SEEDS, "kpi.json"))
     ae_seed = load_json(os.path.join(SEEDS, "audit_events.json"))
     adapters_seed = load_json(os.path.join(SEEDS, "adapters.json"))
+    outbound_seed = load_json(os.path.join(SEEDS, "outbound_batches.json"))
+    web_dir = os.path.join(ROOT, "web")
 
     def page(name):
         p = os.path.join(args.ui, name)
@@ -776,6 +808,8 @@ def main():
         # M2 WP2.1 新增数据口径断言（adapters 状态条 / 切换器）
         check_adapters(r, dashboard_html, adapters_seed, enum_codes)
         check_switcher(r, case_detail_html, seed_by_id)
+        # FN-7-06 出站建档与回写台账断言（web/outbound-filing.html ↔ seeds/outbound_batches.json）
+        check_outbound_filing(r, web_dir, outbound_seed)
     except JSParseError as e:
         die(f"JS 常量解析失败: {e}")
 

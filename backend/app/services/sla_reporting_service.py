@@ -8,6 +8,23 @@
   - 产品红线指标大卡与近 12 周趋势序列（错误自动放行率 0.02% ≤ 0.05%）；
   - 单张成本（¥0.31）与异常解决时长（42 分钟）；
   - AI 异常归因分析建议卡（采纳转人工发布，不自动执行，FN-8-14）。
+
+CON-B4 / CON-B6 同源指标对端对照说明（单一事实源核对）：
+  1. Touchless Rate 86.2%
+     - 同源对端: seeds/kpi.json -> instances.cn.kpi.touchless ("86.2")
+     - 页面对端: dashboard-overview.html 中国实例 KPI 第二卡
+     - 口径: STP Accuracy（无人工介入且结论正确）
+  2. 错误自动放行率 0.02% (上限 0.05%)
+     - 同源对端: seeds/kpi.json -> instances.cn.kpi.false_auto_rate ("0.02%") / false_auto_limit ("0.05%")
+     - 页面对端: dashboard-overview.html 中国实例 KPI 第三卡
+     - 口径差异注记: dashboard 海外实例 os.kpi.false_auto_rate 为 0.03%（双实例不同），本页 Tab2 明确声明采用「试点单实例口径（中国实例基线 0.02%）」，上限均为 0.05% 红线（CON-B6）。
+  3. 单实例吞吐负载构成（直读 62% + OCR 27% + 人工/冲减 11%）
+     - 同源对端: seeds/kpi.json -> instances.cn.donut (62% 数电票直读, 27% 增值税专票, 11% 红字票冲减)
+     - 页面对端: dashboard-overview.html 中国实例 Donut 环形图
+  4. 归档总量 128,462 份
+     - 同源对端: seeds/kpi.json -> instances.cn.kpi.total ("128,462")
+     - 服务对端: app.services.archival_service -> ARCHIVE_STATS["total_archived"] (128462)
+     - 页面对端: audit-reports.html Tab3 归档 Donut 中心总量
 """
 
 from typing import Any

@@ -38,19 +38,22 @@ CONFIG_META = {
     "regionRoute": {"label": "数据区域路由", "default": "中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域"},
 }
 
-# 当前发布态与草稿态
+# 初始默认发布态基线（FN-9-09 / CON-01 / CON-12）
+DEFAULT_CONFIG_VALUES: dict = {
+    "threshold": 0.85,
+    "tolerance": "±0.06",
+    "po_tolerance": "±S$50",
+    "lowConfManual": True,
+    "newCustReview": False,
+    "regionRoute": "中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域",
+}
+
+# 缓存态（读写优先与 SQLite 同步，保障兼容性与跨请求一致性）
 _PUBLISHED_CONFIG: dict = {
     "version": "v2026-10-21.2",
     "status": "已发布",
     "updated_at": "2026-10-21 08:47",
-    "values": {
-        "threshold": 0.85,
-        "tolerance": "±0.06",
-        "po_tolerance": "±S$50",
-        "lowConfManual": True,
-        "newCustReview": False,
-        "regionRoute": "中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域",
-    },
+    "values": dict(DEFAULT_CONFIG_VALUES),
 }
 
 _DRAFT_CONFIG: dict | None = None
@@ -101,42 +104,179 @@ MODEL_DATA_BOUNDARY = {
     "last_cleanup_at": "2026-10-27 02:00:00",
 }
 
+# ───────────────────────── 区域路由租户可用性校验框架 (FN-9-09 / FN-0-11 / H39) ─────────────────────────
+# TODO(H39): 中国场景部署区域与数据驻留细则待确认（推断标注，蓝图 §0.3 / 附录 D H39）。
+# 细化功能清单 FN-0-11 / FN-5-10 规定：数据区域路由为高风险配置项，三档含租户可用性限制：
+# 1. 中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域（双实例默认兼容路由）；
+# 2. 全部票据 → 新加坡区域（仅海外租户可用）；
+# 3. 全部票据 → 境内 Provider 优先（仅中国租户可用）。
+# 本框架提供可配置的租户可用性校验机制，避免自造业务规则。
+REGION_ROUTE_TENANT_CONSTRAINTS = {
+    "中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域": {
+        "allowed_tenants": ["TENANT-CN-LANWU-001", "TENANT-SG-LANWU-001"],
+        "desc": "双实例默认兼容路由",
+    },
+    "全部票据 → 新加坡区域（仅海外租户可用）": {
+        "allowed_tenants": ["TENANT-SG-LANWU-001"],
+        "desc": "仅海外租户可用",
+    },
+    "全部票据 → 境内 Provider 优先（仅中国租户可用）": {
+        "allowed_tenants": ["TENANT-CN-LANWU-001"],
+        "desc": "仅中国租户可用",
+    },
+}
+
+
+def validate_region_routing_tenant_scope(route_value: str, tenant_id: str | None = None) -> dict:
+    """校验区域路由选项与租户可用性限制（TODO(H39) 可配置校验框架）。"""
+    rule = REGION_ROUTE_TENANT_CONSTRAINTS.get(route_value)
+    if not rule:
+        return {"valid": True, "note": "自定义/扩展路由"}
+    if tenant_id and tenant_id not in rule["allowed_tenants"]:
+        # TODO(H39): 租户与区域路由可用性限制冲突
+        raise CommandError(
+            "E_REGION_ROUTE_TENANT_MISMATCH",
+            f"区域路由配置违例：选项「{route_value}」{rule['desc']}，租户 {tenant_id} 无法使用（TODO(H39) 数据驻留规则待确认）",
+            http=422,
+        )
+    return {"valid": True, "rule": rule}
+
+
+# ───────────────────────── SQLite 持久化底层读写 (AssetRevision 口径) ─────────────────────────
+
+def _get_or_init_published_config(session) -> tuple[m.AssetRevision, dict]:
+    """从 SQLite asset_revisions 读取最新发布版；若无记录则初始化写入默认基准。
+    选型理由：复用 AssetRevision 统一版本化资产表（FN-0-12），提供开箱即用的多版本追踪、diff 保存与回滚能力，
+    重启后版本与配置项不回退。
+    """
+    row = session.scalar(
+        select(m.AssetRevision)
+        .where(
+            m.AssetRevision.asset_type == "config",
+            m.AssetRevision.key == "platform_config",
+            m.AssetRevision.state == "published",
+        )
+        .order_by(m.AssetRevision.id.desc())
+    )
+    if row is None:
+        row = m.AssetRevision(
+            asset_type="config",
+            key="platform_config",
+            version="v2026-10-21.2",
+            state="published",
+            payload={"values": dict(DEFAULT_CONFIG_VALUES)},
+            diff_json=[],
+            prev_version=None,
+            updated_by="system",
+            updated_at="2026-10-21 08:47",
+            opinion="初始化平台全局配置基线",
+        )
+        session.add(row)
+        session.commit()
+    values = row.payload.get("values", dict(DEFAULT_CONFIG_VALUES)) if row.payload else dict(DEFAULT_CONFIG_VALUES)
+    # 同步缓存
+    global _PUBLISHED_CONFIG
+    _PUBLISHED_CONFIG = {
+        "version": row.version,
+        "status": "已发布",
+        "updated_at": row.updated_at or "2026-10-21 08:47",
+        "values": dict(values),
+    }
+    return row, values
+
+
+def _get_draft_config(session) -> tuple[m.AssetRevision | None, dict | None]:
+    """从 SQLite asset_revisions 读取未发布草稿。"""
+    row = session.scalar(
+        select(m.AssetRevision)
+        .where(
+            m.AssetRevision.asset_type == "config",
+            m.AssetRevision.key == "platform_config",
+            m.AssetRevision.state == "draft",
+        )
+        .order_by(m.AssetRevision.id.desc())
+    )
+    if row and row.payload:
+        values = row.payload.get("values")
+        global _DRAFT_CONFIG
+        _DRAFT_CONFIG = dict(values) if values else None
+        return row, values
+    return None, None
+
 
 # ───────────────────────── 配置中心核心 API ─────────────────────────
 
 def get_config_view(session) -> dict:
-    """获取当前配置视图（包含发布版与草稿版、脏标记）。"""
-    is_dirty = _DRAFT_CONFIG is not None and _DRAFT_CONFIG != _PUBLISHED_CONFIG["values"]
+    """获取当前配置视图（包含发布版与草稿版、脏标记、历史版本号）。"""
+    pub_row, pub_values = _get_or_init_published_config(session)
+    draft_row, draft_values = _get_draft_config(session)
+
+    current_draft = draft_values or dict(pub_values)
+    is_dirty = draft_values is not None and draft_values != pub_values
+
+    published_view = {
+        "version": pub_row.version,
+        "status": "已发布",
+        "updated_at": pub_row.updated_at or "2026-10-21 08:47",
+        "updated_by": pub_row.updated_by or "system",
+        "prev_version": pub_row.prev_version,
+        "values": pub_values,
+    }
     return {
-        "published": _PUBLISHED_CONFIG,
-        "draft": _DRAFT_CONFIG or dict(_PUBLISHED_CONFIG["values"]),
+        "published": published_view,
+        "draft": current_draft,
         "is_dirty": is_dirty,
         "dirty_text": "有未发布改动" if is_dirty else "无未发布改动",
+        "prev_version": pub_row.prev_version,
     }
 
 
 def save_config_draft(session, actor: str, draft_values: dict) -> dict:
-    """保存配置草稿（草稿保存不产生审计日志，FN-9-09）。"""
+    """保存配置草稿（草稿写入 SQLite，不产生审计日志，FN-9-09）。"""
     assert_not_ai_agent(actor)
+    draft_row, _ = _get_draft_config(session)
+    if draft_row is None:
+        draft_row = m.AssetRevision(
+            asset_type="config",
+            key="platform_config",
+            version="draft",
+            state="draft",
+            payload={"values": dict(draft_values)},
+            updated_by=actor,
+            updated_at=now_iso(),
+        )
+        session.add(draft_row)
+    else:
+        draft_row.payload = {"values": dict(draft_values)}
+        draft_row.updated_by = actor
+        draft_row.updated_at = now_iso()
+    session.commit()
+
     global _DRAFT_CONFIG
     _DRAFT_CONFIG = dict(draft_values)
     return {
         "saved": True,
         "draft": _DRAFT_CONFIG,
-        "message": "草稿已暂存（未发布）",
+        "message": "草稿已暂存至 SQLite（未发布）",
     }
 
 
 def reset_config_draft(session, actor: str) -> dict:
-    """重置草稿：丢弃草稿，恢复至当前发布版。
+    """重置草稿：丢弃 SQLite 中的草稿，恢复至当前发布版。
     关键断言：重置丢弃草稿不产生审计（FN-9-09）。
     """
     assert_not_ai_agent(actor)
+    draft_row, _ = _get_draft_config(session)
+    if draft_row is not None:
+        session.delete(draft_row)
+        session.commit()
+
     global _DRAFT_CONFIG
     _DRAFT_CONFIG = None
+    _, pub_values = _get_or_init_published_config(session)
     return {
         "reset": True,
-        "current_values": dict(_PUBLISHED_CONFIG["values"]),
+        "current_values": dict(pub_values),
         "audit_produced": False,  # 显式标明零审计
         "message": "草稿已重置，未产生审计日志",
     }
@@ -144,8 +284,9 @@ def reset_config_draft(session, actor: str) -> dict:
 
 def get_config_diff(session) -> list[dict]:
     """计算配置 diff 弹窗数据（前值红删除线 → 后值绿，FN-9-09）。"""
-    current = _PUBLISHED_CONFIG["values"]
-    target = _DRAFT_CONFIG or current
+    _, current = _get_or_init_published_config(session)
+    _, draft_values = _get_draft_config(session)
+    target = draft_values or current
     diffs = []
     for k, meta in CONFIG_META.items():
         before_val = current.get(k)
@@ -167,15 +308,18 @@ def publish_config(session, actor: str, values: dict | None = None, opinion: str
     """高风险操作：发布配置。
     1. 校验操作人权限（需策略发布）；
     2. 校验产品红线：低置信强制人工不得关闭（lowConfManual不得为 False）；
-    3. 前值→后值 diff 校验并写入不可篡改审计链（POLICY_PUBLISHED）；
-    4. 版本号递增（vYYYY-MM-DD.seq）；
-    5. 联动目标平台适配器兼容性校验通知。
+    3. 区域路由租户可用性校验框架校验（TODO(H39)）；
+    4. 前值→后值 diff 校验并写入不可篡改审计链（POLICY_PUBLISHED）；
+    5. 版本号递增（vYYYY-MM-DD.seq）并持久化至 SQLite AssetRevision；
+    6. 联动目标平台适配器兼容性校验通知。
     """
     assert_not_ai_agent(actor)
     require_permission(session, actor, "策略发布")
 
-    global _PUBLISHED_CONFIG, _DRAFT_CONFIG
-    new_values = dict(values if values is not None else (_DRAFT_CONFIG or _PUBLISHED_CONFIG["values"]))
+    pub_row, current_values = _get_or_init_published_config(session)
+    draft_row, draft_values = _get_draft_config(session)
+
+    new_values = dict(values if values is not None else (draft_values or current_values))
 
     # ══════ 红线项关闭拦截（FN-9-09 / P00 §5） ══════
     if new_values.get("lowConfManual") is False:
@@ -185,17 +329,21 @@ def publish_config(session, actor: str, values: dict | None = None, opinion: str
             http=403,
         )
 
+    # ══════ 区域路由三档发布时租户可用性限制校验 (FN-9-09 / FN-0-11 / H39) ══════
+    if "regionRoute" in new_values:
+        validate_region_routing_tenant_scope(new_values["regionRoute"])
+
     # 计算 diff
     diff_items = []
     for k, meta in CONFIG_META.items():
-        b_val = _PUBLISHED_CONFIG["values"].get(k)
+        b_val = current_values.get(k)
         a_val = new_values.get(k)
         if b_val != a_val:
             diff_items.append({"key": k, "label": meta["label"], "from": b_val, "to": a_val})
 
     # 版本递增
     today_str = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d")
-    current_ver = _PUBLISHED_CONFIG["version"]
+    current_ver = pub_row.version
     seq = 1
     if current_ver.startswith(f"v{today_str}."):
         try:
@@ -232,6 +380,28 @@ def publish_config(session, actor: str, values: dict | None = None, opinion: str
         {"adapter": "自研 ERP 适配器", "mode": "REST / JSON", "status": "COMPATIBLE", "detail": "契约校验通过"},
     ]
 
+    # 持久化新版本至 SQLite AssetRevision
+    new_pub_row = m.AssetRevision(
+        asset_type="config",
+        key="platform_config",
+        version=new_ver,
+        state="published",
+        payload={"values": new_values},
+        diff_json=diff_items,
+        prev_version=current_ver,
+        updated_by=actor,
+        updated_at=now_iso()[:16].replace("T", " "),
+        opinion=opinion,
+    )
+    session.add(new_pub_row)
+
+    # 清除草稿
+    if draft_row is not None:
+        session.delete(draft_row)
+
+    session.commit()
+
+    global _PUBLISHED_CONFIG, _DRAFT_CONFIG
     _PUBLISHED_CONFIG = {
         "version": new_ver,
         "status": "已发布",
@@ -247,17 +417,54 @@ def publish_config(session, actor: str, values: dict | None = None, opinion: str
         "audit_blk": blk.blk,
         "trace": trace,
         "adapter_notifications": adapter_notifications,
-        "message": f"配置版本 {new_ver} 已成功发布并记入审计链，已联动完成适配器兼容性校验通知",
+        "message": f"配置版本 {new_ver} 已成功发布并持久化至 SQLite 记入审计链，已联动完成适配器兼容性校验通知",
     }
 
 
-def rollback_config(session, actor: str, target_version: str, target_values: dict, opinion: str | None = None) -> dict:
+def rollback_config(session, actor: str, target_version: str, target_values: dict | None = None, opinion: str | None = None) -> dict:
     """回滚配置到目标版本。以新版本形式发布回滚值。"""
     assert_not_ai_agent(actor)
     require_permission(session, actor, "策略发布")
 
+    # 若未提供 target_values，从 SQLite asset_revisions 查询目标历史版本
+    if not target_values:
+        hist_row = session.scalar(
+            select(m.AssetRevision).where(
+                m.AssetRevision.asset_type == "config",
+                m.AssetRevision.key == "platform_config",
+                m.AssetRevision.version == target_version,
+                m.AssetRevision.state == "published",
+            )
+        )
+        if not hist_row:
+            raise CommandError("E_VERSION_NOT_FOUND", f"回滚目标版本 {target_version!r} 不存在", http=404)
+        target_values = hist_row.payload.get("values", {})
+
     op_text = f"回滚至历史版本 {target_version} · 理由：{opinion or '配置回滚'}"
     return publish_config(session, actor, values=target_values, opinion=op_text)
+
+
+def list_config_revisions(session) -> list[dict]:
+    """获取所有历史已发布版本（用于前端回滚选择）。"""
+    _get_or_init_published_config(session)
+    rows = session.scalars(
+        select(m.AssetRevision).where(
+            m.AssetRevision.asset_type == "config",
+            m.AssetRevision.key == "platform_config",
+            m.AssetRevision.state == "published",
+        ).order_by(m.AssetRevision.id.desc())
+    ).all()
+    return [
+        {
+            "version": r.version,
+            "updated_at": r.updated_at,
+            "updated_by": r.updated_by,
+            "opinion": r.opinion,
+            "prev_version": r.prev_version,
+            "values": r.payload.get("values", {}),
+        }
+        for r in rows
+    ]
 
 
 # ───────────────────────── KMS 密钥管理 API ─────────────────────────

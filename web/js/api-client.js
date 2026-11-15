@@ -46,8 +46,13 @@ window.IHUB_API = (function () {
   }
 
   function bindActor(body) {
-    if (body && Object.prototype.hasOwnProperty.call(body, 'actor')) {
-      body = Object.assign({}, body, { actor: currentActor(body.actor) });
+    if (body) {
+      if (Object.prototype.hasOwnProperty.call(body, 'actor')) {
+        body = Object.assign({}, body, { actor: currentActor(body.actor) });
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'verifier')) {
+        body = Object.assign({}, body, { verifier: currentActor(body.verifier) });
+      }
     }
     return body;
   }
@@ -66,6 +71,39 @@ window.IHUB_API = (function () {
         method: 'POST', signal: ctl.signal,
         headers: authHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }),
         body: JSON.stringify(bindActor(body || {})),
+      });
+      let out = null;
+      try { out = await r.json(); } catch (_) { /* 空体 */ }
+      if (!r.ok) {
+        const e = new Error('HTTP ' + r.status + ' ' + path);
+        e.status = r.status;
+        const d = out && out.detail;
+        e.code = d && (d.error_code || d.code);
+        e.message_cn = d && d.message;
+        throw e;
+      }
+      return out;
+    } finally { clearTimeout(t); }
+  }
+
+  /** DELETE JSON（草稿丢弃 / 资源清理等）。 */
+  async function deleteJSON(path, params, timeoutMs) {
+    if (IS_FILE) {
+      const e = new Error('FILE_PROTOCOL：独立演示态（双击打开），不连接后台');
+      e.demo = true;
+      throw e;
+    }
+    let url = path;
+    if (params) {
+      const q = new URLSearchParams(params);
+      url = path + '?' + q.toString();
+    }
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), timeoutMs || 15000);
+    try {
+      const r = await fetch(url, {
+        method: 'DELETE', signal: ctl.signal,
+        headers: authHeaders({ Accept: 'application/json' }),
       });
       let out = null;
       try { out = await r.json(); } catch (_) { /* 空体 */ }
@@ -114,5 +152,5 @@ window.IHUB_API = (function () {
     get audit(){ return currentActor('张审计'); },
   };
 
-  return { getJSON, postJSON, postForm, instanceOfCase, currentActor, IS_FILE, ACTOR };
+  return { getJSON, postJSON, deleteJSON, postForm, instanceOfCase, currentActor, IS_FILE, ACTOR };
 })();

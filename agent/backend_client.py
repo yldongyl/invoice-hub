@@ -93,6 +93,32 @@ class BackendClient:
             return data.get("providers", []) if isinstance(data, dict) else data
         return []
 
+    def post_audit_event(self, trace: str, actor: str, intent: str, query: str,
+                         tool_called: str = "none", model_name: Optional[str] = None,
+                         case_id: Optional[str] = None, zero_write: bool = True,
+                         domain: str = "PLATFORM") -> Optional[dict[str, Any]]:
+        """向 backend 发送 Agent 对话审计事件，记录至不可篡改审计哈希链（FN-8-08 · PLATFORM 链域）。"""
+        client = self._get_client()
+        payload = {
+            "trace": trace,
+            "actor": actor,
+            "intent": intent,
+            "query": query,
+            "tool_called": tool_called,
+            "model_name": model_name,
+            "case_id": case_id,
+            "zero_write": zero_write,
+            "domain": domain,
+        }
+        try:
+            resp = client.post("/v1/agent/audit-events", json=payload)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            # 审计上报采用非阻塞/异常安全模式，网络波动不影响业务对话
+            pass
+        return None
+
     # ───────────────────────── 受控写接口 ─────────────────────────
 
     def execute_case_action(self, case_id: str, action: str, confirm_token: str,

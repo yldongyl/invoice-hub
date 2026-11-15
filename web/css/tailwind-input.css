@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* FN-8-08 蓝橙标样式基准 (Design System & Agent 对话规范) */
+.tag-blue {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: #165DFF;
+  color: #FFFFFF;
+  font-weight: 500;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.tag-orange {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: #FF7D00;
+  color: #FFFFFF;
+  font-weight: 500;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+

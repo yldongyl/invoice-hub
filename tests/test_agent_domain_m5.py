@@ -36,7 +36,7 @@ from app.main import create_app as create_backend_app
 
 
 @pytest.fixture
-def test_backend_client():
+def test_backend_client(session):
     """提供对接 backend API 的测试客户端（模拟端口 8000 内部 HTTP 调用，零 DB 直连）。"""
     backend_app = create_backend_app()
     client = TestClient(backend_app)
@@ -44,14 +44,17 @@ def test_backend_client():
 
 
 @pytest.fixture
-def agent_client():
+def agent_client(test_backend_client):
     """提供针对 agent 服务的 TestClient（模拟端口 8001 API）。"""
+    import agent.main as am
+    am.conv_graph = ConversationGraph(test_backend_client)
+    am.invest_graph = InvestigationGraph(test_backend_client)
     return TestClient(agent_app)
 
 
 # ───────────────────────── 1. 三条 seed 意图对话图真实走通 (FN-8-08) ─────────────────────────
 
-def test_intent_1_variance_screening(test_backend_client):
+def test_intent_1_variance_screening(test_backend_client, session):
     """意图 1：金额差异 > 5000 筛查。
     断言：
       1. 走通 MCP 工具 case.search；
@@ -59,7 +62,7 @@ def test_intent_1_variance_screening(test_backend_client):
       3. 包含免责声明块；
       4. 唤起只读详情卡且带「Agent 唤起 · 未修改数据」标记；
       5. 全程零写操作断言通过；
-      6. 对话审计留痕。
+      6. 对话审计留痕（内存列表 + 不可篡改哈希链真实落链与 SHA-256 校验）。
     """
     graph = ConversationGraph(test_backend_client)
     res = graph.run("展示所有金额差异大于5000的案件", actor="王莉")
@@ -78,10 +81,25 @@ def test_intent_1_variance_screening(test_backend_client):
     for card in res.invoked_cards:
         assert card.readonly is True
         assert card.marker == "Agent 唤起 · 未修改数据"
-    # 对话审计留痕
+    # 对话审计内存留痕
     audits = graph.get_audit_history()
     assert len(audits) >= 1
     assert audits[-1]["intent"] == "VARIANCE_SCREENING"
+
+    # 不可篡改哈希链真实落链断言（FN-8-08 · PLATFORM 链域）
+    from app.domain import models as m
+    from sqlalchemy import select
+    from app.services.audit_chain import verify_chain
+    blocks = session.scalars(select(m.AuditBlock).where(m.AuditBlock.act == "AGENT_CONVERSATION")).all()
+    assert len(blocks) >= 1
+    last_block = blocks[-1]
+    assert last_block.chain_scope == "PLATFORM"
+    assert last_block.actor == "ai"
+    assert "王莉" in (last_block.op_component or "")
+    assert last_block.chain_hash is not None and len(last_block.chain_hash) == 64
+    # 验证整条哈希链密码学连续性无篡改
+    chain_check = verify_chain(session, verifier="test_agent_audit", scope="PLATFORM")
+    assert chain_check["ok"] is True
 
 
 def test_intent_2_evidence_chain_reading(test_backend_client):
@@ -235,6 +253,17 @@ def test_agent_api_endpoints(agent_client):
     })
     assert c_res.status_code == 200
     assert c_res.json()["intent"] == "VARIANCE_SCREENING"
+
+    # 2.1 主动调查端点 (FN-6-12 / FN-8-09)
+    inv_res = agent_client.post("/v1/agent/investigate", json={
+        "case_id": "INV-SG-2026-0125",
+    })
+    assert inv_res.status_code == 200
+    inv_data = inv_res.json()
+    assert inv_data["case_id"] == "INV-SG-2026-0125"
+    assert "差异" in inv_data["title"]
+    assert len(inv_data["evidence_citations"]) >= 1
+    assert inv_data["status"] == "pending"
 
     # 3. 映射推荐端点
     m_res = agent_client.get("/v1/agent/mapping/recommendations")

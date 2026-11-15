@@ -14,7 +14,10 @@
   - 内置直读矩阵（XML/OFD/PDF 文本层/二维码）：零 Provider 成本、零外发记录（FN-5-10）。
 """
 
+import json
+from pathlib import Path
 from typing import Any, Optional
+import jsonschema
 from sqlalchemy import select
 
 from app.domain import models as m
@@ -22,6 +25,30 @@ from app.services import audit_chain, provider_service, versioning
 from app.services.audit_chain import new_trace_id, now_iso
 from app.services.errors import CommandError
 from app.services.providers import get_provider
+
+CONTRACTS_DIR = Path(__file__).resolve().parents[3] / "contracts"
+ROUTING_SCHEMA_PATH = CONTRACTS_DIR / "routing-config.schema.json"
+_routing_schema: Optional[dict] = None
+_routing_validator: Optional[jsonschema.Draft202012Validator] = None
+
+
+def get_routing_validator() -> jsonschema.Draft202012Validator:
+    global _routing_schema, _routing_validator
+    if _routing_validator is None:
+        with open(ROUTING_SCHEMA_PATH, "r", encoding="utf-8") as f:
+            _routing_schema = json.load(f)
+        _routing_validator = jsonschema.Draft202012Validator(_routing_schema)
+    return _routing_validator
+
+
+def validate_routing_policy(data: dict) -> list[str]:
+    """校验路由策略结构是否合乎 routing-config.schema.json 契约，返回错误列表。"""
+    v = get_routing_validator()
+    errors = []
+    for err in v.iter_errors(data):
+        loc = ".".join(str(p) for p in err.path) if err.path else "root"
+        errors.append(f"{loc}: {err.message}")
+    return errors
 
 
 def get_effective_policy(session) -> dict[str, Any]:
@@ -49,6 +76,14 @@ def save_draft_policy(session, payload: dict[str, Any], actor: str = "human") ->
     """保存路由策略草稿态配置（全套操作：规则增删改查/排序/阈值/开关等，FN-2-11/12）。"""
     if isinstance(payload, dict):
         payload["state"] = "draft"
+    errs = validate_routing_policy(payload)
+    if errs:
+        raise CommandError(
+            "E_ROUTING_CONFIG_INVALID",
+            f"路由策略配置不符 Schema 契约: {'; '.join(errs)}",
+            http=422,
+            details={"errors": errs},
+        )
     draft = versioning.save_draft(session, "routing_policy", payload, actor=actor, asset_type="routing_policy")
     return {"saved": True, "state": "draft", "updated_by": draft.updated_by, "updated_at": draft.updated_at}
 
@@ -289,6 +324,8 @@ def execute_route(
             "recognition_path": "L4_manual_review",
             "fallback_triggers": ["Provider全链路降级失败"],
             "cross_check": {"enabled": False, "passed": False},
+            "policy_version": policy.get("version", "v2026-10-20.3"),
+            "policy_state": policy.get("state", "published"),
         }
 
     rule_idx = 1
@@ -315,6 +352,30 @@ def execute_route(
         "d": f"检测载体：{carrier} · 原件摘要（SHA-256）登记 {sha256[:8]}…",
         "ms": "120 ms",
     })
+
+    # 全局降级直接人工兜底模式（FN-2-10）
+    if mode == "direct_human":
+        steps.append({
+            "st": "manual",
+            "t": "② 全局降级策略生效：直接人工兜底",
+            "d": "全局降级模式配置为「直接人工兜底」· 绕过 Provider 路由链 · 案件直接进入复核工作台（NEEDS_REVIEW）",
+        })
+        man_spi = get_provider("human-fallback")
+        man_res = man_spi.recognize({"sha256": sha256}) if man_spi else {}
+        return {
+            "status": "manual",
+            "route_id": rule.get("route_id"),
+            "final_provider": "human-fallback",
+            "confidence": 0.0,
+            "fields": man_res.get("fields", []),
+            "meta": man_res.get("meta", {"provider_id": "human-fallback", "latency_ms": 0, "cost": {"currency": "CNY", "amount": 0}}),
+            "steps": steps,
+            "recognition_path": "L4_manual_review",
+            "fallback_triggers": check_fallback_triggers(0.0, False, False, False, policy) or ["Provider全链路降级失败"],
+            "cross_check": {"enabled": False, "passed": True},
+            "policy_version": policy.get("version", "v2026-10-20.3"),
+            "policy_state": policy.get("state", "published"),
+        }
 
     # 从 DB 加载 Provider 状态（判定启用/停用）
     db_providers = {p.provider_id: p for p in session.scalars(select(m.Provider))}
@@ -472,6 +533,8 @@ def execute_route(
             "recognition_path": rec_path,
             "fallback_triggers": [],
             "cross_check": cross_res,
+            "policy_version": policy.get("version", "v2026-10-20.3"),
+            "policy_state": policy.get("state", "published"),
         }
     else:
         # 链尾人工兜底
@@ -495,8 +558,10 @@ def execute_route(
             "meta": man_res.get("meta", {"provider_id": "human-fallback", "latency_ms": 0, "cost": {"currency": "CNY", "amount": 0}}),
             "steps": steps,
             "recognition_path": "L4_manual_review",
-            "fallback_triggers": ["最终置信度低于阈值", "Provider全链路降级失败"],
+            "fallback_triggers": check_fallback_triggers(0.0, False, False, True, policy) or ["最终置信度低于阈值", "Provider全链路降级失败"],
             "cross_check": cross_res,
+            "policy_version": policy.get("version", "v2026-10-20.3"),
+            "policy_state": policy.get("state", "published"),
         }
 
 

@@ -166,9 +166,9 @@
       "s08_category": "Adapter 状态",
       "desc": "Adapter 三态（FN-7-01）",
       "values": [
-        { "code": "已对接 ✓ (live)", "label": "生产可用，开放配置与测试建档", "color": "success", "color_raw": "绿", "note": "Ariba/Oracle/自研/Data Lake" },
-        { "code": "适配中 ◐ (wip)", "label": "联调中，展示进度面板", "color": "warning", "color_raw": "橙", "note": "Coupa（预计2026-11）" },
-        { "code": "规划中 ○ (plan)", "label": "仅规划范围展示", "color": "gray", "color_raw": "灰", "note": "S/4HANA（2027-Q1评估）" }
+        { "code": "已对接 ✓ (live)", "label": "生产可用，开放配置与测试建档", "color": "success", "color_raw": "绿", "note": "Ariba/Oracle/自研/Data Lake", "adapters": ["ariba", "oracle", "custom", "datalake"] },
+        { "code": "适配中 ◐ (wip)", "label": "联调中，展示进度面板", "color": "warning", "color_raw": "橙", "note": "Coupa（预计2026-11）", "adapters": ["coupa"] },
+        { "code": "规划中 ○ (plan)", "label": "仅规划范围展示", "color": "gray", "color_raw": "灰", "note": "S/4HANA（2027-Q1评估）", "adapters": ["s4"] }
       ]
     },
     "anno_status": {

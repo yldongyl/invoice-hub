@@ -37,7 +37,9 @@
             "display": { "type": "string" },
             "risk_display": { "type": "string", "description": "「6 个高风险」类文案（快照基线）" },
             "live_needs_review": { "type": "integer", "minimum": 0, "description": "本实例 NEEDS_REVIEW 实时计数（cases 表）" },
-            "live_blocked": { "type": "integer", "minimum": 0, "description": "本实例 BLOCKED 实时计数（cases 表）" }
+            "live_blocked": { "type": "integer", "minimum": 0, "description": "本实例 BLOCKED 实时计数（cases 表）" },
+            "avg_wait_minutes": { "type": ["number", "null"], "description": "进入 NEEDS_REVIEW 平均等待分钟数（数据不足时为 null）" },
+            "avg_wait_display": { "type": "string", "description": "进入 NEEDS_REVIEW 平均等待时长展示串（数据不足时展示「—」+演示口径注释）" }
           },
           "additionalProperties": false
         }

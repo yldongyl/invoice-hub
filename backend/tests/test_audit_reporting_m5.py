@@ -71,6 +71,59 @@ def test_verify_chain_and_record(api_client):
         assert vrun.ok is True
 
 
+def test_tamper_detection_reflects_in_integrity(api_client):
+    """验收标准①：人为篡改一块审计记录后，完整性显示 <100% 且标出断点 blk#，重新校验后恢复展示。"""
+    from sqlalchemy import text
+
+    # 1. 篡改前校验通过
+    res0 = api_client.post("/api/audit/verify-chain", json={"verifier": "王莉"})
+    assert res0.status_code == 200
+    assert res0.json()["ok"] is True
+
+    # 2. 绕过 ORM 人为篡改一块审计记录
+    tamper_blk = 10313
+    with persistence.get_session() as s:
+        s.execute(text("UPDATE audit_blocks SET note='[TAMPERED] 伪造内容' WHERE blk=:b"), {"b": tamper_blk})
+        s.commit()
+
+    # 3. 执行校验发现篡改
+    res1 = api_client.post("/api/audit/verify-chain", json={"verifier": "王莉"})
+    assert res1.status_code == 200
+    d1 = res1.json()
+    assert d1["ok"] is False
+    assert d1["bad_blk"] == tamper_blk
+    assert "<100%" in d1["chain_integrity"]
+    assert f"blk#{tamper_blk}" in d1["chain_integrity"]
+
+    # 4. logs 接口与 verify-status 均反映 <100% 与断点 blk#
+    status_res = api_client.get("/api/audit/verify-status")
+    assert status_res.status_code == 200
+    sdata = status_res.json()
+    assert "<100%" in sdata["chain_integrity"]
+    assert sdata["last_verify"]["ok"] is False
+    assert sdata["last_verify"]["bad_blk"] == tamper_blk
+
+    logs_res = api_client.get("/api/audit/logs")
+    assert logs_res.status_code == 200
+    ldata = logs_res.json()
+    assert "<100%" in ldata["stats"]["chain_integrity"]
+    assert ldata["stats"]["last_verify"]["ok"] is False
+    assert ldata["stats"]["last_verify"]["bad_blk"] == tamper_blk
+
+    # 5. 重建链（恢复真实链）后重新校验，恢复 100% 展示
+    with persistence.get_session() as s:
+        audit_chain.build_chain(s)
+
+    res2 = api_client.post("/api/audit/verify-chain", json={"verifier": "王莉"})
+    assert res2.status_code == 200
+    d2 = res2.json()
+    assert d2["ok"] is True
+    assert d2["chain_integrity"] == "100%"
+
+    logs_res2 = api_client.get("/api/audit/logs")
+    assert logs_res2.json()["stats"]["chain_integrity"] == "100%"
+
+
 def test_export_audit_csv_self_audit_at_chain_head(api_client):
     """验收标准⑤：CSV 导出自审计入链头（blk# 严格递增断言）+ 24h 限时凭据。"""
     with persistence.get_session() as s:
@@ -211,7 +264,7 @@ def test_sampling_records_and_run(api_client):
     assert len(records) >= 3
     assert any(r["batch_no"].startswith("QA-") for r in records)
 
-    # 2. 执行新一轮抽检
+    # 2. 执行新一轮抽检（正常无异常）
     with persistence.get_session() as s:
         old_head = audit_chain.head_blk(s)
 
@@ -224,7 +277,31 @@ def test_sampling_records_and_run(api_client):
     rdata = run_res.json()
     assert rdata["batch_no"].startswith("QA-")
     assert rdata["passed"] is True
+    assert rdata["anomalies"] == 0
     assert rdata["audit_blk"] > old_head
+
+    # 3. 验收标准⑥：人为篡改后执行抽检，重算发现真实异常，联动冻结
+    from sqlalchemy import text
+    with persistence.get_session() as s:
+        s.execute(text("UPDATE audit_blocks SET note='[TAMPERED] 抽检破坏' WHERE blk=10342"))
+        s.commit()
+
+    run_tampered = api_client.post("/api/audit/sampling/run", json={
+        "actor": "王莉",
+        "target_scope": "CN_XML",
+        "sample_size": 500,
+    })
+    assert run_tampered.status_code == 200
+    tdata = run_tampered.json()
+    assert tdata["passed"] is False
+    assert tdata["anomalies"] > 0
+    assert "异常" in tdata["message"]
+    # 抽检记录中体现异常
+    assert any("异常" in r["result"] for r in api_client.get("/api/audit/sampling").json()["records"])
+
+    # 恢复环境
+    with persistence.get_session() as s:
+        audit_chain.build_chain(s)
 
 
 def test_sampling_anomaly_freezes_auto_release(api_client):

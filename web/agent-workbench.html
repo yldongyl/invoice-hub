@@ -14,6 +14,10 @@
   .dot-anim span{animation:blink 1s infinite;margin-right:2px} .dot-anim span:nth-child(2){animation-delay:.15s} .dot-anim span:nth-child(3){animation-delay:.3s}
   .row-sel{background:#F0F5FF !important;} .dark .row-sel{background:#23282F !important;}
 
+  /* FN-8-08 蓝橙标样式 (系统查询结果 / AI 生成线索) */
+  .tag-blue{display:inline-block;font-size:10px;line-height:1.4;padding:1px 6px;border-radius:4px;background-color:#165DFF;color:#FFFFFF;font-weight:500;margin-right:6px;vertical-align:middle;}
+  .tag-orange{display:inline-block;font-size:10px;line-height:1.4;padding:1px 6px;border-radius:4px;background-color:#FF7D00;color:#FFFFFF;font-weight:500;margin-right:6px;vertical-align:middle;}
+
   /* ── 全局菜单（悬浮抽屉，不占布局、不改内容比例） ── */
   #sb{width:264px;transform:translateX(-100%);transition:transform .25s ease;}
   #sb.sb-open{transform:translateX(0);box-shadow:0 8px 40px rgba(29,33,41,.18);}
@@ -106,7 +110,10 @@
       <div class="flex items-start gap-2">
         <span class="w-7 h-7 rounded-card bg-primary flex items-center justify-center text-white text-[13px] shrink-0">🤖</span>
         <div class="min-w-0">
-          <div class="text-[13px] font-semibold">票据智能 Agent <span class="text-[10px] font-medium px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-3 dark:text-gray-400 ml-1">qwen-finance-v2</span></div>
+          <div class="text-[13px] font-semibold flex items-center flex-wrap gap-1">
+            <span>票据智能 Agent</span>
+            <span id="agent-status-badge" class="text-[10px] font-medium px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-3 dark:text-gray-400">检测中...</span>
+          </div>
           <div class="text-[11.5px] text-ink-2 dark:text-gray-300 mt-0.5 leading-snug"><b class="text-warning">仅做查询、线索建议</b>；修改、放行等业务动作需要<b>人工确认</b>后在受控工作台执行。</div>
         </div>
       </div>
@@ -321,6 +328,12 @@ function openCase(id, from){
       <b class="text-ink-1 dark:text-gray-300">案件摘要（规则引擎结论）：</b>${c.summary}
     </div>
     <div class="mt-4 space-y-2">
+      ${(c.status==='INVESTIGATING'||c.status==='NEEDS_REVIEW') ? `
+        <button onclick="triggerInvestigation('${c.id}')" class="w-full px-3 py-2 rounded-card border border-warning/40 bg-warning-light dark:bg-[#2E2417] text-warning text-[12.5px] font-medium hover:bg-warning hover:text-white transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+          <span>🔍</span><span>主动调查（AI 差异解释建议 · 只读）</span>
+        </button>
+        <div id="investigation-container-${c.id}"></div>
+      ` : ''}
       <a href="case-detail.html?case=${c.id}" class="block w-full text-center px-3 py-2 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">进入完整案件详情（证据链 / 时间线 / Link）→</a>
       <div class="grid grid-cols-2 gap-2">
         <button onclick="openActModal('放行','${c.id}')" class="px-3 py-2 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-success hover:text-success">✓ 放行（受控）</button>
@@ -329,6 +342,105 @@ function openCase(id, from){
       <div class="text-[10.5px] text-ink-3 dark:text-gray-500 text-center pt-1">所有处置均需二次确认并写入案件时间线 · AI 建议不自动执行</div>
     </div>`;
   if(from==='agent') toast(`已在工作台唤起案件 ${c.id}（只读视图）· Agent 未修改任何数据`);
+}
+
+/* ═══════════════ FN-6-12 / FN-8-09 主动调查接线 (只读 AI 建议卡) ═══════════════ */
+async function triggerInvestigation(caseId){
+  const box = document.getElementById(`investigation-container-${caseId}`);
+  if(!box) return;
+  box.innerHTML = `<div class="p-3 rounded-card bg-warning-light/40 dark:bg-[#2E2417] border border-warning/30 text-[11.5px] text-warning animate-pulse">
+    🔍 正在向 Agent 域请求只读取证与差异解释分析（零 DB 写操作）...
+  </div>`;
+
+  let cardData = null;
+  // 1. 优先尝试在线调用 Agent 域 (/v1/agent/investigate)
+  if(location.protocol.startsWith('http')){
+    try {
+      const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+      if(window.IHUB_AUTH && IHUB_AUTH.token && IHUB_AUTH.token()){
+        headers['Authorization'] = 'Bearer ' + IHUB_AUTH.token();
+      }
+      const ctl = new AbortController();
+      const tid = setTimeout(() => ctl.abort(), 10000);
+      const resp = await fetch(`${getAgentBase()}/v1/agent/investigate`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ case_id: caseId }),
+        signal: ctl.signal
+      });
+      clearTimeout(tid);
+      if(resp.ok){
+        cardData = await resp.json();
+      }
+    } catch(e) {
+      console.warn('在线主动调查调用失败，回退内嵌演示建议卡：', e);
+    }
+  }
+
+  // 2. 离线/原型演示种子兜底
+  if(!cardData){
+    if(caseId.includes('0125')){
+      cardData = {
+        title: "含税总额 vs PO 净额差异 · 主动调查解释",
+        confidence: 0.88,
+        confidence_label: "88%（中）",
+        model_name: "qwen-finance-v2",
+        model_version: "2026-11-01",
+        evidence_citations: [
+          "PO 行项目：PO-2026-SG-0089（Net S$78,600.00，采购物料行）",
+          "收货记录：GRN-SG-2026-0044（已收货 100%，数量与物料行完全勾稽）",
+          "税率映射：GST 9% 税率映射 S$4,100.00",
+          "合同条款：合同 Annex 3 条款（运费 S$1,500.00 属于合同约定报销范围）"
+        ],
+        conclusion: "差异 S$5,600.00 恰等于 GST 9% 税额 (S$4,100.00) + 合同约定运费 (S$1,500.00)，属于口径差异而非金额差错。",
+        recommended_action: "建议财务经理在确认运费报销发票后，执行受控放行并回填 PO 含税金额。",
+        governance_footnote: "本建议由 qwen-finance-v2 生成，不自动执行；结论须人工确认后受控处置。",
+        disclaimer: "⚠️ 【本建议由大模型生成，不自动执行业务操作，请人工确认后操作】确定性判断以规则引擎结论为准。"
+      };
+    } else {
+      cardData = {
+        title: "含税总额 vs PO 净额差异解释（税额口径）",
+        confidence: 0.92,
+        confidence_label: "92%（中）",
+        model_name: "qwen-finance-v2",
+        model_version: "2026-11-01",
+        evidence_citations: [
+          "发票原件：数电票 XML 直读价税合计 ¥113,000.00（税额 ¥13,000.00）",
+          "PO 记录：PO-2026-0881 采购金额登记为不含税净额 ¥100,000.00",
+          "税率档位：适用 13% 增值税标准税率"
+        ],
+        conclusion: "含税总额 ¥113,000.00 与 PO 净额 ¥100,000.00 之差恰为 13% 税额，属于登记口径差异。",
+        recommended_action: "建议确认口径差异并放行建议，触发 ERP 建档前回填含税金额。",
+        governance_footnote: "本建议由 qwen-finance-v2 生成，不自动执行；结论须人工确认后受控处置。",
+        disclaimer: "⚠️ 【本建议由大模型生成，不自动执行业务操作，请人工确认后操作】确定性判断以规则引擎结论为准。"
+      };
+    }
+  }
+
+  // 3. 渲染结构化橙标 AI 建议卡 (只读呈现 · 绝不产生数据库写)
+  const citHtml = (cardData.evidence_citations || []).map(cit => `<div class="text-[11px] text-ink-2 dark:text-gray-300">· ${cit}</div>`).join('');
+  box.innerHTML = `
+    <div class="mt-2 p-3 rounded-card bg-warning-light/70 dark:bg-[#2E2417] border border-warning/40 text-[11.5px] space-y-2">
+      <div class="flex items-center justify-between gap-1 flex-wrap">
+        <div class="flex items-center"><span class="tag-orange">【AI 建议卡】</span><b class="text-ink-1 dark:text-gray-200">${cardData.title}</b></div>
+        <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-warning text-white">${cardData.confidence_label || '88%'}</span>
+      </div>
+      <div class="text-[10px] text-ink-3 dark:text-gray-400">
+        模型: <code>${cardData.model_name || 'qwen-finance-v2'}(${cardData.model_version || '2026-11'})</code> · 状态: <span class="text-warning font-medium">待复核确认 (只读建议)</span>
+      </div>
+      <div class="bg-card dark:bg-dcard p-2 rounded border border-line dark:border-dline space-y-0.5">
+        <b class="text-ink-2 dark:text-gray-400 text-[10.5px]">引证证据链（只读抽取）：</b>
+        ${citHtml}
+      </div>
+      <div class="leading-relaxed"><b class="text-warning">分析归因：</b>${cardData.conclusion}</div>
+      <div class="leading-relaxed"><b>推荐处置：</b>${cardData.recommended_action}</div>
+      <div class="text-[10px] text-ink-3 dark:text-gray-400 pt-1.5 border-t border-warning/20 leading-tight">
+        ${cardData.governance_footnote}<br>
+        <span class="text-success font-medium">✓ 确定性红线守住：本次主动调查全程只读，零 DB 写入，未修改案件字段与状态</span>
+      </div>
+    </div>
+  `;
+  toast(`🔍 已完成案件 ${caseId} 主动调查取证（AI 建议卡只读呈现 · 零写数据）`);
 }
 
 /* ═══════════════ 受控操作确认 ═══════════════ */
@@ -360,11 +472,46 @@ function batchAct(act){
   openActModal('认领', ids);
 }
 
-/* ═══════════════ 左栏：Agent 对话（脚本化演示） ═══════════════ */
+/* ═══════════════ 左栏：Agent 对话与端点治理 (FN-8-08) ═══════════════ */
+function getAgentBase(){
+  if(window.IHUB_CONFIG && window.IHUB_CONFIG.agentBase) return window.IHUB_CONFIG.agentBase.replace(/\/+$/, '');
+  return location.protocol.startsWith('http') ? '/agent-api' : 'http://127.0.0.1:8001';
+}
+
+let isAgentOnline = false;
+async function probeAgentHealth(){
+  const badge = document.getElementById('agent-status-badge');
+  if(!badge) return;
+  if(location.protocol === 'file:'){
+    badge.innerHTML = '○ 演示脚本模式 (本地原型)';
+    badge.className = 'text-[10px] font-medium px-1.5 py-px rounded bg-warning-light text-warning border border-warning/30';
+    return;
+  }
+  try {
+    const ctl = new AbortController();
+    const tid = setTimeout(() => ctl.abort(), 2000);
+    const res = await fetch(`${getAgentBase()}/healthz`, { signal: ctl.signal, headers: { Accept: 'application/json' } });
+    clearTimeout(tid);
+    if(res.ok){
+      const data = await res.json().catch(()=>({}));
+      isAgentOnline = true;
+      const model = data.model || 'qwen-finance-v2';
+      badge.innerHTML = `● Agent 在线 (${model})`;
+      badge.className = 'text-[10px] font-medium px-1.5 py-px rounded bg-success-light text-success border border-success/30';
+      return;
+    }
+  } catch(e) {
+    /* 离线静默处理 */
+  }
+  isAgentOnline = false;
+  badge.innerHTML = '○ 演示脚本模式 (Agent 离线)';
+  badge.className = 'text-[10px] font-medium px-1.5 py-px rounded bg-warning-light text-warning border border-warning/30';
+}
+
 const DISCLAIMER = `<div class="mt-2 px-2.5 py-2 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-[11px] leading-relaxed text-ink-2 dark:text-gray-300">
   ⚠️ <b class="text-warning">【本建议由大模型生成，不自动执行业务操作，请人工确认后操作】</b>确定性判断（税额 / 容差 / 状态转换）以规则引擎结论为准。</div>`;
-const AI_TAG = `<span class="inline-block text-[10px] px-1.5 py-px rounded bg-warning text-white font-medium mr-1.5">AI 生成</span>`;
-const SYS_TAG = `<span class="inline-block text-[10px] px-1.5 py-px rounded bg-primary text-white font-medium mr-1.5">系统查询结果</span>`;
+const AI_TAG = `<span class="tag-orange">【AI 生成线索】</span>`;
+const SYS_TAG = `<span class="tag-blue">【系统查询结果】</span>`;
 
 const CHIPS = [
   '展示所有金额差异大于5000的案件',
@@ -446,14 +593,25 @@ async function send(text){
   bubble('user', q.replace(/</g,'&lt;'));
   typing();
 
-  // 尝试在线调用 Agent 域服务 (端口 8001 /v1/agent/chat)
-  if(window.IHUB_DEMO && IHUB_DEMO.isLive()){
+  // 1. 若非 file: 协议，优先尝试在线调用 Agent 域服务 (/v1/agent/chat)
+  if(location.protocol.startsWith('http')){
     try {
-      const resp = await fetch('http://127.0.0.1:8001/v1/agent/chat', {
+      const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+      if(window.IHUB_AUTH && IHUB_AUTH.token && IHUB_AUTH.token()){
+        headers['Authorization'] = 'Bearer ' + IHUB_AUTH.token();
+      }
+      const actorName = window.IHUB_AUTH && IHUB_AUTH.actor ? IHUB_AUTH.actor('王莉') : '王莉';
+      const ctl = new AbortController();
+      const tid = setTimeout(() => ctl.abort(), 12000);
+
+      const resp = await fetch(`${getAgentBase()}/v1/agent/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q, actor: '王莉' })
+        headers: headers,
+        body: JSON.stringify({ query: q, actor: actorName }),
+        signal: ctl.signal
       });
+      clearTimeout(tid);
+
       if(resp.ok){
         const data = await resp.json();
         untyping();
@@ -462,16 +620,32 @@ async function send(text){
           html += data.invoked_cards.map(c => caseBtn(c.case_id)).join('');
         }
         bubble('agent', html);
+
+        // 更新在线徽章
+        const badge = document.getElementById('agent-status-badge');
+        if(badge && !isAgentOnline){
+          isAgentOnline = true;
+          badge.innerHTML = '● Agent 在线 (qwen-finance-v2)';
+          badge.className = 'text-[10px] font-medium px-1.5 py-px rounded bg-success-light text-success border border-success/30';
+        }
         return;
+      } else {
+        console.warn(`Agent 调用返回状态 ${resp.status}，平滑回退演示脚本`);
       }
     } catch(e) {
-      console.warn('Agent 8001 在线调用失败，自动回退内嵌演示响应：', e);
+      console.warn('Agent 在线调用异常，平滑回退演示脚本模式：', e);
+      const badge = document.getElementById('agent-status-badge');
+      if(badge){
+        isAgentOnline = false;
+        badge.innerHTML = '○ 演示脚本模式 (Agent 离线)';
+        badge.className = 'text-[10px] font-medium px-1.5 py-px rounded bg-warning-light text-warning border border-warning/30';
+      }
     }
   }
 
-  // 回落内嵌脚本模式（保持原型演示闭环）
+  // 2. 回落内嵌脚本模式（保持独立原型/离线演示闭环）
   const hit = ANSWERS.find(a=>a.match.some(m=>q.includes(m)));
-  setTimeout(()=>{ untyping(); bubble('agent', hit ? hit.reply() : FALLBACK); }, 900);
+  setTimeout(()=>{ untyping(); bubble('agent', hit ? hit.reply() : FALLBACK); }, 600);
 }
 
 /* 欢迎语 */
@@ -490,6 +664,7 @@ function toast(msg){
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAct(); });
 
 renderTable();
+probeAgentHealth();
 </script>
 <script src="js/auth-guard.js"></script>
 <script src="js/api-client.js"></script>
@@ -536,11 +711,13 @@ async function wbReload(){
       const rows = groups.flat();
       WB.length = 0; rows.forEach(r => WB.push(r));
       selected.forEach(id => { if (!WB.find(c => c.id === id)) selected.delete(id); });
-      const qs = await Promise.all(WB_INSTS.map(i => IHUB_API.getJSON('/v1/workbench/queue', { instance: i })));
+      const actorName = window.IHUB_AUTH && IHUB_AUTH.actor ? IHUB_AUTH.actor('王莉') : '王莉';
+      const qs = await Promise.all(WB_INSTS.map(i => IHUB_API.getJSON('/v1/workbench/queue', { instance: i, actor: actorName })));
       const label = WB_INSTS.length === 1 ? qs[0].queue : qs.map(q => q.queue).join(' + ');
       const pending = qs.reduce((a, q) => a + q.pending_review, 0);
+      const myClaimed = qs.reduce((a, q) => a + (q.claimed_by_me || 0), 0);
       const hdr = document.querySelector('header b.text-warning');
-      if (hdr) hdr.parentElement.innerHTML = `队列：${label} · 待复核 <b class="text-warning num">${pending}</b>`;
+      if (hdr) hdr.parentElement.innerHTML = `队列：${label} · 待复核 <b class="text-warning num">${pending}</b> · 我的认领 <b class="text-primary num">${myClaimed}</b>`;
       renderTable();
       return;
     } catch (e) { console.warn('队列取数失败，回退内嵌 mock 渲染：', e.message || e); }

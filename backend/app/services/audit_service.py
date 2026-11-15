@@ -102,12 +102,19 @@ def search_audit_logs(session, *, time_range: str | None = "7d", actor: str | No
 
     items = []
     for b in page_items:
+        cat = b.category
+        if not cat:
+            for c_key, acts in ACTION_CAT_MAP.items():
+                if b.act in acts:
+                    cat = c_key
+                    break
         items.append({
             "blk": b.blk,
             "ts": b.ts,
             "trace": b.trace,
             "actor": b.actor,
             "act": b.act,
+            "category": cat or "action",
             "case_id": b.case_id,
             "from_state": b.from_state,
             "to_state": b.to_state,
@@ -117,13 +124,38 @@ def search_audit_logs(session, *, time_range: str | None = "7d", actor: str | No
             "chain_scope": b.chain_scope,
         })
 
+    # 从最近一次 VerifyRun 真实推导链完整性（FN-0-10 / 实施规划 M5 任务 1）
+    last_run = session.scalars(select(m.VerifyRun).order_by(m.VerifyRun.id.desc())).first()
+    if last_run is None:
+        chain_integrity = "未校验"
+        last_verify = None
+    elif last_run.ok:
+        chain_integrity = "100%"
+        last_verify = {
+            "ran_at": last_run.ran_at,
+            "verifier": last_run.verifier,
+            "ok": True,
+            "bad_blk": None,
+            "detail": last_run.detail,
+        }
+    else:
+        chain_integrity = f"<100% (断点 blk#{last_run.bad_blk})" if last_run.bad_blk else "<100%"
+        last_verify = {
+            "ran_at": last_run.ran_at,
+            "verifier": last_run.verifier,
+            "ok": False,
+            "bad_blk": last_run.bad_blk,
+            "detail": last_run.detail,
+        }
+
     return {
         "stats": {
             "stat_count": stat_count,
             "stat_action": stat_action,
             "stat_field": stat_field,
             "stat_block": stat_block,
-            "chain_integrity": "100%",
+            "chain_integrity": chain_integrity,
+            "last_verify": last_verify,
         },
         "pagination": {
             "total": total,
@@ -134,19 +166,51 @@ def search_audit_logs(session, *, time_range: str | None = "7d", actor: str | No
     }
 
 
+def get_last_verify_status(session) -> dict:
+    """轻量获取最近一次哈希链校验状态与完整性（FN-0-10）。"""
+    last_run = session.scalars(select(m.VerifyRun).order_by(m.VerifyRun.id.desc())).first()
+    if last_run is None:
+        return {
+            "chain_integrity": "未校验",
+            "last_verify": None,
+        }
+    integrity = "100%" if last_run.ok else (f"<100% (断点 blk#{last_run.bad_blk})" if last_run.bad_blk else "<100%")
+    return {
+        "chain_integrity": integrity,
+        "last_verify": {
+            "ran_at": last_run.ran_at,
+            "verifier": last_run.verifier,
+            "ok": last_run.ok,
+            "bad_blk": last_run.bad_blk,
+            "detail": last_run.detail,
+        },
+    }
+
+
 def verify_chain_and_record(session, verifier: str = "王莉") -> dict:
     """重新校验哈希链并登记（FN-5-08）。"""
     assert_not_ai_agent(verifier)
     res = audit_chain.verify_chain(session, verifier=verifier)
     total_blocks = session.scalar(select(func.count(m.AuditBlock.blk))) or 0
     now_str = now_iso()
+    checked_at = now_str[:16].replace("T", " ")
+
+    if res["ok"]:
+        chain_integrity = "100%"
+        msg = f"最近校验：{checked_at} · {verifier} · 哈希链完整性 100%"
+    else:
+        bad_blk = res.get("bad_blk")
+        chain_integrity = f"<100% (断点 blk#{bad_blk})" if bad_blk else "<100%"
+        msg = f"最近校验：{checked_at} · {verifier} · 校验未通过（断点 blk#{bad_blk}）"
 
     return {
         "ok": res["ok"],
+        "bad_blk": res.get("bad_blk"),
         "blocks_verified": total_blocks,
         "verifier": verifier,
-        "checked_at": now_str[:16].replace("T", " "),
-        "message": f"最近校验：{now_str[:16].replace('T', ' ')} · {verifier} · 哈希链完整性 100%",
+        "checked_at": checked_at,
+        "chain_integrity": chain_integrity,
+        "message": msg,
     }
 
 

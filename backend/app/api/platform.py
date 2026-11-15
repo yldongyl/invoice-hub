@@ -67,6 +67,7 @@ class PasswordLoginReq(BaseModel):
     mfa_code: str | None = Field(None, description="6 位动态 MFA 验证码")
     mfa_challenge_id: str | None = Field(None, description="MFA 挑战 ID")
     remember_device: bool = Field(False, description="是否记住设备 30 天")
+    device_token: str | None = Field(None, description="受信任设备标识（演示口径：浏览器标识 TODO(FN-9-04)）")
 
 
 class MfaChallengeReq(BaseModel):
@@ -107,7 +108,7 @@ class ConfigPublishReq(BaseModel):
 class ConfigRollbackReq(BaseModel):
     actor: str = Field(..., description="操作人姓名")
     target_version: str = Field(..., description="回滚目标版本号")
-    target_values: dict = Field(..., description="目标版本的配置载荷")
+    target_values: dict | None = Field(None, description="目标版本的配置载荷，若为空则由后端从版本库调取")
     opinion: str | None = Field(None, description="回滚原因")
 
 
@@ -202,10 +203,10 @@ def issue_mfa_challenge(req: MfaChallengeReq, session=Depends(get_db)):
 
 @router.post("/auth/login")
 def password_login(req: PasswordLoginReq, session=Depends(get_db)):
-    """账密登录 + 租户手选 + MFA 校验。"""
+    """账密登录 + 租户手选 + 全员强制 MFA 校验 / 受信任设备免挑战（FN-9-04/FN-9-05）。"""
     try:
         return identity_service.authenticate_password(
-            session, req.username, req.password, req.tenant_id, req.mfa_code, req.remember_device, req.mfa_challenge_id
+            session, req.username, req.password, req.tenant_id, req.mfa_code, req.remember_device, req.mfa_challenge_id, req.device_token
         )
     except CommandError as e:
         raise HTTPException(status_code=e.http, detail=e.message)
@@ -300,6 +301,12 @@ def reset_config_draft(req: BaseModel, session=Depends(get_db)):
 def get_config_diff(session=Depends(get_db)):
     """获取草稿与发布版的 diff 列表（供二次确认弹窗）。"""
     return {"diffs": platform_config_service.get_config_diff(session)}
+
+
+@router.get("/config/history")
+def get_config_history(session=Depends(get_db)):
+    """获取历史已发布配置版本列表（供回滚选择）。"""
+    return {"history": platform_config_service.list_config_revisions(session)}
 
 
 @router.post("/config/publish")

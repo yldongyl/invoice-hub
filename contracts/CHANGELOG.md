@@ -67,6 +67,16 @@
 - **内容**：按清单 FN-A-08 与实施规划 §7 建立完整测试体系：① 结构层验证全量 9 个 Schema Draft 2020-12 可编译性与 openapi.yaml 规范性；② 语义层覆盖核心 API 响应 Schema 验证、枚举值 ∈ enum-registry、发号正则匹配规则与非法流转拒绝语义；③ 版本兼容层建立破坏性变更检测器（检测字段删除、类型篡改、必填新增、枚举删除），反向用例断言检测器有效性；④ 校验工具全量接入 CI 前置门禁。
 - **依据**：细化功能清单 FN-A-08 / FN-A-07 / FN-0-13；实施规划 §7；P08 阶段任务。
 
+### ⑪ 2026-10-30 · COMPAT（v1.2.1） · FN-7 Adapter 档案实体化：seeds profiles 单一事实源 + 全链路 id 统一（s4）+ Ariba 主数据同步 Job
+- **影响文件**：`contracts/enum-registry.json`（`adapter_status` 附加 `adapters` 机器字段）、`seeds/adapters.json`（扩充 `profiles` 6 实例与 `adapters[].id`）、`backend/domain/models.py`（新增 `AdapterProfile` 实体）、`backend/services/adapter_service.py`（读库/回退 seeds 替代硬编码 dict）、`backend/services/seed_loader.py`（装载 `AdapterProfile`）、`backend/services/outbound_service.py`（补充本月建档聚合口径）。
+- **内容**：① **权威 id 统一为 s4**：消除前端 `s4hana` 与后端 `s4` 差异，后端提供别名平滑兼容；enum-registry 的 `adapter_status` 显式关联各状态对应 adapter id 集合（`{"ariba", "oracle", "custom", "datalake", "coupa", "s4"}`）；② **seeds 单一事实源**：`seeds/adapters.json` 扩充 `profiles` 数组，消除后端服务内硬编码 `_ADAPTER_PROFILES` 字典；③ **消除 Data Lake 矛盾文案**：统一为「12,846 快照」，彻底剔除 15,820 冲突数据；④ **Ariba 主数据与 PO 订单同步 Job**：基于 20261102 S5 第 4 条要求，补充 `data_sync_job` 状态与统计信息。
+- **依据**：细化功能清单 FN-7-01~03 / FN-7-06；专家口径 S5 第 4 条；contracts/CHANGELOG.md 版本治理纪律。
+
+### ⑫ 2026-11-13 · COMPAT（v1.2.2） · dashboard 待复核卡平均等待真算字段与总览仪表盘实装落地
+- **影响文件**：`contracts/dashboard-response.schema.json`（kpi.pending 新增可选字段 `avg_wait_minutes` 与 `avg_wait_display`）、`backend/app/services/dashboard.py`（`_calc_avg_wait` 真算逻辑与数据不足时演示口径回退）、`web/dashboard-overview.html`（实装 toast 共享组件、adapter 状态条接线、红线卡 limit 对照与 streak 演示口径标注、待复核卡 live 计数与真算等待、铃铛角标实时联动与 0 隐藏）、新增 `web/js/toast.js`。
+- **内容**：① 消除待复核卡静态伪造「24 分钟」数值，由后端根据状态变更为 NEEDS_REVIEW 的时间线计算平均等待时长，数据不足时统一展示「—（演示口径：样本不足）」，卡片副文案完整展现快照与实况 live 计数；② 红线卡消费 `false_auto.limit` 动态展示 rate 与 limit 对照，streak 标注「连续 90 天达标（演示口径）」；③ 适配状态条消费服务端 `adapter_status` 派生字形并映射 P07 adapter id；④ Header 消息铃铛接入共享轻量 toast 组件与告警数实时角标（0 告警时自动隐藏）。
+- **依据**：细化功能清单 FN-8-11、FN-7-01、FN-5-09、UI-DSH-01~06、CON-14。
+
 ---
 
 ## TODO 未决项登记（冻结不阻塞，实现标注纪律）

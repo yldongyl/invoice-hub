@@ -398,6 +398,175 @@ def tax_code_mapping(ctx: dict) -> dict:
         }
 
 
+# ───────────────────────── 数量单位 UOM 与聚合开票规则（20261102 专家口径 S4/S5） ─────────────────────────
+
+_DEFAULT_UOM_RATIOS: dict[str, float] = {
+    "箱->件": 10.0,
+    "箱->EA": 10.0,
+    "件->箱": 0.1,
+    "EA->箱": 0.1,
+    "桶->KG": 200.0,
+    "KG->桶": 0.005,
+    "包->件": 5.0,
+    "包->EA": 5.0,
+    "件->包": 0.2,
+    "EA->包": 0.2,
+    "打->件": 12.0,
+    "件->打": 1.0 / 12.0,
+}
+
+
+def uom_quantity_check(ctx: dict) -> dict:
+    """商品数量单位 UOM 对照与换算校验（20261102 专家口径 S5 第 5 条 · #64）。
+
+    规则：
+      1. 若发票 UOM 与 PO UOM 一致，直接比对数量；
+      2. 若单位不一致，查询换算字典：换算后数量符合容差则通过，并输出公式；
+      3. 缺失比率或超容差，标记 UOM_VARIANCE 差异状态，需人工复核。
+    """
+    inv_qty = float(ctx.get("invoice_qty") or 0.0)
+    po_qty = float(ctx.get("po_qty") or 0.0)
+    inv_uom = str(ctx.get("invoice_uom") or "").strip()
+    po_uom = str(ctx.get("po_uom") or "").strip()
+    ratios = {**_DEFAULT_UOM_RATIOS, **(ctx.get("uom_ratios") or {})}
+    tol = float(ctx.get("tolerance") or 0.0)
+
+    if not inv_uom or not po_uom:
+        return {
+            "rule_id": "uom_quantity_check", "result": _res(NOT_VERIFIED), "note": "未提供完整发票或 PO 计量单位 (UOM)",
+            "status": "NOT_VERIFIED", "invoice_uom": inv_uom, "po_uom": po_uom,
+            "invoice_qty": inv_qty, "po_qty": po_qty, "converted_qty": None, "formula": None,
+        }
+
+    # 1. 单位一致
+    if inv_uom.upper() == po_uom.upper():
+        diff = abs(inv_qty - po_qty)
+        if diff <= tol + _EPS:
+            return {
+                "rule_id": "uom_quantity_check", "result": _res(PASSED), "note": f"UOM 单位一致（{inv_uom}），数量一致（{inv_qty:g}）",
+                "status": "MATCHED", "invoice_uom": inv_uom, "po_uom": po_uom,
+                "invoice_qty": inv_qty, "po_qty": po_qty, "converted_qty": inv_qty, "formula": "1:1",
+            }
+        return {
+            "rule_id": "uom_quantity_check", "result": _res(AMOUNT_VARIANCE),
+            "note": f"UOM 单位一致（{inv_uom}），数量超容差：发票 {inv_qty:g} vs PO {po_qty:g}（差异 {diff:g}）",
+            "status": "UOM_VARIANCE", "invoice_uom": inv_uom, "po_uom": po_uom,
+            "invoice_qty": inv_qty, "po_qty": po_qty, "converted_qty": inv_qty, "formula": "1:1",
+        }
+
+    # 2. 单位不一致：查询换算比率
+    rate_key = f"{inv_uom}->{po_uom}"
+    rate_key_upper = f"{inv_uom.upper()}->{po_uom.upper()}"
+    ratio = ratios.get(rate_key) or ratios.get(rate_key_upper)
+    if ratio is None:
+        rev_key = f"{po_uom}->{inv_uom}"
+        rev_key_upper = f"{po_uom.upper()}->{inv_uom.upper()}"
+        rev_ratio = ratios.get(rev_key) or ratios.get(rev_key_upper)
+        if rev_ratio and rev_ratio > 0:
+            ratio = 1.0 / rev_ratio
+
+    if ratio is not None:
+        converted_qty = round(inv_qty * ratio, 4)
+        diff = abs(converted_qty - po_qty)
+        formula = f"1 {inv_uom} = {ratio:g} {po_uom}"
+        if diff <= tol + _EPS:
+            return {
+                "rule_id": "uom_quantity_check", "result": _res(PASSED),
+                "note": f"UOM 换算通过：{formula} · 发票 {inv_qty:g} {inv_uom} 折算为 {converted_qty:g} {po_uom}，与 PO 数量一致",
+                "status": "CONVERTED_MATCH", "invoice_uom": inv_uom, "po_uom": po_uom,
+                "invoice_qty": inv_qty, "po_qty": po_qty, "converted_qty": converted_qty,
+                "ratio": ratio, "formula": formula,
+            }
+        return {
+            "rule_id": "uom_quantity_check", "result": _res(AMOUNT_VARIANCE),
+            "note": f"UOM 换算后数量超容差：{formula} · 发票 {inv_qty:g} {inv_uom} 折算为 {converted_qty:g} {po_uom}，与 PO {po_qty:g} 差额 {diff:g} > 容差 ±{tol}",
+            "status": "UOM_VARIANCE", "invoice_uom": inv_uom, "po_uom": po_uom,
+            "invoice_qty": inv_qty, "po_qty": po_qty, "converted_qty": converted_qty,
+            "ratio": ratio, "formula": formula,
+        }
+
+    return {
+        "rule_id": "uom_quantity_check", "result": _res(NOT_VERIFIED),
+        "note": f"UOM 单位不一致（发票 {inv_uom} vs PO {po_uom}），缺失换算比率 · 需人工复核",
+        "status": "UOM_VARIANCE", "invoice_uom": inv_uom, "po_uom": po_uom,
+        "invoice_qty": inv_qty, "po_qty": po_qty, "converted_qty": None, "formula": None,
+    }
+
+
+def aggregate_po_lines_match(ctx: dict) -> dict:
+    """多明细合计开票与概括描述消歧支持（20261102 专家口径 S5 第 2/3 条 · #66/#67）。
+
+    支持发票行关联多条 PO line items（多对一聚合开票模式），并在差异计算中以
+    “已选 PO 行金额合计”与发票金额进行 CON-12 容差比对；
+    针对模糊/重复 PO 描述场景，检测歧义并标记 pre-warning。
+    """
+    inv_amount = float(ctx.get("invoice_amount") or 0.0)
+    lines = ctx.get("po_lines") or []
+    tol = float(ctx.get("tolerance") or ctx.get("tolerance_reconcile") or 0.06)
+
+    sum_po = sum(float(l.get("amount", 0.0)) for l in lines)
+    diff = round(abs(inv_amount - sum_po), 2)
+    within_tol = diff <= tol + _EPS
+
+    # 歧义消歧检测：如果 PO 行描述有重复或出现过于概括的词条（如“服务费”、“备件一批”）
+    descriptions = [str(l.get("description", "")).strip() for l in lines if str(l.get("description", "")).strip()]
+    has_ambiguity = False
+    ambiguous_reason = None
+    if len(descriptions) > 1 and len(descriptions) != len(set(descriptions)):
+        has_ambiguity = True
+        ambiguous_reason = "存在多条重复描述的 PO 项（歧义待消歧）"
+    elif any(d in ("服务费", "技术服务", "备件", "备件一批", "办公用品", "配件") for d in descriptions):
+        has_ambiguity = True
+        ambiguous_reason = "PO 行描述过于概括，存在多条相似项（歧义待消歧）"
+
+    if within_tol:
+        res = PASSED
+        note = f"多明细合计开票匹配通过：发票金额 {inv_amount:,.2f} 与已选 {len(lines)} 条 PO 行金额合计 {sum_po:,.2f} 一致（差异 {diff:g} ≤ 容差 {tol}）"
+    else:
+        res = AMOUNT_VARIANCE
+        note = f"多明细合计开票超容差：发票金额 {inv_amount:,.2f} 与已选 PO 行金额合计 {sum_po:,.2f} 差额 {diff:g} 超过容差 ±{tol}"
+
+    return {
+        "rule_id": "aggregate_po_lines_match",
+        "result": _res(res),
+        "note": note,
+        "invoice_amount": inv_amount,
+        "po_sum": sum_po,
+        "variance": diff,
+        "line_count": len(lines),
+        "tolerance": tol,
+        "within_tolerance": within_tol,
+        "has_ambiguity": has_ambiguity,
+        "ambiguous_reason": ambiguous_reason,
+    }
+
+
+def cost_center_match(ctx: dict) -> dict:
+    """主数据成本中心比对（Cost Center Match · 20261102 专家口径 S4 场景 1 · #61）。
+
+    比对发票所属部门/主数据与 PO 成本中心会计信息，不一致时标记预警。
+    """
+    inv_cc = str(ctx.get("invoice_cost_center") or "").strip()
+    po_cc = str(ctx.get("po_cost_center") or "").strip()
+
+    if not inv_cc or not po_cc:
+        return {
+            "rule_id": "cost_center_match", "result": _res(NOT_VERIFIED), "note": "未提供发票或 PO 成本中心编码，核验未决",
+            "matched": False, "invoice_cc": inv_cc or "—", "po_cc": po_cc or "—",
+        }
+
+    matched = (inv_cc.upper() == po_cc.upper()) or (inv_cc.upper() in po_cc.upper()) or (po_cc.upper() in inv_cc.upper())
+    if matched:
+        return {
+            "rule_id": "cost_center_match", "result": _res(PASSED), "note": f"成本中心会计比对一致：发票 [{inv_cc}] 与 PO [{po_cc}] 匹配",
+            "matched": True, "invoice_cc": inv_cc, "po_cc": po_cc,
+        }
+    return {
+        "rule_id": "cost_center_match", "result": _res(AMOUNT_VARIANCE), "note": f"成本中心会计比对不一致：发票所属 [{inv_cc}] vs PO 成本中心 [{po_cc}]",
+        "matched": False, "invoice_cc": inv_cc, "po_cc": po_cc,
+    }
+
+
 RULES = {
     "amount_tax_sum_check": amount_tax_sum_check,
     "amount_sum_check": amount_sum_check,
@@ -415,6 +584,9 @@ RULES = {
     "non_invoice_doc_filter": non_invoice_doc_filter,
     "carrier_route_detect": carrier_route_detect,
     "tax_code_mapping": tax_code_mapping,
+    "uom_quantity_check": uom_quantity_check,
+    "aggregate_po_lines_match": aggregate_po_lines_match,
+    "cost_center_match": cost_center_match,
 }
 
 

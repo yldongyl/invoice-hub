@@ -167,6 +167,48 @@ def load_all(session, seeds_dir: Path | None = None):
     session.add(m.SeedMeta(name="known_page_discrepancies",
                            payload={"items": list(data.get("known_page_discrepancies", []))}))
 
+    # ---- outbound_batches（FN-7-06 / 20261102 S4 出站建档与回写台账）----
+    ob_data = jl("outbound_batches.json")
+    for b in ob_data["batches"]:
+        session.add(m.OutboundBatch(
+            batch_id=b["id"],
+            adapter=b["adapter"],
+            adapter_id=b["adapter_id"],
+            docs=b["docs"],
+            status=b["status"],
+            ok=b["ok"],
+            fail=b["fail"],
+            retry=b["retry"],
+            time_display=b["time"],
+            created_ts="2026-10-29T12:00:00+08:00",
+            updated_ts="2026-10-29T14:00:00+08:00",
+        ))
+        for d in b.get("detail") or []:
+            session.add(m.OutboundFilingRecord(
+                batch_id=b["id"],
+                case_id=d["caseId"],
+                adapter_id=b["adapter_id"],
+                doc_type=d.get("docType", "Invoice(PO)"),
+                receipt_no=d.get("receipt"),
+                payload_summary=d.get("payload", ""),
+                payload_body=d.get("payload_body"),
+                attachment_status=d.get("attach", "—"),
+                writeback_status=d.get("writeback", "未回写"),
+                filing_status=d.get("filing_status", "待出站"),
+                error_reason=d.get("error_reason"),
+                note=d.get("note"),
+                is_sandbox=False,
+                retry_count=d.get("retry_count", 0),
+                max_retries=d.get("max_retries", 3),
+                next_retry_at=d.get("next_retry_at"),
+                latency_ms=d.get("latency_ms"),
+                steps_raw=[],
+                created_ts="2026-10-29T12:00:00+08:00",
+                updated_ts="2026-10-29T14:00:00+08:00",
+            ))
+    counts["outbound_batches"] = len(ob_data["batches"])
+    counts["outbound_filing_records"] = sum(len(b.get("detail") or []) for b in ob_data["batches"])
+
     # ---- audit_events（FN-0-10 装载；链式 SHA-256 于末尾 build_chain 计算并自检，WP1.4）----
     data = jl("audit_events.json")
     if data["chain"]["head_blk"] != max(e["blk"] for e in data["events"]):
@@ -345,6 +387,31 @@ def load_all(session, seeds_dir: Path | None = None):
         session.add(m.Adapter(name=a["name"], mode=a.get("mode"), status_text=a["status_text"],
                               status_code=a["status_code"], display=a["display"], load_seq=i))
     counts["adapters"] = len(data["adapters"])
+
+    # ---- adapter_profiles（FN-7-01/02 档案单一事实源入库）----
+    profiles_data = data.get("profiles", [])
+    for i, p in enumerate(profiles_data):
+        reg.validate("adapter_status", p["status_code"], where=f"adapter_profiles[{p['id']}]")
+        session.add(m.AdapterProfile(
+            adapter_id=p["id"],
+            mono=p["mono"],
+            name=p["name"],
+            sub=p["sub"],
+            status=p["status"],
+            status_code=p["status_code"],
+            contracts_raw=p.get("contracts", []),
+            metrics_raw=p.get("metrics", []),
+            conn_raw=p.get("conn"),
+            receipt_prefix=p.get("receipt_prefix"),
+            plan_raw=p.get("plan"),
+            mapping_raw=p.get("mapping"),
+            queue_raw=p.get("queue"),
+            sim_raw=p.get("sim"),
+            data_sync_job_raw=p.get("data_sync_job"),
+            profile_raw=p,
+            load_seq=i,
+        ))
+    counts["adapter_profiles"] = len(profiles_data)
 
     data = jl("kpi.json")
     for inst, snap in data["instances"].items():

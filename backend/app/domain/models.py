@@ -409,6 +409,31 @@ class Adapter(Base):
     load_seq: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class AdapterProfile(Base):
+    """Adapter 档案与连接配置实体（FN-7-01~03 · seeds/adapters.json profiles 数组入库）。
+    单一事实源：来自 seeds/adapters.json，服务读库；包含 6 个目标系统/通道的完整档案。"""
+
+    __tablename__ = "adapter_profiles"
+
+    adapter_id: Mapped[str] = mapped_column(String(20), primary_key=True)  # ariba, oracle, custom, datalake, coupa, s4
+    mono: Mapped[str] = mapped_column(String(10))
+    name: Mapped[str] = mapped_column(String(80))
+    sub: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(20))                        # live, wip, plan
+    status_code: Mapped[str] = mapped_column(String(30), index=True)       # adapter_status 三值
+    contracts_raw: Mapped[list] = mapped_column(JSON)
+    metrics_raw: Mapped[list] = mapped_column(JSON)
+    conn_raw: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    receipt_prefix: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    plan_raw: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    mapping_raw: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    queue_raw: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    sim_raw: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    data_sync_job_raw: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    profile_raw: Mapped[dict] = mapped_column(JSON)
+    load_seq: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Alert(Base):
     """告警（dashboard 同源读模型；告警引擎分发在 M5）。"""
 
@@ -531,3 +556,64 @@ class VerifyRun(Base):
     ok: Mapped[bool] = mapped_column(Boolean)
     bad_blk: Mapped[int | None] = mapped_column(Integer)
     detail: Mapped[str | None] = mapped_column(Text)
+
+
+class OutboundBatch(Base):
+    """出站批次（FN-7-06 / 20261102 S4：OB-YYYYMMDD-NNN；记录向目标采购平台出站建档的批次台账）。"""
+
+    __tablename__ = "outbound_batches"
+
+    batch_id: Mapped[str] = mapped_column(String(20), primary_key=True)   # OB-YYYYMMDD-NNN
+    adapter: Mapped[str] = mapped_column(String(60))                      # 平台名称，如 SAP Ariba
+    adapter_id: Mapped[str] = mapped_column(String(20), index=True)       # ariba, oracle, coupa, custom, datalake, s4
+    docs: Mapped[int] = mapped_column(Integer, default=0)                 # 单据总数
+    status: Mapped[str] = mapped_column(String(20))                       # 待出站 / 推送中 / 已完成 / 部分失败 / 待人工处理
+    ok: Mapped[int] = mapped_column(Integer, default=0)                   # 成功数
+    fail: Mapped[int] = mapped_column(Integer, default=0)                 # 失败数
+    retry: Mapped[int] = mapped_column(Integer, default=0)                # 重试数
+    time_display: Mapped[str] = mapped_column(String(10))                 # 13:42
+    created_ts: Mapped[str] = mapped_column(String(30))                   # ISO 时间戳
+    updated_ts: Mapped[str] = mapped_column(String(30))
+
+
+class OutboundFilingRecord(Base):
+    """出站建档单据明细台账（FN-7-04/05/06 · Ariba 4 类单据 / 回执 / 重试退避 / 状态回写）。"""
+
+    __tablename__ = "outbound_filing_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("outbound_batches.batch_id"), index=True)
+    case_id: Mapped[str] = mapped_column(String(20), index=True)
+    adapter_id: Mapped[str] = mapped_column(String(20), index=True)
+    doc_type: Mapped[str] = mapped_column(String(40))                     # 4 类单据：Invoice(PO) / Invoice(Contract) / Invoice(Non-PO) / Invoice(Credit Memo)
+    receipt_no: Mapped[str | None] = mapped_column(String(40))            # AID-2026-90218, 302455F3E23, AP-2026-*, 或 "—"
+    payload_summary: Mapped[str] = mapped_column(String(200))            # 报文摘要
+    payload_body: Mapped[str | None] = mapped_column(Text)                # 组装报文体（cXML / JSON / REST）
+    attachment_status: Mapped[str] = mapped_column(String(60))           # XML+PDF 已上传 / 待确认 / 影像外链已绑定 / 未发送
+    writeback_status: Mapped[str] = mapped_column(String(30))            # 已回写 / 未回写 / 转人工 / 处理中
+    filing_status: Mapped[str] = mapped_column(String(60))               # 语义状态：建档成功/对账完成（生成支付凭证传会计系统） / 失败重试中 / 失败待人工 / 待出站 / 推送中
+    error_reason: Mapped[str | None] = mapped_column(Text)               # 失败原因或错误信息
+    note: Mapped[str | None] = mapped_column(Text)                        # 备注
+    is_sandbox: Mapped[bool] = mapped_column(Boolean, default=False)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_retries: Mapped[int] = mapped_column(Integer, default=3)
+    next_retry_at: Mapped[str | None] = mapped_column(String(30))         # 下次允许重试时间（ISO，退避序列计算）
+    latency_ms: Mapped[float | None] = mapped_column(Float)               # 回写时延（毫秒）
+    steps_raw: Mapped[list | None] = mapped_column(JSON)                  # 五步链路执行明细
+    created_ts: Mapped[str] = mapped_column(String(30))
+    updated_ts: Mapped[str] = mapped_column(String(30))
+
+
+class TrustedDevice(Base):
+    """受信任设备记录（FN-9-04 · 演示口径 TODO(FN-9-04)）。
+    30 天内相同用户在已信任设备上登录免 MFA 挑战，但登录事件全量写不可篡改审计链。
+    """
+
+    __tablename__ = "trusted_devices"
+
+    device_token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    username: Mapped[str] = mapped_column(String(30), index=True)
+    tenant_id: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[str] = mapped_column(String(30))
+    expires_at: Mapped[str] = mapped_column(String(30))
+

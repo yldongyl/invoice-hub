@@ -36,6 +36,9 @@
   .dark .sb-active,.dark .sb-active:hover{background:#1B2A4A !important;color:#6AA1FF !important;}
   .sb-group{padding:10px 10px 4px;font-size:10.5px;color:#86909C;white-space:nowrap;}
   .sb-ico{width:18px;text-align:center;flex-shrink:0;font-size:14px;line-height:1;display:inline-block;}
+  /* 调试弹窗遮罩 */
+  .modal-mask{display:none;}
+  .modal-mask.open{display:flex;}
 </style>
 <script src="js/auth-guard.js"></script>
 </head>
@@ -122,8 +125,11 @@
         <div class="text-[12px] text-ink-2 dark:text-gray-300 mt-0.5">这是可对外卖的接口成熟度底线（L2 判定口径）· 契约资产：<code class="num text-[11px] px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline">invoice-platform/contracts/</code> · <code class="num text-[11px] px-1.5 py-px rounded bg-card dark:bg-dcard border border-line dark:border-dline">ariba-mock/contracts/</code></div>
       </div>
     </div>
-    <button onclick="toast('Mock调试沙箱：基于 ariba-mock + invoice-platform 演示资产（L2 Demo闭环）')"
-      class="shrink-0 px-4 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#0E4BD6] shadow-card">在线调试（Mock）</button>
+    <button onclick="openMockModal()"
+      class="shrink-0 px-4 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#0E4BD6] shadow-card flex items-center gap-1.5 transition-colors">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>在线调试（Mock）</span>
+    </button>
   </section>
 
   <!-- ═══════════════ 契约治理原则 ═══════════════ -->
@@ -246,7 +252,7 @@
             <div class="codeblock border border-line dark:border-dline">
               <div class="code-cap"><span>Response 200 · InvoiceCase（蓝图统一结构）</span><span class="num">v1</span></div>
 <pre>{
-  "caseId": "INV-2026-00125",
+  "caseId": "INV-CN-2026-0125",
   "status": "NEEDS_REVIEW",
   // 枚举：RECOGNIZED | VERIFYING | NEEDS_REVIEW
   //     | INVESTIGATING | RESOLVED | BLOCKED
@@ -574,7 +580,7 @@ cross_check:
             <div class="code-cap"><span>adapters/ariba/outbound/InvoiceDetailRequest.xml</span><span class="num">cXML 1.2.040</span></div>
 <pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
 &lt;!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.040/InvoiceDetailRequest.dtd"&gt;
-&lt;cXML payloadID="invoice-hub-INV-2026-00125@ariba" timestamp="2026-10-21T09:32:10+08:00"&gt;
+&lt;cXML payloadID="invoice-hub-INV-CN-2026-0125@ariba" timestamp="2026-10-21T09:32:10+08:00"&gt;
   &lt;Header&gt;
     &lt;From&gt;&lt;Credential domain="NetworkID"&gt;&lt;Identity&gt;invoice-hub-cn&lt;/Identity&gt;&lt;/Credential&gt;&lt;/From&gt;
     &lt;To&gt;&lt;Credential domain="NetworkID"&gt;&lt;Identity&gt;ariba-buyer-an12345&lt;/Identity&gt;&lt;/Credential&gt;&lt;/To&gt;
@@ -633,6 +639,90 @@ cross_check:
     Invoice Intelligence &amp; Compliance Hub · 接口契约与 MCP Server 门户 · 数据为演示样例 · v1.2-candidate 蓝图口径
   </footer>
 </main>
+
+<!-- ================= 在线调试（Try-it / Mock）只读面板 (FN-A-08) ================= -->
+
+<div id="mock-modal-mask" class="modal-mask fixed inset-0 z-50 bg-ink-1/50 dark:bg-black/60 items-center justify-center p-4" onclick="if(event.target===this)closeMockModal()">
+
+  <div class="w-[920px] max-w-[95vw] max-h-[88vh] flex flex-col rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+
+    <div class="px-5 py-3.5 border-b border-line dark:border-dline flex items-center justify-between bg-surface dark:bg-[#1D2129]">
+
+      <div class="flex items-center gap-2.5">
+
+        <div class="w-7 h-7 rounded-card bg-primary/10 text-primary flex items-center justify-center text-[14px]">⚡</div>
+
+        <div>
+
+          <div class="text-[14px] font-semibold text-ink-1 dark:text-white flex items-center gap-2">在线调试沙箱（Try-it / Mock）<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">FN-A-08 · 只读 Try-it 实装</span></div>
+
+          <div class="text-[11.5px] text-ink-3 dark:text-gray-400 mt-0.5">对 live backend 发送只读 REST 请求，展示实时响应 JSON；未连后台时自动回退内置 Mock 样例</div>
+
+        </div>
+
+      </div>
+
+      <button onclick="closeMockModal()" title="关闭 (Esc)" class="w-7 h-7 rounded-card flex items-center justify-center text-ink-3 dark:text-gray-400 hover:bg-surface dark:hover:bg-[#23282F] hover:text-ink-1 dark:hover:text-white text-[16px]">✕</button>
+
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-5 space-y-4">
+
+      <div class="p-3.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[12.5px] space-y-3">
+
+        <div class="flex items-center justify-between"><span class="font-medium text-ink-1 dark:text-white">选择调试端点 (Endpoints)</span><span id="tryit-auth-status" class="text-[11px] text-success dark:text-green-400 flex items-center gap-1">● 会话已连接</span></div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+
+          <label class="flex items-start gap-2 p-2 rounded-card border border-primary bg-primary-light/30 dark:bg-[#1B2A4A]/50 cursor-pointer text-ink-1 dark:text-white" id="ep-opt-switcher">
+
+            <input type="radio" name="tryit-endpoint" value="switcher" checked onchange="onEndpointChange(&quot;switcher&quot;)" class="mt-0.5 text-primary">
+
+            <div class="leading-tight"><div class="font-medium">GET /v1/cases?view=switcher</div><div class="text-[11px] text-ink-3 dark:text-gray-400 mt-0.5">案件切换器清单</div></div>
+
+          </label>
+
+          <label class="flex items-start gap-2 p-2 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard hover:border-primary/50 cursor-pointer text-ink-2 dark:text-gray-300" id="ep-opt-case">
+
+            <input type="radio" name="tryit-endpoint" value="case" onchange="onEndpointChange(&quot;case&quot;)" class="mt-0.5 text-primary">
+
+            <div class="leading-tight"><div class="font-medium">GET /v1/cases/{caseId}</div><div class="text-[11px] text-ink-3 dark:text-gray-400 mt-0.5">单案完整聚合快照</div></div>
+
+          </label>
+
+          <label class="flex items-start gap-2 p-2 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard hover:border-primary/50 cursor-pointer text-ink-2 dark:text-gray-300" id="ep-opt-evidence">
+
+            <input type="radio" name="tryit-endpoint" value="evidence" onchange="onEndpointChange(&quot;evidence&quot;)" class="mt-0.5 text-primary">
+
+            <div class="leading-tight"><div class="font-medium">GET /v1/cases/{id}/evidence</div><div class="text-[11px] text-ink-3 dark:text-gray-400 mt-0.5">字段级证据链查询</div></div>
+
+          </label>
+
+        </div>
+
+        <div class="grid grid-cols-4 gap-3 pt-1 items-end">
+
+          <div><label class="block text-[11px] text-ink-3 dark:text-gray-400 mb-1">租户实例 (instance)</label><select id="tryit-instance" onchange="updateRequestUrlPreview()" class="w-full text-[12px] px-2.5 py-1.5 rounded border border-line dark:border-dline bg-card dark:bg-dcard text-ink-1 dark:text-white"><option value="CN">CN · 中国实例</option><option value="OS">OS · 海外实例</option></select></div>
+
+          <div id="tryit-field-caseId" class="hidden col-span-2"><label class="block text-[11px] text-ink-3 dark:text-gray-400 mb-1">案件编号 (caseId)</label><div class="flex gap-1.5"><input id="tryit-caseId" type="text" value="INV-CN-2026-0387" oninput="updateRequestUrlPreview()" class="flex-1 text-[12px] px-2.5 py-1.5 rounded border border-line dark:border-dline bg-card dark:bg-dcard text-ink-1 dark:text-white font-mono"><button type="button" onclick="setPresetCase(&quot;INV-CN-2026-0387&quot;)" class="px-2 py-1 text-[11px] rounded bg-card dark:bg-dcard border border-line dark:border-dline hover:text-primary">0387</button><button type="button" onclick="setPresetCase(&quot;INV-CN-2026-0379&quot;)" class="px-2 py-1 text-[11px] rounded bg-card dark:bg-dcard border border-line dark:border-dline hover:text-primary">0379</button><button type="button" onclick="setPresetCase(&quot;INV-SG-2026-0125&quot;)" class="px-2 py-1 text-[11px] rounded bg-card dark:bg-dcard border border-line dark:border-dline hover:text-primary">0125</button></div></div>
+
+          <div id="tryit-field-sub" class="hidden"><label id="tryit-sub-label" class="block text-[11px] text-ink-3 dark:text-gray-400 mb-1">视图模式 (view)</label><select id="tryit-sub-val" onchange="updateRequestUrlPreview()" class="w-full text-[12px] px-2.5 py-1.5 rounded border border-line dark:border-dline bg-card dark:bg-dcard text-ink-1 dark:text-white"><option value="full">full（完整聚合）</option><option value="summary">summary（快照）</option></select></div>
+
+          <div id="tryit-field-evidence" class="hidden col-span-1"><label class="block text-[11px] text-ink-3 dark:text-gray-400 mb-1">证据字段路径 (field)</label><input id="tryit-field-name" type="text" value="total.gross_amount" oninput="updateRequestUrlPreview()" class="w-full text-[12px] px-2.5 py-1.5 rounded border border-line dark:border-dline bg-card dark:bg-dcard text-ink-1 dark:text-white font-mono"></div>
+
+        </div>
+
+      </div>
+
+      <div class="flex items-center gap-2 p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline"><span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B] shrink-0">GET</span><code id="tryit-url-preview" class="flex-1 font-mono text-[12px] text-ink-1 dark:text-white truncate">/v1/cases?instance=CN&amp;view=switcher</code><button id="tryit-send-btn" onclick="executeTryItRequest()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#0E4BD6] shrink-0 flex items-center gap-1.5 shadow-sm transition-colors"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>发送请求</span></button></div>
+
+      <div class="rounded-card border border-line dark:border-dline overflow-hidden"><div class="px-4 py-2 bg-surface dark:bg-[#23282F] border-b border-line dark:border-dline flex items-center justify-between text-[11.5px]"><div class="flex items-center gap-3"><span class="font-medium text-ink-2 dark:text-gray-300">HTTP 响应</span><span id="tryit-status-badge" class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-line dark:bg-[#3A4150] text-ink-3 dark:text-gray-400">待执行</span><span id="tryit-latency-badge" class="text-ink-3 dark:text-gray-400 font-mono">时延: —</span><span id="tryit-source-badge" class="text-ink-3 dark:text-gray-400">来源: —</span></div><button onclick="copyTryItResponse()" class="px-2.5 py-1 rounded bg-card dark:bg-dcard border border-line dark:border-dline text-ink-2 dark:text-gray-300 hover:text-primary hover:border-primary flex items-center gap-1 text-[11px] transition-colors"><span>📋 复制 JSON</span></button></div><div class="codeblock max-h-[360px] overflow-auto"><pre id="tryit-response-body" class="p-4 text-[12px] font-mono leading-relaxed text-[#D4D8DE]">// 点击上方「发送请求」发起真实 API 调用，或切换端点调试</pre></div></div>
+
+    </div>
+
+  </div>
+
+</div>
 
 <!-- Toast -->
 <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[720px] text-center"></div>
@@ -699,5 +789,169 @@ function sbOpen(){ document.getElementById('sb').classList.add('sb-open'); docum
 function sbClose(){ document.getElementById('sb').classList.remove('sb-open'); document.getElementById('sb-mask').classList.add('hidden'); }
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose(); });
 </script>
+<script>
+
+/* ================= 在线调试沙箱（Try-it / Mock）逻辑 (FN-A-08) ================= */
+
+var TRYIT_STATE = { endpoint: "switcher", lastResponseJson: "" };
+
+var TRYIT_FALLBACK = {
+
+  switcher: { instance: "CN", items: [{ caseId: "INV-CN-2026-0387", type: "数电票", status: "NEEDS_REVIEW" }, { caseId: "INV-CN-2026-0379", type: "数电票", status: "NEEDS_REVIEW" }], total: 2 },
+
+  case_0387: { caseId: "INV-CN-2026-0387", status: "NEEDS_REVIEW", facts: { invoiceAmount: 113000.0, poAmount: 100000.0, taxAmount: 13000.0, currency: "CNY", variance: 13000.0 }, checks: { supplierMatch: { result: "PASSED", note: "供应商名称 + 税号与 SUP-10042 主数据一致" }, authenticity: { result: "NOT_VERIFIED", note: "授权查验渠道超时 · 已排定自动重试" }, duplicate: { result: "PASSED", note: "发票号 + 价税合计全局查重，相似度 < 阈值" }, poMatch: { result: "AMOUNT_VARIANCE", note: "含税 ¥113,000.00 vs PO 净额 ¥100,000.00" } }, evidence: [{ field: "total.gross_amount", value: 113000.0, source: "xml_direct", confidence: 0.98, evidence: { page: 1, bbox: "—（XML 节点）", raw_text: "价税合计（小写）¥113,000.00", rule: "amount_tax_sum_check v2.1", model_version: "cn-xml-parser v3.2", provider: "XML 直读（免 Provider）" } }], nextAction: { type: "HUMAN_REVIEW", reason: "poMatch=AMOUNT_VARIANCE", assign_to: "复核组 · 亚太共享中心" } },
+
+  evidence_0387: { caseId: "INV-CN-2026-0387", field: "total.gross_amount", items: [{ page: 1, bbox: "—（XML 节点）", raw_text: "价税合计（小写）¥113,000.00", rule: "amount_tax_sum_check v2.1", model_version: "cn-xml-parser v3.2", provider: "XML 直读（免 Provider）", value: 113000.0, source: "xml_direct", confidence: 0.98 }], total: 1 }
+
+};
+
+function openMockModal(){
+
+  var m = document.getElementById("mock-modal-mask"); if(!m) return;
+
+  m.classList.add("open");
+
+  var authSt = document.getElementById("tryit-auth-status");
+
+  if(authSt){ var hasTok = window.IHUB_AUTH && IHUB_AUTH.token(); authSt.innerHTML = hasTok ? "<span class='text-success'>● Bearer 会话已装载</span>" : "<span class='text-ink-3'>○ 独立演示态 · Mock 模拟</span>"; }
+
+  updateRequestUrlPreview();
+
+  if(!TRYIT_STATE.lastResponseJson) executeTryItRequest();
+
+}
+
+function closeMockModal(){ var m = document.getElementById("mock-modal-mask"); if(m) m.classList.remove("open"); }
+
+function onEndpointChange(ep){
+
+  TRYIT_STATE.endpoint = ep;
+
+  ["switcher","case","evidence"].forEach(function(k){
+
+    var el = document.getElementById("ep-opt-" + k);
+
+    if(el){ el.className = (k === ep) ? "flex items-start gap-2 p-2 rounded-card border border-primary bg-primary-light/30 dark:bg-[#1B2A4A]/50 cursor-pointer text-ink-1 dark:text-white" : "flex items-start gap-2 p-2 rounded-card border border-line dark:border-dline bg-card dark:bg-dcard hover:border-primary/50 cursor-pointer text-ink-2 dark:text-gray-300"; }
+
+  });
+
+  var fCase = document.getElementById("tryit-field-caseId"); var fSub = document.getElementById("tryit-field-sub"); var fEv = document.getElementById("tryit-field-evidence");
+
+  if(ep === "switcher"){ if(fCase) fCase.classList.add("hidden"); if(fSub) fSub.classList.add("hidden"); if(fEv) fEv.classList.add("hidden"); }
+
+  else if(ep === "case"){ if(fCase) fCase.classList.remove("hidden"); if(fSub) fSub.classList.remove("hidden"); if(fEv) fEv.classList.add("hidden"); }
+
+  else if(ep === "evidence"){ if(fCase) fCase.classList.remove("hidden"); if(fSub) fSub.classList.add("hidden"); if(fEv) fEv.classList.remove("hidden"); }
+
+  updateRequestUrlPreview();
+
+}
+
+function setPresetCase(cid){
+
+  var inp = document.getElementById("tryit-caseId"); if(inp) inp.value = cid;
+
+  var sel = document.getElementById("tryit-instance"); if(sel) sel.value = cid.indexOf("INV-SG") >= 0 ? "OS" : "CN";
+
+  updateRequestUrlPreview();
+
+}
+
+function computeTryItUrl(){
+
+  var ep = TRYIT_STATE.endpoint; var inst = (document.getElementById("tryit-instance") || {}).value || "CN";
+
+  var cid = ((document.getElementById("tryit-caseId") || {}).value || "INV-CN-2026-0387").trim();
+
+  var sub = (document.getElementById("tryit-sub-val") || {}).value || "full";
+
+  var fld = ((document.getElementById("tryit-field-name") || {}).value || "total.gross_amount").trim();
+
+  if(ep === "switcher") return "/v1/cases?instance=" + encodeURIComponent(inst) + "&view=switcher";
+
+  if(ep === "case") return "/v1/cases/" + encodeURIComponent(cid) + "?instance=" + encodeURIComponent(inst) + "&view=" + encodeURIComponent(sub);
+
+  var u = "/v1/cases/" + encodeURIComponent(cid) + "/evidence?instance=" + encodeURIComponent(inst);
+
+  if(fld) u += "&field=" + encodeURIComponent(fld); return u;
+
+}
+
+function updateRequestUrlPreview(){ var code = document.getElementById("tryit-url-preview"); if(code) code.textContent = computeTryItUrl(); }
+
+async function executeTryItRequest(){
+
+  var url = computeTryItUrl(); var btn = document.getElementById("tryit-send-btn");
+
+  var badgeStatus = document.getElementById("tryit-status-badge"); var badgeLat = document.getElementById("tryit-latency-badge");
+
+  var badgeSrc = document.getElementById("tryit-source-badge"); var bodyPre = document.getElementById("tryit-response-body");
+
+  if(btn) btn.disabled = true; if(badgeStatus){ badgeStatus.className = "px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-primary-light text-primary animate-pulse"; badgeStatus.textContent = "请求中..."; }
+
+  var start = performance.now();
+
+  try {
+
+    var headers = Object.assign({ Accept: "application/json" }, window.IHUB_AUTH ? IHUB_AUTH.authHeaders() : {});
+
+    var res = await fetch(url, { headers: headers }); var lat = Math.round(performance.now() - start);
+
+    var data = null; try { data = await res.json(); } catch(e){ data = { raw: await res.text() }; }
+
+    if(res.ok){ renderTryItResult(res.status + " OK", "success", lat, "live backend (FastAPI)", data); }
+
+    else { renderTryItResult(res.status + " " + (res.statusText || "Error"), "danger", lat, "live backend", data); }
+
+  } catch(err){
+
+    var latFallback = Math.max(1, Math.round(performance.now() - start));
+
+    var fallbackData = getFallbackMockData();
+
+    renderTryItResult("200 OK (Mock)", "success", latFallback, "内置 Mock 沙箱 (FN-A-08)", fallbackData);
+
+  } finally { if(btn) btn.disabled = false; }
+
+}
+
+function getFallbackMockData(){
+
+  var ep = TRYIT_STATE.endpoint; var cid = ((document.getElementById("tryit-caseId") || {}).value || "INV-CN-2026-0387").trim();
+
+  if(ep === "switcher"){ var inst = (document.getElementById("tryit-instance") || {}).value || "CN"; var r = JSON.parse(JSON.stringify(TRYIT_FALLBACK.switcher)); r.instance = inst; return r; }
+
+  if(ep === "evidence"){ var ev = JSON.parse(JSON.stringify(TRYIT_FALLBACK.evidence_0387)); ev.caseId = cid; return ev; }
+
+  var c = JSON.parse(JSON.stringify(TRYIT_FALLBACK.case_0387)); c.caseId = cid; return c;
+
+}
+
+function renderTryItResult(statusText, type, latency, source, data){
+
+  var badgeStatus = document.getElementById("tryit-status-badge"); var badgeLat = document.getElementById("tryit-latency-badge");
+
+  var badgeSrc = document.getElementById("tryit-source-badge"); var bodyPre = document.getElementById("tryit-response-body");
+
+  if(badgeStatus){ badgeStatus.className = (type === "success") ? "px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-success-light text-success border border-success/30" : "px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-danger-light text-danger border border-danger/30"; badgeStatus.textContent = statusText; }
+
+  if(badgeLat) badgeLat.textContent = "时延: " + latency + " ms"; if(badgeSrc) badgeSrc.textContent = "来源: " + source;
+
+  var formatted = JSON.stringify(data, null, 2); TRYIT_STATE.lastResponseJson = formatted; if(bodyPre) bodyPre.textContent = formatted;
+
+}
+
+function copyTryItResponse(){
+
+  if(!TRYIT_STATE.lastResponseJson){ toast("暂无可复制的响应数据"); return; }
+
+  navigator.clipboard.writeText(TRYIT_STATE.lastResponseJson).then(function(){ toast("已复制响应 JSON 到剪贴板"); }).catch(function(){ toast("复制失败，请手动选择复制"); });
+
+}
+
+document.addEventListener("keydown", function(e){ if(e.key === "Escape") closeMockModal(); });
+
+</script>
+
 </body>
 </html>

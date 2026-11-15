@@ -51,7 +51,8 @@ def dedup_report(client: BackendClient, *, invoice_no: Optional[str] = None,
         meta = c.get("meta") or {}
         risk_label = meta.get("risk_label") or c.get("risk_label")
         if risk_label == "重复票" or c.get("status") == "BLOCKED":
-            if instance and c.get("instance") != instance:
+            c_inst = c.get("instance") or meta.get("instance") or ("OS" if str(c.get("caseId", "")).startswith("INV-SG") else "CN")
+            if instance and c_inst != instance:
                 continue
             results.append(c)
     return results

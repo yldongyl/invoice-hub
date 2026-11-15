@@ -38,13 +38,25 @@ class FilingReq(BaseModel):
 def get_adapters():
     with get_session() as s:
         items = adapter_service.list_adapters(s)
-        return {"total": len(items), "adapters": items}
+        live_targets = sum(1 for a in items if a.get("status_code", "").startswith("已对接") and a.get("id") != "datalake")
+        wip_count = sum(1 for a in items if a.get("status_code", "").startswith("适配中"))
+        plan_count = sum(1 for a in items if a.get("status_code", "").startswith("规划中"))
+        return {
+            "total": len(items),
+            "adapters": items,
+            "summary": {
+                "live_target_count": live_targets,
+                "wip_count": wip_count,
+                "plan_count": plan_count,
+            },
+        }
 
 
 @router.get("/{adapter_id}")
 def get_adapter(adapter_id: str):
     try:
-        return adapter_service.get_adapter_profile(adapter_id)
+        with get_session() as s:
+            return adapter_service.get_adapter_profile(adapter_id, session=s)
     except CommandError as e:
         _fail(e)
 
@@ -52,7 +64,8 @@ def get_adapter(adapter_id: str):
 @router.get("/{adapter_id}/mapping")
 def get_adapter_mapping(adapter_id: str):
     try:
-        return adapter_service.get_mapping_template(adapter_id)
+        with get_session() as s:
+            return adapter_service.get_mapping_template(adapter_id, session=s)
     except CommandError as e:
         _fail(e)
 
@@ -60,8 +73,9 @@ def get_adapter_mapping(adapter_id: str):
 @router.get("/{adapter_id}/queue")
 def get_adapter_queue(adapter_id: str):
     try:
-        items = adapter_service.list_adapter_queue(adapter_id)
-        return {"adapter_id": adapter_id, "total": len(items), "queue": items}
+        with get_session() as s:
+            items = adapter_service.list_adapter_queue(adapter_id, session=s)
+            return {"adapter_id": adapter_id, "total": len(items), "queue": items}
     except CommandError as e:
         _fail(e)
 

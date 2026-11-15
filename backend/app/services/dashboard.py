@@ -17,6 +17,7 @@
 
 import json
 import re
+from datetime import datetime
 
 from sqlalchemy import func, select
 
@@ -63,6 +64,63 @@ def _live_counts(session, ctx: TenantContext) -> tuple[int, int]:
             select(func.count()).select_from(m.Case)
             .where(m.Case.instance == ctx.instance, m.Case.status == status)) or 0
     return _one("NEEDS_REVIEW"), _one("BLOCKED")
+
+
+def _calc_avg_wait(session, ctx: TenantContext, now_dt: datetime | None = None) -> tuple[float | None, str]:
+    """计算案件时间线进入待复核状态至今的平均等待时长（FN-8-11 / UI-DSH-02）。
+
+    规则：
+    - 查询本实例处于待复核状态的全部案件；
+    - 从 timeline_events 查找进入待复核状态的时间点（STATUS_CHANGE 事件）；
+    - 若案件无时间线事件或数据不足，展示「—」+ 演示口径注释，禁止静态假数值。
+    """
+    reg = get_registry()
+    target_status = next(s for s in reg.code_set("case_status") if "NEEDS_REVIEW" in s)
+
+    cases = list(session.scalars(
+        select(m.Case).where(m.Case.instance == ctx.instance, m.Case.status == target_status)
+    ))
+    if not cases:
+        return None, "—（演示口径：无待复核案件）"
+
+    now = now_dt or datetime.now()
+    diffs: list[float] = []
+
+    for c in cases:
+        tls = session.scalars(
+            select(m.TimelineEvent).where(
+                m.TimelineEvent.case_id == c.case_id
+            ).order_by(m.TimelineEvent.seq)
+        ).all()
+        entry_t_str = None
+        for ev in tls:
+            raw = ev.event_raw or {}
+            d_text = str(raw.get("d", ""))
+            if ev.act == "STATUS_CHANGE" and target_status in d_text:
+                entry_t_str = ev.t
+                break
+        if not entry_t_str:
+            # 存在待复核案件无进入节点时间线记录（种子中 list 级案件仅记录列表字段，无完整 timeline）
+            return None, "—（演示口径：样本不足）"
+
+        try:
+            if len(entry_t_str) == 14 and entry_t_str[2] == "-" and entry_t_str[5] == " ":
+                parsed = datetime.strptime(f"{now.year}-{entry_t_str}", "%Y-%m-%d %H:%M:%S")
+            else:
+                parsed = datetime.fromisoformat(entry_t_str)
+            delta_mins = (now - parsed).total_seconds() / 60.0
+            if delta_mins < 0:
+                return None, "—（演示口径：时间戳异常）"
+            diffs.append(delta_mins)
+        except Exception:
+            return None, "—（演示口径：样本不足）"
+
+    if not diffs or len(diffs) < len(cases):
+        return None, "—（演示口径：样本不足）"
+
+    avg_m = sum(diffs) / len(diffs)
+    disp = f"{int(round(avg_m))} 分钟" if avg_m < 60 else f"{round(avg_m / 60.0, 1)} 小时"
+    return round(avg_m, 1), disp
 
 
 def build_alert_items(session, ctx: TenantContext) -> list[dict]:
@@ -163,6 +221,7 @@ def get_dashboard(session, ctx: TenantContext) -> dict:
 
     # ── 实时计数真算（演示口径注记：pending 展示值为历史全量基线，live_* 为 cases 表现值）──
     live_nr, live_bl = _live_counts(session, ctx)
+    avg_mins, avg_disp = _calc_avg_wait(session, ctx)
 
     # ── 环形占比合计=100 校验（真算，不等=数据违例）──
     donut = snap["donut"]
@@ -204,7 +263,8 @@ def get_dashboard(session, ctx: TenantContext) -> dict:
                            "within_redline": within,
                            "no_relax_note": "不允许以放松校验换取自动化率（FN-5-05 红线，禁配置绕过）"},
             "pending": {"display": kpi["pending_review"], "risk_display": kpi["pending_risk"],
-                        "live_needs_review": live_nr, "live_blocked": live_bl},
+                        "live_needs_review": live_nr, "live_blocked": live_bl,
+                        "avg_wait_minutes": avg_mins, "avg_wait_display": avg_disp},
         },
         "donut": donut,
         "trend_7d": trend,

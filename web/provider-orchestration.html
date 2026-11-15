@@ -117,8 +117,8 @@
     </div>
     <div class="flex items-center gap-3 shrink-0 text-[12px]">
       <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b id="stat-on" class="block text-[16px] num text-success">5</b><span class="text-ink-3 dark:text-gray-500">启用中</span></div>
-      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-primary">4</b><span class="text-ink-3 dark:text-gray-500">路由策略</span></div>
-      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num">99.7%</b><span class="text-ink-3 dark:text-gray-500">30 日可用性</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b id="stat-rules" class="block text-[16px] num text-primary">4</b><span class="text-ink-3 dark:text-gray-500">路由策略</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center" title="基于近 30 日探活采样统计"><b class="block text-[16px] num">99.7%</b><span class="text-ink-3 dark:text-gray-500">30 日可用性</span></div>
     </div>
   </section>
 
@@ -167,7 +167,9 @@
           </div>
           <div class="flex items-center gap-2">
             <button onclick="addRule()" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">+ 新增规则</button>
-            <button onclick="publishPolicy()" class="px-3 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">发布策略</button>
+            <button id="btn-discard" onclick="discardDraft()" class="hidden px-2.5 py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-3 dark:text-gray-400 hover:border-danger hover:text-danger" title="丢弃当前草稿，恢复至已发布基准">丢弃草稿</button>
+            <button id="btn-rollback" onclick="openRollbackModal()" class="px-2.5 py-1.5 rounded-card border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary" title="回滚到上一历史发布版本">↺ 回滚上一版</button>
+            <button onclick="publishPolicy()" class="px-3 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF] shadow-card">发布策略</button>
           </div>
         </div>
         <div id="rule-list" class="p-4 space-y-3"></div>
@@ -175,28 +177,34 @@
 
       <!-- 全局兜底与降级 -->
       <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
-        <div class="text-[14px] font-semibold mb-3">全局降级与人工兜底</div>
+        <div class="text-[14px] font-semibold mb-3 flex items-center justify-between">
+          <span>全局降级与人工兜底</span>
+          <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">随草稿保存与受控发布联动生效（FN-2-10）</span>
+        </div>
         <div class="grid grid-cols-2 gap-x-8 gap-y-3 text-[13px]">
           <div class="flex items-center justify-between gap-3">
             <label class="text-ink-2 dark:text-gray-400">fallback 降级策略</label>
-            <select class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
-              <option>沿路由链顺次降级 → 人工兜底</option><option>直接人工兜底</option><option>并行取最高置信度</option>
+            <select id="gf-mode" onchange="onGlobalFallbackChange()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+              <option value="chain_sequential_human_final">沿路由链顺次降级 → 人工兜底</option>
+              <option value="direct_human">直接人工兜底</option>
+              <option value="parallel_max_confidence">并行取最高置信度</option>
             </select>
           </div>
           <div class="flex items-center justify-between gap-3">
             <label class="text-ink-2 dark:text-gray-400">Provider 全部不可用时</label>
-            <select class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
-              <option>案件挂起 + 告警运维（保留断点续跑）</option><option>仅人工兜底</option>
+            <select id="gf-ondown" onchange="onGlobalFallbackChange()" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-primary">
+              <option value="hold_and_alert_resume">案件挂起 + 告警运维（保留断点续跑）</option>
+              <option value="human_only">仅人工兜底</option>
             </select>
           </div>
           <div class="col-span-2">
             <label class="block text-ink-2 dark:text-gray-400 mb-1.5">人工兜底触发条件（任一命中即进复核工作台）</label>
             <div class="flex flex-wrap gap-2 text-[12px]">
-              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked class="accent-[#165DFF]">最终置信度低于阈值</label>
-              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked class="accent-[#165DFF]">关键字段冲突（金额/税额/发票号）</label>
-              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked class="accent-[#165DFF]">验真 / 验签失败</label>
-              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked class="accent-[#165DFF]">Provider 全链路降级失败</label>
-              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" class="accent-[#165DFF]">新客户首月全量复核</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked data-cond="最终置信度低于阈值" class="gf-trigger-cb accent-[#165DFF]" onchange="onGlobalFallbackChange()">最终置信度低于阈值</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked data-cond="关键字段冲突（金额/税额/发票号）" class="gf-trigger-cb accent-[#165DFF]" onchange="onGlobalFallbackChange()">关键字段冲突（金额/税额/发票号）</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked data-cond="验真/验签失败" class="gf-trigger-cb accent-[#165DFF]" onchange="onGlobalFallbackChange()">验真 / 验签失败</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" checked data-cond="Provider全链路降级失败" class="gf-trigger-cb accent-[#165DFF]" onchange="onGlobalFallbackChange()">Provider 全链路降级失败</label>
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-card border border-line dark:border-dline cursor-pointer hover:border-primary"><input type="checkbox" data-cond="新客户首月全量复核" class="gf-trigger-cb accent-[#165DFF]" onchange="onGlobalFallbackChange()">新客户首月全量复核</label>
             </div>
           </div>
         </div>
@@ -239,10 +247,210 @@
   </footer>
 </main>
 
+<!-- ═══════════ 受控发布五要素弹窗（FN-2-12 · FN-0-08） ═══════════ -->
+<div id="publish-modal" class="hidden fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4">
+  <div class="w-[540px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover p-5 space-y-3.5">
+    <div class="flex items-center justify-between border-b border-line dark:border-dline pb-3">
+      <div class="flex items-center gap-2">
+        <span class="text-[15px] font-semibold text-ink-1 dark:text-white">受控命令：发布路由与降级策略</span>
+        <span class="text-[11px] px-1.5 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium">五要素框架</span>
+      </div>
+      <button onclick="closePublishModal()" class="text-ink-3 hover:text-ink-1 dark:hover:text-white text-[16px]">✕</button>
+    </div>
+
+    <!-- 要素① 权限校验 与 要素② 风险提示 -->
+    <div class="p-3 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11.5px] space-y-2">
+      <div><b>要素① 权限校验：</b><span id="pub-perm" class="text-success font-medium">✓ 已验证操作人具备策略发布权限位（NAV_POLICY）</span></div>
+      <div><b>要素② 风险提示：</b><span id="pub-risk" class="text-warning leading-relaxed block mt-0.5">发布后将覆盖 routing_policy 现行生效配置，新版本递增生效并实时刷新路由引擎与生产推演。</span></div>
+    </div>
+
+    <!-- 要素③ 二次确认 + 本人执行勾选 -->
+    <div class="p-2.5 rounded-card bg-warning-light/20 dark:bg-[#3A2E1C]/20 border border-warning/30">
+      <label class="flex items-start gap-2 text-[12px] text-ink-1 dark:text-gray-200 cursor-pointer">
+        <input type="checkbox" id="pub-confirm" onchange="document.getElementById('btn-pub-submit').disabled=!this.checked" class="mt-0.5 accent-[#165DFF]">
+        <span><b>要素③ 本人确认：</b>本人已核实本次策略规则变更、门控阈值与降级配置，确认立即发布为生产生效版本（受控命令核心要求，禁止代勾选）</span>
+      </label>
+    </div>
+
+    <!-- 要素④ 处置意见 -->
+    <div>
+      <label class="block text-[11.5px] font-medium text-ink-2 dark:text-gray-400 mb-1"><b>要素④ 处置意见（审计必填）：</b></label>
+      <textarea id="pub-opinion" rows="2" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] p-2.5 text-[12px] focus:outline-none focus:border-primary" placeholder="请填写策略发布原因与处置意见（如：上调纸质专票置信度阈值至 0.92）"></textarea>
+    </div>
+
+    <!-- 要素⑤ 审计留痕说明 -->
+    <div class="text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed border-t border-line dark:border-dline pt-2">
+      🛡 <b>要素⑤ 审计留痕：</b>变更前值→后值 diff 实时入链，记入不可篡改审计日志（POLICY_PUBLISHED），操作人（陈铮）与时间戳入链，旧版本全部保留支持随时受控回滚。
+    </div>
+
+    <div class="pt-2 flex justify-end gap-2">
+      <button onclick="closePublishModal()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] hover:border-primary">取消</button>
+      <button id="btn-pub-submit" disabled onclick="confirmPublishPolicy()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF] disabled:opacity-40 disabled:cursor-not-allowed shadow-card">确认受控发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 受控回滚五要素弹窗（FN-2-12 回滚入口） ═══════════ -->
+<div id="rollback-modal" class="hidden fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4">
+  <div class="w-[540px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover p-5 space-y-3.5">
+    <div class="flex items-center justify-between border-b border-line dark:border-dline pb-3">
+      <div class="flex items-center gap-2">
+        <span class="text-[15px] font-semibold text-ink-1 dark:text-white">受控命令：回滚路由策略至上一版</span>
+        <span class="text-[11px] px-1.5 py-0.5 rounded bg-warning-light dark:bg-[#2E2417] text-warning font-medium">受控回滚</span>
+      </div>
+      <button onclick="closeRollbackModal()" class="text-ink-3 hover:text-ink-1 dark:hover:text-white text-[16px]">✕</button>
+    </div>
+
+    <div class="p-3 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11.5px] space-y-2">
+      <div><b>要素① 权限校验：</b><span id="rb-perm" class="text-success font-medium">✓ 已验证操作人具备策略回滚权限位（NAV_POLICY）</span></div>
+      <div><b>要素② 风险提示：</b><span id="rb-risk" class="text-warning leading-relaxed block mt-0.5">回滚操作将以选定的历史版本为模板发布新版本，立即覆盖生产现行策略并恢复规则。</span></div>
+      <div class="pt-1 flex items-center gap-2">
+        <span class="text-ink-2 dark:text-gray-300">目标回滚版本：</span>
+        <select id="rb-target-ver" class="rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1 text-[12px] font-mono focus:outline-none focus:border-primary"></select>
+      </div>
+    </div>
+
+    <div class="p-2.5 rounded-card bg-warning-light/20 dark:bg-[#3A2E1C]/20 border border-warning/30">
+      <label class="flex items-start gap-2 text-[12px] text-ink-1 dark:text-gray-200 cursor-pointer">
+        <input type="checkbox" id="rb-confirm" onchange="document.getElementById('btn-rb-submit').disabled=!this.checked" class="mt-0.5 accent-[#165DFF]">
+        <span><b>要素③ 本人确认：</b>本人已核实目标历史版本策略内容与降级规则，确认执行回滚操作（禁止代勾选）</span>
+      </label>
+    </div>
+
+    <div>
+      <label class="block text-[11.5px] font-medium text-ink-2 dark:text-gray-400 mb-1"><b>要素④ 处置意见（审计必填）：</b></label>
+      <textarea id="rb-opinion" rows="2" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] p-2.5 text-[12px] focus:outline-none focus:border-primary" placeholder="请填写策略回滚原因与处置意见（如：生产偶发超时，回滚至前一稳定版本）"></textarea>
+    </div>
+
+    <div class="text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed border-t border-line dark:border-dline pt-2">
+      🛡 <b>要素⑤ 审计留痕：</b>回滚事件将生成新策略版本写入审计链（POLICY_PUBLISHED），附带 rollback_of 指针与变更 diff。
+    </div>
+
+    <div class="pt-2 flex justify-end gap-2">
+      <button onclick="closeRollbackModal()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] hover:border-primary">取消</button>
+      <button id="btn-rb-submit" disabled onclick="confirmRollbackPolicy()" class="px-4 py-1.5 rounded-card bg-warning text-white text-[12.5px] font-medium hover:bg-[#E06C00] disabled:opacity-40 disabled:cursor-not-allowed shadow-card">确认受控回滚</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ Provider 注册弹窗（FN-2-02 Option A 最小实装） ═══════════ -->
+<div id="register-pv-modal" class="hidden fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4">
+  <div class="w-[560px] max-h-[90vh] flex flex-col rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover p-5 space-y-3.5 overflow-hidden">
+    <div class="flex items-center justify-between border-b border-line dark:border-dline pb-3">
+      <div class="flex items-center gap-2">
+        <span class="text-[15px] font-semibold text-ink-1 dark:text-white">受控注册：新 Provider 实例（FN-2-02）</span>
+        <span class="text-[11px] px-1.5 py-0.5 rounded bg-primary-light dark:bg-[#1B2A4A] text-primary font-medium">SPI 契约接网</span>
+      </div>
+      <button onclick="closeRegisterProviderModal()" class="text-ink-3 hover:text-ink-1 dark:hover:text-white text-[16px]">✕</button>
+    </div>
+
+    <div class="overflow-y-auto space-y-3 pr-1 text-[12.5px]">
+      <div class="p-3 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11.5px] space-y-1">
+        <div><b>要素① 权限校验：</b><span class="text-success font-medium">✓ 已验证操作人「陈铮」具备 Provider 管理权限位</span></div>
+        <div><b>要素② 风险提示：</b><span class="text-warning leading-relaxed">新 Provider 注册后进入实例列表并<b>默认停用</b>；凭证由 KMS/Vault 托管界面不回显；通过连通性测试后方可灰度启用。</span></div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[11.5px] text-ink-2 dark:text-gray-400 mb-1">Provider ID（唯一机器码）</label>
+          <input id="reg-id" type="text" placeholder="如 custom-vlm" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12px] font-mono focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-[11.5px] text-ink-2 dark:text-gray-400 mb-1">显示名称</label>
+          <input id="reg-name" type="text" placeholder="如 客户自研 VLM" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-[11.5px] text-ink-2 dark:text-gray-400 mb-1">标签分类</label>
+          <select id="reg-tag" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-primary">
+            <option>商业厂商</option><option selected>客户已有</option><option>私有化</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11.5px] text-ink-2 dark:text-gray-400 mb-1">部署模式</label>
+          <select id="reg-deploy" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-primary">
+            <option>API（SaaS）</option><option selected>客户环境 API</option><option>私有化自托管（GPU）</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-[11.5px] text-ink-2 dark:text-gray-400 mb-1">识别与查验类型</label>
+          <input id="reg-type" type="text" value="OCR / VLM 文档理解" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-primary">
+        </div>
+        <div class="col-span-2">
+          <label class="block text-[11.5px] text-ink-2 dark:text-gray-400 mb-1">数据合规配置（条款台账登记 · FN-2-07）</label>
+          <input id="reg-note" type="text" value="合同含「不留存、不训练」条款 ✓ · 数据不出客户控制域" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2.5 py-1.5 text-[12px] focus:outline-none focus:border-primary">
+        </div>
+        <div class="col-span-2">
+          <label class="block text-[11.5px] text-ink-3 dark:text-gray-500 mb-1">凭证托管（KMS 托管演示桩 · 不回显明文）</label>
+          <input disabled type="text" value="arn:kms:demo:provider/credential-auto-managed" class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#1C2026] text-ink-3 dark:text-gray-500 px-2.5 py-1.5 text-[11px] font-mono">
+        </div>
+      </div>
+
+      <div class="p-2.5 rounded-card bg-warning-light/20 dark:bg-[#3A2E1C]/20 border border-warning/30">
+        <label class="flex items-start gap-2 text-[12px] text-ink-1 dark:text-gray-200 cursor-pointer">
+          <input type="checkbox" id="reg-confirm" onchange="document.getElementById('btn-reg-submit').disabled=!this.checked" class="mt-0.5 accent-[#165DFF]">
+          <span><b>要素③ 本人确认：</b>本人已核实该 Provider 实现 SPI 最小契约与数据合规条款，同意注册并默认停用</span>
+        </label>
+      </div>
+
+      <div>
+        <label class="block text-[11.5px] font-medium text-ink-2 dark:text-gray-400 mb-1"><b>要素④ 处置意见（审计必填）：</b></label>
+        <textarea id="reg-opinion" rows="2" class="w-full rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] p-2.5 text-[12px] focus:outline-none focus:border-primary" placeholder="请填写注册原因与接入说明"></textarea>
+      </div>
+
+      <div class="text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed border-t border-line dark:border-dline pt-2">
+        🛡 <b>要素⑤ 审计留痕：</b>新 Provider 档案建立入不可篡改审计链（CARRIER_ROUTED），留存操作人、时间与合规条款台账。
+      </div>
+    </div>
+
+    <div class="pt-2 flex justify-end gap-2 border-t border-line dark:border-dline">
+      <button onclick="closeRegisterProviderModal()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] hover:border-primary">取消</button>
+      <button id="btn-reg-submit" disabled onclick="confirmRegisterProvider()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF] disabled:opacity-40 disabled:cursor-not-allowed shadow-card">确认注册</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 版本 Diff 留痕展示弹窗 ═══════════ -->
+<div id="diff-modal" class="hidden fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4">
+  <div class="w-[500px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover p-5 space-y-3">
+    <div class="flex items-center justify-between border-b border-line dark:border-dline pb-2.5">
+      <div class="text-[14.5px] font-semibold text-ink-1 dark:text-white flex items-center gap-2">
+        <span>✓ 发布留痕与版本 Diff</span>
+        <span id="diff-ver-badge" class="text-[11px] px-1.5 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success font-mono"></span>
+      </div>
+      <button onclick="document.getElementById('diff-modal').classList.add('hidden')" class="text-ink-3 hover:text-ink-1 dark:hover:text-white text-[16px]">✕</button>
+    </div>
+    <div id="diff-content" class="text-[12px] bg-surface dark:bg-[#23282F] p-3 rounded-card border border-line dark:border-dline space-y-1.5 font-mono max-h-[260px] overflow-y-auto"></div>
+    <div class="text-[11px] text-ink-3 dark:text-gray-500" id="diff-audit-note"></div>
+    <div class="pt-2 flex justify-end">
+      <button onclick="document.getElementById('diff-modal').classList.add('hidden')" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium">我知道了</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[640px]"></div>
 
 <script>
 /* ═══════════════ Provider 实例数据 ═══════════════ */
+const PID_MAP = { bw: 'bwyun-cn', nn: 'nuonuo-cn', cust: 'customer-ocr', self: 'selfhosted-ocr-vlm', sg: 'overseas-einv-sg', man: 'human-fallback' };
+const PROVIDER_NAME_MAP = {
+  'XML 直读（内置解析）': 'xml_direct',
+  '百望云': 'bwyun-cn',
+  '诺诺': 'nuonuo-cn',
+  '客户自有 OCR': 'customer-ocr',
+  '自托管 OCR-VLM': 'selfhosted-ocr-vlm',
+  '海外 e-invoicing（新加坡）': 'overseas-einv-sg',
+  '人工兜底': 'human-fallback'
+};
+const REVERSE_PROVIDER_NAME_MAP = {
+  'xml_direct': 'XML 直读（内置解析）',
+  'bwyun-cn': '百望云',
+  'nuonuo-cn': '诺诺',
+  'customer-ocr': '客户自有 OCR',
+  'selfhosted-ocr-vlm': '自托管 OCR-VLM',
+  'overseas-einv-sg': '海外 e-invoicing（新加坡）',
+  'human-fallback': '人工兜底'
+};
+
 const PROVIDERS = [
   { id:'bw',   name:'百望云', tag:'商业厂商', type:'国内查验 + OCR', deploy:'API（SaaS）', on:true,
     sla:{lv:'ok', txt:'99.95% · P95 2.1s'}, cost:'¥12,480 · ¥0.08/张 · 15.6万张', note:'合同含「不留存、不训练」条款 ✓' },
@@ -290,45 +498,339 @@ function renderProviders(){
     </tr>`).join('');
   document.getElementById('stat-on').textContent = PROVIDERS.filter(p=>p.on).length;
 }
-function togglePv(i){
+
+/* ═══════════════ Provider 交互 ═══════════════ */
+async function togglePv(i){
   const p = PROVIDERS[i];
   if(p.lock){ toast('「人工兜底」是所有降级链路的最终兜底，不可停用'); return; }
-  p.on = !p.on;
-  renderProviders();
-  toast(p.on ? `已启用「${p.name}」· 变更记入审计日志` : `⚠ 已停用「${p.name}」· 引用该 Provider 的路由策略将自动跳过并降级至链上下一个（留痕于审计日志）`);
+  const nextOn = !p.on;
+  if (!IHUB_DEMO.isLive()) {
+    p.on = nextOn;
+    renderProviders();
+    toast(p.on ? `已启用「${p.name}」· 变更记入审计日志（演示口径）` : `⚠ 已停用「${p.name}」· 引用该 Provider 的路由策略将自动跳过并降级至链上下一个（留痕于审计日志，演示口径）`);
+    return;
+  }
+  const pid = PID_MAP[p.id] || p.id;
+  try {
+    const res = await IHUB_API.postJSON('/v1/providers/' + pid + '/toggle', { enabled: nextOn, actor: '陈铮' });
+    p.on = res.enabled;
+    renderProviders();
+    toast(res.message);
+  } catch (e) {
+    toast(`操作被拒：${e.message_cn || e.message}`);
+  }
 }
-function editPv(i){ toast(`编辑「${PROVIDERS[i].name}」：凭证走 KMS/Vault 管理，界面不回显（演示入口）· 数据合规配置：区域 ${PROVIDERS[i].deploy.includes('私有化')?'数据不出域':'按合同约束'}`); }
-function testPv(i){
+
+function editPv(i){
+  toast(`编辑「${PROVIDERS[i].name}」：凭证走 KMS/Vault 管理，界面不回显（演示入口）· 数据合规配置：区域 ${PROVIDERS[i].deploy.includes('私有化')?'数据不出域':'按合同约束'}`);
+}
+
+async function testPv(i){
   const p = PROVIDERS[i], btn = document.getElementById('test-'+p.id);
   btn.disabled = true; btn.textContent = '测试中…'; btn.classList.add('opacity-60');
-  setTimeout(()=>{
+  if (!IHUB_DEMO.isLive()) {
+    setTimeout(()=>{
+      btn.disabled = false; btn.textContent = '测试连通'; btn.classList.remove('opacity-60');
+      const ms = p.id==='man' ? '—' : (120 + (i*137)%680) + ' ms';
+      toast(`✓「${p.name}」连通测试通过 · 握手 ${ms} · 结果归一化格式校验 OK · 已记入审计日志（演示口径）`);
+    }, 900);
+    return;
+  }
+  const pid = PID_MAP[p.id] || p.id;
+  try {
+    const res = await IHUB_API.postJSON('/v1/providers/' + pid + '/test', { actor: '陈铮' });
+    toast(res.message);
+  } catch (e) {
+    toast(`连通测试失败：${e.message_cn || e.message}`);
+  } finally {
     btn.disabled = false; btn.textContent = '测试连通'; btn.classList.remove('opacity-60');
-    const ms = p.id==='man' ? '—' : (120 + (i*137)%680) + ' ms';
-    toast(`✓「${p.name}」连通测试通过 · 握手 ${ms} · 结果归一化格式校验 OK · 已记入审计日志`);
-  }, 1100);
+  }
 }
-function addProvider(){ toast('注册新 Provider：实现 Provider SPI 最小契约（识别/查验 + 结果归一化）→ 配置凭证（KMS）→ 注册路由 → 灰度启用。不改平台内核（演示入口）'); }
 
-/* ═══════════════ 路由策略规则 ═══════════════ */
+/* ═══════════════ Provider 注册（FN-2-02 Option A 最小实装） ═══════════════ */
+function addProvider(){ openRegisterProviderModal(); }
+function openRegisterProviderModal(){
+  document.getElementById('reg-id').value = 'custom-vlm-' + (PROVIDERS.length + 1);
+  document.getElementById('reg-name').value = '自研多模态文档理解 VLM';
+  document.getElementById('reg-tag').value = '客户已有';
+  document.getElementById('reg-deploy').value = '私有化自托管（GPU）';
+  document.getElementById('reg-type').value = 'OCR / VLM 文档理解';
+  document.getElementById('reg-note').value = '合同含「不留存、不训练」条款 ✓ · 数据不出客户控制域';
+  document.getElementById('reg-opinion').value = '注册客户自研 VLM 实例，接入 SPI 契约';
+  document.getElementById('reg-confirm').checked = false;
+  document.getElementById('btn-reg-submit').disabled = true;
+  document.getElementById('register-pv-modal').classList.remove('hidden');
+}
+function closeRegisterProviderModal(){
+  document.getElementById('register-pv-modal').classList.add('hidden');
+}
+
+async function confirmRegisterProvider(){
+  const id = document.getElementById('reg-id').value.trim();
+  const name = document.getElementById('reg-name').value.trim();
+  const tag = document.getElementById('reg-tag').value;
+  const deploy = document.getElementById('reg-deploy').value;
+  const type = document.getElementById('reg-type').value.trim();
+  const note = document.getElementById('reg-note').value.trim();
+  const opinion = document.getElementById('reg-opinion').value.trim() || '注册新 Provider 实例';
+  if(!id || !name){ toast('请填写 Provider ID 与名称'); return; }
+
+  if (!IHUB_DEMO.isLive()) {
+    closeRegisterProviderModal();
+    const newP = {
+      id: id, name: name, tag: tag, type: type, deploy: deploy, on: false, lock: false,
+      sla: { lv: 'ok', txt: '99.80% · P95 3.0s' }, cost: '¥0 · 0 张', note: note
+    };
+    PROVIDERS.push(newP);
+    PID_MAP[id] = id;
+    PROVIDER_NAME_MAP[name] = id;
+    REVERSE_PROVIDER_NAME_MAP[id] = name;
+    renderProviders();
+    toast(`✓ 注册新 Provider「${name}」成功 · 默认停用（演示口径）`);
+    return;
+  }
+
+  try {
+    const res = await IHUB_API.postJSON('/v1/providers', {
+      provider_id: id,
+      display_name: name,
+      provider_label: tag,
+      type: type,
+      deploy_mode: deploy,
+      compliance_note: note,
+      actor: '陈铮',
+      opinion: opinion
+    });
+    closeRegisterProviderModal();
+    const newP = {
+      id: id, name: name, tag: tag, type: type, deploy: deploy, on: false, lock: false,
+      sla: { lv: 'ok', txt: '99.80% · P95 3.0s' }, cost: '¥0 · 0 张', note: note
+    };
+    PROVIDERS.push(newP);
+    PID_MAP[id] = id;
+    PROVIDER_NAME_MAP[name] = id;
+    REVERSE_PROVIDER_NAME_MAP[id] = name;
+    renderProviders();
+    toast(res.message);
+  } catch (e) {
+    toast(`注册被拒：${e.message_cn || e.message}`);
+  }
+}
+
+/* ═══════════════ 路由策略规则数据与同步 ═══════════════ */
+let CURRENT_POLICY = {
+  version: 'v2026-10-20.3',
+  state: 'published',
+  rules: [],
+  global_fallback: {
+    mode: 'chain_sequential_human_final',
+    on_all_providers_down: 'hold_and_alert_resume',
+    trigger_conditions: [
+      { condition: '最终置信度低于阈值', enabled: true },
+      { condition: '关键字段冲突（金额/税额/发票号）', enabled: true },
+      { condition: '验真/验签失败', enabled: true },
+      { condition: 'Provider全链路降级失败', enabled: true },
+      { condition: '新客户首月全量复核', enabled: false }
+    ]
+  }
+};
+
 let RULES = [
-  { id:1, on:true, region:'CN 中国', type:'数电票', carrier:'XML 原件 + PDF',
+  { id:1, route_id:'cn_e_invoice_recognize', on:true, region:'CN 中国', type:'数电票', carrier:'XML 原件 + PDF',
     chain:['XML 直读（内置解析）','百望云'], thr:0.85, cross:false,
     desc:'优先 XML 结构化直读（能直读的不送 OCR）；解析失败或票面不一致时路由百望云 OCR 交叉核对；置信度 < 0.85 进人工复核' },
-  { id:2, on:true, region:'CN 中国', type:'增值税专票/普票（纸质扫描）', carrier:'纸质扫描 / 图片',
+  { id:2, route_id:'cn_vat_paper_recognize', on:true, region:'CN 中国', type:'增值税专票/普票（纸质扫描）', carrier:'纸质扫描 / 图片',
     chain:['百望云','诺诺','客户自有 OCR'], thr:0.88, cross:true,
     desc:'商业 OCR 优先，双 Provider 顺次降级；开启多源交叉验证（授权查验结果 × OCR 票面 × 金额勾稽）' },
-  { id:3, on:true, region:'APAC 亚太 / EU 欧盟', type:'Supplier Invoice', carrier:'PDF（原生文本层）',
+  { id:3, route_id:'ap_supplier_invoice_recognize', on:true, region:'APAC 亚太 / EU 欧盟', type:'Supplier Invoice', carrier:'PDF（原生文本层）',
     chain:['海外 e-invoicing（新加坡）','自托管 OCR-VLM'], thr:0.85, cross:true,
     desc:'海外实例：优先文本层直读 + e-invoicing Provider；降级至自托管 VLM（数据不出域）；GST/VAT 字段交叉验证' },
-  { id:4, on:true, region:'APAC 亚太 / EU 欧盟', type:'Credit Note', carrier:'PDF（原生文本层）',
+  { id:4, route_id:'ap_credit_note_recognize', on:true, region:'APAC 亚太 / EU 欧盟', type:'Credit Note', carrier:'PDF（原生文本层）',
     chain:['海外 e-invoicing（新加坡）','自托管 OCR-VLM'], thr:0.90, cross:true,
     desc:'Credit Note 冲减关系影响付款，阈值上调至 0.90；未关联原票一律人工确认 Link 后放行' }
 ];
 let ruleSeq = 5;
+let isDraft = false;
+let isDirty = false;
 
+function syncPolicyFromRules(){
+  if (!CURRENT_POLICY) return;
+  CURRENT_POLICY.rules = RULES.map((r, i) => {
+    const reg = r.region.includes('CN') ? 'CN' : (r.region.includes('APAC') ? 'APAC' : (r.region.includes('EU') ? 'EU' : (r.region.includes('US') ? 'US' : null)));
+    const strategies = [];
+    let pSeq = 10;
+    for (const c of r.chain) {
+      const pid = PROVIDER_NAME_MAP[c] || c;
+      strategies.push({
+        provider: pid,
+        priority: pSeq,
+        condition: pid === 'xml_direct' ? 'mime_type == "application/xml"' : null,
+        threshold: (pid === 'xml_direct' || pid === 'human-fallback') ? null : r.thr,
+        fallback: 'next'
+      });
+      pSeq += 10;
+    }
+    strategies.push({
+      provider: 'human-fallback',
+      priority: 90,
+      condition: null,
+      threshold: null,
+      fallback: 'human_review'
+    });
+
+    return {
+      route_id: r.route_id || `rule_${(r.type||'custom').toLowerCase().replace(/[^a-z0-9]/g, '_')}_${i+1}`,
+      enabled: Boolean(r.on),
+      priority: i + 1,
+      condition: {
+        region: reg,
+        invoice_type: r.type,
+        carrier: r.carrier || null
+      },
+      strategies: strategies,
+      cross_check: {
+        enabled: Boolean(r.cross),
+        require_different_source: true,
+        fields: ['total.gross_amount', 'total.tax_amount']
+      },
+      note: r.desc || '',
+      ui_chain: [...r.chain, '人工兜底'],
+      ui_condition: r.region
+    };
+  });
+}
+
+function syncRulesFromPolicy(){
+  if (!CURRENT_POLICY || !Array.isArray(CURRENT_POLICY.rules) || !CURRENT_POLICY.rules.length) return;
+  RULES = CURRENT_POLICY.rules.map((r, i) => {
+    const chain = (r.strategies || [])
+      .filter(s => s.provider !== 'human-fallback')
+      .map(s => REVERSE_PROVIDER_NAME_MAP[s.provider] || s.provider);
+
+    const stgWithThr = (r.strategies || []).find(s => s.threshold !== null && s.threshold !== undefined);
+    const thr = stgWithThr ? parseFloat(stgWithThr.threshold) : 0.85;
+
+    return {
+      id: i + 1,
+      route_id: r.route_id,
+      on: Boolean(r.enabled),
+      region: r.ui_condition || (r.condition && r.condition.region === 'CN' ? 'CN 中国' : (r.condition && r.condition.region ? `${r.condition.region} 区域` : 'CN 中国')),
+      type: (r.condition && r.condition.invoice_type) || '',
+      carrier: (r.condition && r.condition.carrier) || 'PDF（原生文本层）',
+      chain: chain.length ? chain : ['百望云'],
+      thr: thr,
+      cross: Boolean(r.cross_check && r.cross_check.enabled),
+      desc: r.note || ''
+    };
+  });
+  ruleSeq = RULES.length + 1;
+}
+
+function markDraftState(inDraft){
+  isDraft = inDraft;
+  const badge = document.getElementById('policy-ver');
+  const discardBtn = document.getElementById('btn-discard');
+  if (badge) {
+    if (inDraft) {
+      badge.textContent = `策略版本 ${CURRENT_POLICY.version} · 草稿未发布`;
+      badge.className = 'text-[11px] num px-2 py-1 rounded-card bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30 font-medium';
+    } else {
+      badge.textContent = `策略版本 ${CURRENT_POLICY.version} · 已发布`;
+      badge.className = 'text-[11px] num px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500';
+    }
+  }
+  if (discardBtn) {
+    if (inDraft) discardBtn.classList.remove('hidden');
+    else discardBtn.classList.add('hidden');
+  }
+  const statRules = document.getElementById('stat-rules');
+  if (statRules) {
+    statRules.textContent = RULES.length;
+  }
+}
+
+async function saveDraft(msg){
+  syncPolicyFromRules();
+  CURRENT_POLICY.state = 'draft';
+  isDirty = true;
+  if (!IHUB_DEMO.isLive()) {
+    markDraftState(true);
+    if (msg) toast(msg);
+    return;
+  }
+  try {
+    await IHUB_API.postJSON('/v1/routing/policy/draft?actor=陈铮', CURRENT_POLICY);
+    markDraftState(true);
+    isDirty = false;
+    if (msg) toast(msg);
+  } catch (e) {
+    toast(`草稿保存被拒：${e.message_cn || e.message}`);
+  }
+}
+
+async function discardDraft(){
+  if (!confirm('确认丢弃当前草稿策略？所有未发布的改动将被清空，恢复至已发布基准策略。')) return;
+  if (!IHUB_DEMO.isLive()) {
+    isDraft = false;
+    isDirty = false;
+    markDraftState(false);
+    toast('已丢弃草稿（演示口径）');
+    return;
+  }
+  try {
+    await IHUB_API.deleteJSON('/v1/routing/policy/draft');
+    const pol = await IHUB_API.getJSON('/v1/routing/policy');
+    CURRENT_POLICY = pol;
+    syncRulesFromPolicy();
+    renderRules();
+    renderGlobalFallback();
+    markDraftState(false);
+    isDirty = false;
+    toast(`✓ 已成功丢弃草稿，恢复至基线策略（${pol.version}）`);
+  } catch (e) {
+    toast(`丢弃草稿失败：${e.message_cn || e.message}`);
+  }
+}
+
+/* ═══════════════ 全局降级卡绑定与响应 ═══════════════ */
+function renderGlobalFallback(){
+  const gf = CURRENT_POLICY.global_fallback || {};
+  const modeSel = document.getElementById('gf-mode');
+  const ondownSel = document.getElementById('gf-ondown');
+  if (modeSel && gf.mode) modeSel.value = gf.mode;
+  if (ondownSel && gf.on_all_providers_down) ondownSel.value = gf.on_all_providers_down;
+
+  const trs = gf.trigger_conditions || [];
+  const map = {};
+  trs.forEach(t => { map[t.condition] = t.enabled; });
+  document.querySelectorAll('.gf-trigger-cb').forEach(cb => {
+    const c = cb.getAttribute('data-cond');
+    if (c in map) cb.checked = Boolean(map[c]);
+  });
+}
+
+function onGlobalFallbackChange(){
+  const mode = document.getElementById('gf-mode').value;
+  const ondown = document.getElementById('gf-ondown').value;
+  const conds = [];
+  document.querySelectorAll('.gf-trigger-cb').forEach(cb => {
+    conds.push({
+      condition: cb.getAttribute('data-cond'),
+      enabled: cb.checked
+    });
+  });
+  CURRENT_POLICY.global_fallback = {
+    mode: mode,
+    on_all_providers_down: ondown,
+    trigger_conditions: conds
+  };
+  saveDraft('全局降级策略已更新（草稿，发布后生效）');
+}
+
+/* ═══════════════ 规则列表渲染与交互 ═══════════════ */
 function renderRules(){
   document.getElementById('rule-list').innerHTML = RULES.map((r,i)=>`
-    <div class="rounded-card border ${r.on?'border-line dark:border-dline':'border-dashed border-ink-4/50 dark:border-dline opacity-60'} bg-card dark:bg-dcard p-4 ${i===0?'':''}">
+    <div class="rounded-card border ${r.on?'border-line dark:border-dline':'border-dashed border-ink-4/50 dark:border-dline opacity-60'} bg-card dark:bg-dcard p-4">
       <div class="flex items-center gap-2.5">
         <span class="w-6 h-6 rounded-full ${r.on?'bg-primary text-white':'bg-surface dark:bg-[#23282F] text-ink-3'} text-[11px] font-semibold flex items-center justify-center num shrink-0">${i+1}</span>
         <div class="flex items-center gap-1.5 flex-wrap">
@@ -339,7 +841,7 @@ function renderRules(){
           <span class="text-[11.5px] px-2 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">${r.carrier}</span>
         </div>
         <div class="ml-auto flex items-center gap-1.5 shrink-0">
-          <div class="switch blue ${r.on?'on':''}" onclick="RULES[${i}].on=!RULES[${i}].on;renderRules();toast('规则「${r.type}」已${r.on?'启用':'停用（草稿）'}')"></div>
+          <div class="switch blue ${r.on?'on':''}" onclick="toggleRule(${i})"></div>
           <button onclick="moveRule(${i},-1)" ${i===0?'disabled':''} class="w-6 h-6 rounded border border-line dark:border-dline text-ink-3 hover:text-primary hover:border-primary disabled:opacity-30 text-[11px]" title="提升优先级">▲</button>
           <button onclick="moveRule(${i},1)" ${i===RULES.length-1?'disabled':''} class="w-6 h-6 rounded border border-line dark:border-dline text-ink-3 hover:text-primary hover:border-primary disabled:opacity-30 text-[11px]" title="降低优先级">▼</button>
           <button onclick="delRule(${i})" class="w-6 h-6 rounded border border-line dark:border-dline text-ink-3 hover:text-danger hover:border-danger text-[11px]" title="删除规则">✕</button>
@@ -357,34 +859,257 @@ function renderRules(){
       <!-- 参数 -->
       <div class="mt-3 flex items-center gap-6 flex-wrap text-[12px]">
         <label class="flex items-center gap-2 text-ink-2 dark:text-gray-400">置信度阈值
-          <input type="number" step="0.01" min="0.5" max="0.99" value="${r.thr}" onchange="RULES[${i}].thr=parseFloat(this.value)||0.85;renderRules();toast('阈值已更新为 '+RULES[${i}].thr+'（草稿，发布后生效并留痕）')"
+          <input type="number" step="0.01" min="0.5" max="0.99" value="${r.thr}" onchange="updateThreshold(${i}, this.value)"
             class="w-16 num rounded border border-line dark:border-dline bg-card dark:bg-[#23282F] px-2 py-1 text-[12px] focus:outline-none focus:border-primary">
           <span class="text-ink-3 dark:text-gray-500">低于阈值 → 降级 / 人工复核</span>
         </label>
         <label class="flex items-center gap-2 text-ink-2 dark:text-gray-400 cursor-pointer" title="交叉验证须来自不同证据类别（结构化原件、页面文本、金额勾稽、外部授权查验）；同类模型对比投票不构成有效交叉验证">
           多引擎并行交叉验证
-          <span class="switch blue ${r.cross?'on':''}" onclick="event.preventDefault();RULES[${i}].cross=!RULES[${i}].cross;renderRules();toast(RULES[${i}].cross?'已开启交叉验证：仅接受异构证据源互证，同类模型重复投票被自动排除':'已关闭交叉验证（草稿）')"></span>
+          <span class="switch blue ${r.cross?'on':''}" onclick="event.preventDefault();toggleCross(${i})"></span>
         </label>
       </div>
       <div class="mt-2 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">📋 ${r.desc}</div>
     </div>`).join('');
-}
-function moveRule(i,d){ const j=i+d; if(j<0||j>=RULES.length)return; [RULES[i],RULES[j]]=[RULES[j],RULES[i]]; renderRules(); toast(`优先级调整：「${RULES[j].type}」→ 第 ${j+1} 位（草稿）`); }
-function delRule(i){ const r=RULES.splice(i,1)[0]; renderRules(); toast(`已删除规则「${r.region} | ${r.type}」（草稿，发布后生效并留痕）`); }
-function addRule(){
-  RULES.push({ id:ruleSeq++, on:false, region:'EU 欧盟', type:'Peppol / UBL 电子发票', carrier:'XML（UBL 2.1）',
-    chain:['海外 e-invoicing（新加坡）','自托管 OCR-VLM'], thr:0.85, cross:true,
-    desc:'新增草稿规则：Peppol 网络接入票据 UBL 直读优先，VAT ID 走 EU 名录校验' });
-  renderRules(); toast('已新增草稿规则（未启用）· 发布前请先在右侧模拟测试');
-}
-let ver = 3;
-function publishPolicy(){
-  ver++; const d=new Date();
-  document.getElementById('policy-ver').textContent = `策略版本 v2026-10-${(d.getDate()<10?'0':'')+d.getDate()}.${ver} · 已发布`;
-  toast(`✓ 策略已发布 v2026-10-…${ver} · 变更 diff、操作人（陈铮）、时间已记入不可篡改审计日志 · 旧版本保留可回滚`);
+  const statRules = document.getElementById('stat-rules');
+  if (statRules) statRules.textContent = RULES.length;
 }
 
-/* ═══════════════ 模拟测试引擎 ═══════════════ */
+function toggleRule(i){
+  RULES[i].on = !RULES[i].on;
+  renderRules();
+  saveDraft(`规则「${RULES[i].type}」已${RULES[i].on?'启用':'停用（草稿）'}`);
+}
+
+function updateThreshold(i, val){
+  const t = parseFloat(val) || 0.85;
+  RULES[i].thr = t;
+  renderRules();
+  saveDraft(`阈值已更新为 ${t}（草稿，发布后生效并留痕）`);
+}
+
+function toggleCross(i){
+  RULES[i].cross = !RULES[i].cross;
+  renderRules();
+  saveDraft(RULES[i].cross ? '已开启交叉验证：仅接受异构证据源互证，同类模型重复投票被自动排除' : '已关闭交叉验证（草稿）');
+}
+
+function moveRule(i,d){
+  const j = i + d;
+  if(j < 0 || j >= RULES.length) return;
+  [RULES[i], RULES[j]] = [RULES[j], RULES[i]];
+  renderRules();
+  saveDraft(`优先级调整：「${RULES[j].type}」→ 第 ${j+1} 位（草稿）`);
+}
+
+function delRule(i){
+  const r = RULES.splice(i, 1)[0];
+  renderRules();
+  saveDraft(`已删除规则「${r.region} | ${r.type}」（草稿，发布后生效并留痕）`);
+}
+
+function addRule(){
+  const nextId = ruleSeq++;
+  RULES.push({
+    id: nextId,
+    route_id: `rule_eu_peppol_ubl_${nextId}`,
+    on: false,
+    region: 'EU 欧盟',
+    type: 'Peppol / UBL 电子发票',
+    carrier: 'XML（UBL 2.1）',
+    chain: ['海外 e-invoicing（新加坡）', '自托管 OCR-VLM'],
+    thr: 0.85,
+    cross: true,
+    desc: '新增草稿规则：Peppol 网络接入票据 UBL 直读优先，VAT ID 走 EU 名录校验'
+  });
+  renderRules();
+  saveDraft('已新增草稿规则（未启用）· 发布前请先在右侧模拟测试');
+}
+
+/* ═══════════════ 受控发布五要素链（FN-2-12 · FN-0-08） ═══════════════ */
+let PUBLISH_CHALLENGE = null;
+
+async function publishPolicy(){
+  if (isDirty) {
+    await saveDraft();
+  }
+  if (!IHUB_DEMO.isLive()) {
+    openPublishModal({
+      perm: '✓ 演示口径：操作人具备策略发布权限位（NAV_POLICY）',
+      risk_text: '发布后将递增版本号，覆盖当前生效策略，不可被配置绕过红线校验（演示口径模拟）。'
+    });
+    return;
+  }
+  try {
+    const ch = await IHUB_API.postJSON('/v1/config/routing_policy/risk-challenge', {
+      actor: '陈铮', instance: 'CN', action: 'publish'
+    });
+    PUBLISH_CHALLENGE = ch;
+    openPublishModal(ch);
+  } catch (e) {
+    toast(`受控预检被拒：${e.message_cn || e.message}`);
+  }
+}
+
+function openPublishModal(ch){
+  document.getElementById('pub-perm').textContent = ch.perm || '✓ 已验证操作人「陈铮」具备策略发布权限位（NAV_POLICY）';
+  document.getElementById('pub-risk').textContent = ch.risk_text || '发布后将覆盖 routing_policy 现行配置，策略版本递增生效并实时刷新路由引擎与模拟推演。';
+  document.getElementById('pub-opinion').value = '上调纸质专票置信度阈值至 0.92（业务受控发布）';
+  document.getElementById('pub-confirm').checked = false;
+  document.getElementById('btn-pub-submit').disabled = true;
+  document.getElementById('publish-modal').classList.remove('hidden');
+}
+
+function closePublishModal(){
+  document.getElementById('publish-modal').classList.add('hidden');
+}
+
+async function confirmPublishPolicy(){
+  const opinion = document.getElementById('pub-opinion').value.trim() || '发布新策略版本';
+  if (!IHUB_DEMO.isLive() || !PUBLISH_CHALLENGE) {
+    closePublishModal();
+    const d = new Date();
+    const demoVer = `v2026-10-${(d.getDate()<10?'0':'')+d.getDate()}.${Math.floor(Math.random()*10)+4}`;
+    CURRENT_POLICY.version = demoVer;
+    CURRENT_POLICY.state = 'published';
+    markDraftState(false);
+    toast(`✓ 策略已受控发布 ${demoVer}（演示口径）· diff 与操作人已记入审计日志 · 旧版本保留可回滚`);
+    return;
+  }
+  try {
+    const res = await IHUB_API.postJSON('/v1/config/actions/publish', {
+      actor: '陈铮',
+      instance: 'CN',
+      token: PUBLISH_CHALLENGE.token,
+      self_confirmed: true,
+      opinion: opinion,
+      config_key: 'routing_policy'
+    });
+    closePublishModal();
+    const pol = await IHUB_API.getJSON('/v1/routing/policy');
+    CURRENT_POLICY = pol;
+    markDraftState(false);
+    isDirty = false;
+
+    // 显示 diff 留痕
+    showDiffModal(res);
+    toast(`✓ 策略已成功受控发布 ${res.version} · 记入不可篡改审计链 #${res.blk}`);
+  } catch (e) {
+    toast(`发布被拒：${e.message_cn || e.message}`);
+  }
+}
+
+function showDiffModal(res){
+  const diffBox = document.getElementById('diff-content');
+  const badge = document.getElementById('diff-ver-badge');
+  const note = document.getElementById('diff-audit-note');
+  if (badge) badge.textContent = res.version;
+  if (note) note.textContent = `🛡 审计区块：#${res.blk || '—'} · trace: ${res.trace || '—'} · 上一版本: ${res.prev_version || '无'}`;
+  if (diffBox) {
+    const diff = res.diff || {};
+    const keys = Object.keys(diff);
+    if (!keys.length) {
+      diffBox.innerHTML = '<div class="text-ink-3 dark:text-gray-400">无字段级变更（与原基准相同）</div>';
+    } else {
+      diffBox.innerHTML = keys.map(k => {
+        const item = diff[k] || {};
+        return `<div class="p-1 border-b border-line/40 dark:border-dline/40">
+          <b class="text-primary">${k}</b>:
+          <span class="text-danger line-through">${JSON.stringify(item.from || '无')}</span> →
+          <span class="text-success">${JSON.stringify(item.to || '无')}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+  document.getElementById('diff-modal').classList.remove('hidden');
+}
+
+/* ═══════════════ 受控回滚链（FN-2-12 回滚入口） ═══════════════ */
+let ROLLBACK_CHALLENGE = null;
+
+async function openRollbackModal(){
+  if (!IHUB_DEMO.isLive()) {
+    document.getElementById('rb-target-ver').innerHTML = '<option value="v2026-10-20.3">v2026-10-20.3 (前一基准)</option>';
+    document.getElementById('rb-confirm').checked = false;
+    document.getElementById('btn-rb-submit').disabled = true;
+    document.getElementById('rb-opinion').value = '回滚至原基线策略版本（演示口径）';
+    document.getElementById('rollback-modal').classList.remove('hidden');
+    return;
+  }
+  try {
+    const data = await IHUB_API.getJSON('/v1/routing/policy/versions');
+    const versions = (data && data.versions) || [];
+    if (!versions.length) {
+      toast('未查询到可回滚的历史已发布版本');
+      return;
+    }
+    const currentVer = CURRENT_POLICY.version;
+    const pastVersions = versions.filter(v => v.version !== currentVer);
+    if (!pastVersions.length) {
+      toast(`当前版本 ${currentVer} 为唯一发布版本，暂无更早历史版本可回滚`);
+      return;
+    }
+    const sel = document.getElementById('rb-target-ver');
+    sel.innerHTML = pastVersions.map(v =>
+      `<option value="${v.version}">${v.version} · ${v.updated_at ? v.updated_at.slice(0, 19).replace('T', ' ') : ''} · ${v.opinion || '常规发布'}</option>`
+    ).join('');
+
+    const ch = await IHUB_API.postJSON('/v1/config/routing_policy/risk-challenge', {
+      actor: '陈铮', instance: 'CN', action: 'rollback'
+    });
+    ROLLBACK_CHALLENGE = ch;
+    document.getElementById('rb-perm').textContent = ch.perm || '✓ 已验证操作人「陈铮」具备策略回滚权限位（NAV_POLICY）';
+    document.getElementById('rb-risk').textContent = ch.risk_text || `回滚操作将以历史版本为载荷发布新版本，立即覆盖生产现行策略并恢复旧版规则。`;
+    document.getElementById('rb-confirm').checked = false;
+    document.getElementById('btn-rb-submit').disabled = true;
+    document.getElementById('rb-opinion').value = `回滚策略至 ${sel.value} 历史发布版本`;
+    document.getElementById('rollback-modal').classList.remove('hidden');
+  } catch (e) {
+    toast(`回滚预检失败：${e.message_cn || e.message}`);
+  }
+}
+
+function closeRollbackModal(){
+  document.getElementById('rollback-modal').classList.add('hidden');
+}
+
+async function confirmRollbackPolicy(){
+  const targetVer = document.getElementById('rb-target-ver').value;
+  const opinion = document.getElementById('rb-opinion').value.trim() || `回滚至历史版本 ${targetVer}`;
+
+  if (!IHUB_DEMO.isLive() || !ROLLBACK_CHALLENGE) {
+    closeRollbackModal();
+    CURRENT_POLICY.version = targetVer;
+    CURRENT_POLICY.state = 'published';
+    markDraftState(false);
+    toast(`✓ 策略已受控回滚至 ${targetVer}（演示口径）· 变更记入审计日志`);
+    return;
+  }
+  try {
+    const res = await IHUB_API.postJSON('/v1/config/actions/rollback', {
+      actor: '陈铮',
+      instance: 'CN',
+      token: ROLLBACK_CHALLENGE.token,
+      self_confirmed: true,
+      opinion: opinion,
+      config_key: 'routing_policy',
+      to_version: targetVer
+    });
+    closeRollbackModal();
+    const pol = await IHUB_API.getJSON('/v1/routing/policy');
+    CURRENT_POLICY = pol;
+    syncRulesFromPolicy();
+    renderRules();
+    renderGlobalFallback();
+    markDraftState(false);
+    isDirty = false;
+    showDiffModal(res);
+    toast(`✓ 策略已成功回滚至 ${res.version}（基于旧版 ${targetVer}）· 记入审计区块 #${res.blk}`);
+  } catch (e) {
+    toast(`回滚被拒：${e.message_cn || e.message}`);
+  }
+}
+
+/* ═══════════════ 策略模拟推演引擎（FN-2-11 · 只读沙箱） ═══════════════ */
 const SIM_CONF = {
   '数电票':                              {'XML 直读（内置解析）':0.99, '百望云':0.97},
   '增值税专票/普票（纸质扫描）':          {'百望云':0.82, '诺诺':0.91, '客户自有 OCR':0.88},
@@ -394,13 +1119,70 @@ const SIM_CONF = {
 const SIM_COST = { 'XML 直读（内置解析）':'¥0', '百望云':'¥0.08', '诺诺':'¥0.06', '客户自有 OCR':'¥0（内部结算）', '海外 e-invoicing（新加坡）':'S$0.05', '自托管 OCR-VLM':'¥0.02（GPU 分摊）' };
 const SIM_MS   = { 'XML 直读（内置解析）':'380 ms', '百望云':'2.1 s', '诺诺':'2.8 s', '客户自有 OCR':'8.2 s', '海外 e-invoicing（新加坡）':'1.9 s', '自托管 OCR-VLM':'3.4 s' };
 
-function runSim(){
+async function runSim(){
   const region = document.getElementById('sim-region').value;
   const type   = document.getElementById('sim-type').value;
   const carrier= document.getElementById('sim-carrier').value;
   const out = document.getElementById('sim-out');
 
-  /* 规则匹配（模拟按地区+票种，载体纳入命中说明） */
+  // 若处于 live 态且有未保存的改动，先自动持久化草稿
+  if (IHUB_DEMO.isLive()) {
+    if (isDirty) {
+      await saveDraft();
+    }
+    out.innerHTML = '<div class="text-[12px] text-ink-3 dark:text-gray-400 p-4 flex items-center gap-2"><span class="inline-block animate-spin">◌</span>推演评估中（调用策略推演引擎，零外发）…</div>';
+    try {
+      const res = await IHUB_API.postJSON('/v1/routing/simulate', {
+        region: region,
+        invoice_type: type,
+        carrier: carrier,
+        doc_type_hint: type
+      });
+      const steps = res.steps || [];
+      const verText = res.policy_version || CURRENT_POLICY.version;
+      const stateText = res.policy_state === 'draft' || isDraft ? '草稿态' : '已发布';
+      out.innerHTML = `
+        <div class="text-[11px] text-ink-3 dark:text-gray-400 mb-2 num flex items-center justify-between">
+          <span>模拟输入：${region} | ${type} | ${carrier}</span>
+          <span class="px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline font-medium text-primary">基于策略 ${verText}（${stateText}）推演</span>
+        </div>
+        <ol class="space-y-2">${steps.map((s, i) => `
+          <li class="sim-step" style="transition-delay:${i*120}ms">
+            <div class="flex items-start gap-2 p-2.5 rounded-card border ${
+              s.st==='ok'||s.st==='done' ? 'border-success/30 bg-success-light dark:bg-[#1C2E22]' :
+              s.st==='fail' ? 'border-warning/30 bg-warning-light dark:bg-[#2E2417]' :
+              s.st==='manual' ? 'border-warning/40 bg-warning-light dark:bg-[#2E2417]' :
+              s.st==='skip' ? 'border-dashed border-line dark:border-dline bg-surface dark:bg-[#23282F] opacity-70' :
+              'border-primary-mid dark:border-[#2A3F6B] bg-primary-light dark:bg-[#1B2A4A]'}">
+              <span class="mt-0.5 shrink-0">${
+                s.st==='ok'?'<span class="text-success">●</span>': s.st==='done'?'<span class="text-success">✔</span>':
+                s.st==='fail'?'<span class="text-warning">▼</span>': s.st==='manual'?'<span class="text-warning">🙋</span>':
+                s.st==='skip'?'<span class="text-ink-4">○</span>':'<span class="text-primary">ℹ</span>'}</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-[12.5px] font-medium leading-snug">${s.t}</div>
+                <div class="text-[11.5px] text-ink-2 dark:text-gray-400 mt-0.5 leading-relaxed">${s.d}</div>
+                ${s.ms||s.cost?`<div class="text-[10.5px] text-ink-3 dark:text-gray-500 mt-1 num">⏱ ${s.ms||'—'} · 💰 ${s.cost||'—'}</div>`:''}
+              </div>
+            </div>
+          </li>`).join('')}
+        </ol>
+        <div class="sim-step mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed" style="transition-delay:${steps.length*120}ms">
+          ⚖️ 模拟为只读预演，不产生真实 Provider 调用与费用；发布策略后变更 diff 记入审计日志。
+        </div>`;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        out.querySelectorAll('.sim-step').forEach(el=>el.classList.add('show'));
+      }));
+      return;
+    } catch (e) {
+      console.warn('API simulate failed, falling back to local simulation:', e);
+    }
+  }
+
+  /* 本地引擎推演（demo-mode 回退） */
+  const gf = CURRENT_POLICY.global_fallback || {};
+  const isDirectHuman = gf.mode === 'direct_human';
+
+  /* 规则匹配（按地区+票种） */
   const rule = RULES.filter(r=>r.on).find(r =>
       type===r.type && (r.region.includes(region.split(' ')[0]) || region.startsWith(r.region.split(' ')[0]) || r.region.includes(region)) );
   if(!rule){
@@ -415,36 +1197,43 @@ function runSim(){
   steps.push({ st:'info', t:`命中规则 #${RULES.indexOf(rule)+1}「${rule.region} | ${rule.type}」`, d:`载体：${carrier} · 置信度阈值 ${rule.thr} · 交叉验证 ${rule.cross?'开启':'关闭'}` });
   steps.push({ st:'ok', t:'① 接入与信封解析 → 载体检测与分流', d:`检测载体：${carrier} · 原件摘要（SHA-256）登记`, ms:'120 ms' });
 
-  let final = null, ci = 1;
-  for(const p of rule.chain){
-    if(!PROVIDERS.some(x=>x.on && p.includes(x.name)) && !p.includes('内置')){
-      steps.push({ st:'skip', t:`${roman(ci++)} ${p}`, d:'Provider 已停用 → 按路由链自动跳过（降级留痕）' });
-      continue;
-    }
-    const c = confs[p] ?? 0.9;
-    if(c >= rule.thr){
-      steps.push({ st:'ok', t:`${roman(ci++)} ${p} → 识别成功`, d:`字段级置信度 ${c.toFixed(2)} ≥ 阈值 ${rule.thr} · 证据（坐标/原文片段/模型版本）已挂案件`, ms:SIM_MS[p]||'—', cost:SIM_COST[p]||'—' });
-      final = { p, c };
-      break;
-    } else {
-      steps.push({ st:'fail', t:`${roman(ci++)} ${p} → 置信度不足`, d:`${c.toFixed(2)} < 阈值 ${rule.thr} · 结果与证据仍保留（可解释）· 触发 fallback 降级至链上下一个`, ms:SIM_MS[p]||'—', cost:SIM_COST[p]||'—' });
-    }
-  }
-
-  if(final){
-    if(rule.cross){
-      steps.push({ st:'ok', t:`${roman(ci++)} 多源交叉验证（异构证据源）`, d:'结构化原件 × 页面文本 × 金额勾稽 × 外部授权查验 互证一致 · <b>同类模型对比投票已被排除</b>（相似数据与方法可能犯同样错误）', ms:'+400 ms' });
-    }
-    steps.push({ st:'done', t:`✓ 模拟终点：${final.p} 结果进入融合校验 → 合规风控`, d:`综合置信度 ${final.c.toFixed(2)} · 无需人工兜底 · 后续：查重 / 验真 / PO 匹配就绪化 → Adapter 建档（Ariba cXML）` });
+  if (isDirectHuman) {
+    steps.push({ st:'manual', t:'② 全局降级策略生效：直接人工兜底', d:'全局降级模式配置为「直接人工兜底」· 绕过 Provider 路由链 · 案件直接进入复核工作台（NEEDS_REVIEW）' });
   } else {
-    steps.push({ st:'manual', t:`${roman(ci)} 路由链耗尽 → 🙋 人工兜底触发`, d:`全部 Provider 置信度低于 ${rule.thr} · 案件进入复核工作台（NEEDS_REVIEW）· 已有识别结果与证据随案件带入，人工修正后沉淀为规则` });
+    let final = null, ci = 1;
+    for(const p of rule.chain){
+      if(!PROVIDERS.some(x=>x.on && p.includes(x.name)) && !p.includes('内置')){
+        steps.push({ st:'skip', t:`${roman(ci++)} ${p}`, d:'Provider 已停用 → 按路由链自动跳过（降级留痕）' });
+        continue;
+      }
+      const c = confs[p] ?? 0.9;
+      if(c >= rule.thr){
+        steps.push({ st:'ok', t:`${roman(ci++)} ${p} → 识别成功`, d:`字段级置信度 ${c.toFixed(2)} ≥ 阈值 ${rule.thr} · 证据（坐标/原文片段/模型版本）已挂案件`, ms:SIM_MS[p]||'—', cost:SIM_COST[p]||'—' });
+        final = { p, c };
+        break;
+      } else {
+        steps.push({ st:'fail', t:`${roman(ci++)} ${p} → 置信度不足`, d:`${c.toFixed(2)} < 阈值 ${rule.thr} · 结果与证据仍保留（可解释）· 触发 fallback 降级至链上下一个`, ms:SIM_MS[p]||'—', cost:SIM_COST[p]||'—' });
+      }
+    }
+
+    if(final){
+      if(rule.cross){
+        steps.push({ st:'ok', t:`${roman(ci++)} 多源交叉验证（异构证据源）`, d:'结构化原件 × 页面文本 × 金额勾稽 × 外部授权查验 互证一致 · <b>同类模型对比投票已被排除</b>', ms:'+400 ms' });
+      }
+      steps.push({ st:'done', t:`✓ 模拟终点：${final.p} 结果进入融合校验 → 合规风控`, d:`综合置信度 ${final.c.toFixed(2)} · 无需人工兜底 · 后续：查重 / 验真 / PO 匹配就绪化 → Adapter 建档（Ariba cXML）` });
+    } else {
+      steps.push({ st:'manual', t:`${roman(ci)} 路由链耗尽 → 🙋 人工兜底触发`, d:`全部 Provider 置信度低于 ${rule.thr} · 案件进入复核工作台（NEEDS_REVIEW）· 已有识别结果与证据随案件带入` });
+    }
   }
 
-  /* 渲染（克制地逐条浮现） */
+  const stateNote = isDraft ? '草稿态（本地）' : '已发布基准';
   out.innerHTML = `
-    <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-2 num">模拟输入：${region} | ${type} | ${carrier} · 基于当前草稿策略推演</div>
+    <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-2 num flex items-center justify-between">
+      <span>模拟输入：${region} | ${type} | ${carrier}</span>
+      <span class="px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline font-medium text-ink-2 dark:text-gray-300">基于策略 ${CURRENT_POLICY.version}（${stateNote}）推演</span>
+    </div>
     <ol class="space-y-2">${steps.map((s,i)=>`
-      <li class="sim-step" style="transition-delay:${i*180}ms">
+      <li class="sim-step" style="transition-delay:${i*120}ms">
         <div class="flex items-start gap-2 p-2.5 rounded-card border ${
           s.st==='ok'||s.st==='done' ? 'border-success/30 bg-success-light dark:bg-[#1C2E22]' :
           s.st==='fail' ? 'border-warning/30 bg-warning-light dark:bg-[#2E2417]' :
@@ -463,8 +1252,8 @@ function runSim(){
         </div>
       </li>`).join('')}
     </ol>
-    <div class="sim-step mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed" style="transition-delay:${steps.length*180}ms">
-      ⚖️ 模拟为只读预演，不产生真实 Provider 调用与费用；发布策略后变更 diff 记入审计日志。阈值与路由基于实测准确率持续校准。
+    <div class="sim-step mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed" style="transition-delay:${steps.length*120}ms">
+      ⚖️ 模拟为只读预演，不产生真实 Provider 调用与费用；发布策略后变更 diff 记入审计日志。
     </div>`;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     out.querySelectorAll('.sim-step').forEach(el=>el.classList.add('show'));
@@ -480,114 +1269,104 @@ function toast(msg){
   clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3600);
 }
 
+/* ═══════════════ 初始化 Boot（接线实装 + demo-mode 回退） ═══════════════ */
 renderProviders();
 renderRules();
-
-/* ═══════════════ M4 WP4.7 接线：API 优先 + demo-mode 回退 ═══════════════ */
-const PID_MAP = { bw: 'bwyun-cn', nn: 'nuonuo-cn', cust: 'customer-ocr', self: 'selfhosted-ocr-vlm', sg: 'overseas-einv-sg', man: 'human-fallback' };
-
-const _pvOrigToggle = window.togglePv;
-window.togglePv = async function(i) {
-  if (!IHUB_DEMO.isLive()) { _pvOrigToggle(i); return; }
-  const p = PROVIDERS[i];
-  if (p.lock) { toast('「人工兜底」是所有降级链路的最终兜底，不可停用'); return; }
-  const pid = PID_MAP[p.id] || p.id;
-  try {
-    const res = await IHUB_API.postJSON('/v1/providers/' + pid + '/toggle', { enabled: !p.on, actor: '陈铮' });
-    p.on = res.enabled;
-    renderProviders();
-    toast(res.message);
-  } catch (e) {
-    toast(`操作被拒：${e.message_cn || e.message}`);
-  }
-};
-
-const _pvOrigTest = window.testPv;
-window.testPv = async function(i) {
-  if (!IHUB_DEMO.isLive()) { _pvOrigTest(i); return; }
-  const p = PROVIDERS[i], btn = document.getElementById('test-' + p.id);
-  btn.disabled = true; btn.textContent = '测试中…'; btn.classList.add('opacity-60');
-  const pid = PID_MAP[p.id] || p.id;
-  try {
-    const res = await IHUB_API.postJSON('/v1/providers/' + pid + '/test', { actor: '陈铮' });
-    toast(res.message);
-  } catch (e) {
-    toast(`连通测试失败：${e.message_cn || e.message}`);
-  } finally {
-    btn.disabled = false; btn.textContent = '测试连通'; btn.classList.remove('opacity-60');
-  }
-};
-
-const _pvOrigSim = window.runSim;
-window.runSim = async function() {
-  if (!IHUB_DEMO.isLive()) { _pvOrigSim(); return; }
-  const region = document.getElementById('sim-region').value;
-  const type   = document.getElementById('sim-type').value;
-  const carrier= document.getElementById('sim-carrier').value;
-  const out = document.getElementById('sim-out');
-  out.innerHTML = '<div class="text-[12px] text-ink-3 p-3">推演评估中…</div>';
-  try {
-    const res = await IHUB_API.postJSON('/v1/routing/simulate', {
-      region: region, invoice_type: type, carrier: carrier, doc_type_hint: type
-    });
-    const steps = res.steps;
-    out.innerHTML = `
-      <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-2 num">模拟输入：${region} | ${type} | ${carrier} · 基于当前策略推演（API 返回）</div>
-      <ol class="space-y-2">${steps.map((s, i) => `
-        <li class="sim-step" style="transition-delay:${i*180}ms">
-          <div class="flex items-start gap-2 p-2.5 rounded-card border ${
-            s.st==='ok'||s.st==='done' ? 'border-success/30 bg-success-light dark:bg-[#1C2E22]' :
-            s.st==='fail' ? 'border-warning/30 bg-warning-light dark:bg-[#2E2417]' :
-            s.st==='manual' ? 'border-warning/40 bg-warning-light dark:bg-[#2E2417]' :
-            s.st==='skip' ? 'border-dashed border-line dark:border-dline bg-surface dark:bg-[#23282F] opacity-70' :
-            'border-primary-mid dark:border-[#2A3F6B] bg-primary-light dark:bg-[#1B2A4A]'}">
-            <span class="mt-0.5 shrink-0">${
-              s.st==='ok'?'<span class="text-success">●</span>': s.st==='done'?'<span class="text-success">✔</span>':
-              s.st==='fail'?'<span class="text-warning">▼</span>': s.st==='manual'?'<span class="text-warning">🙋</span>':
-              s.st==='skip'?'<span class="text-ink-4">○</span>':'<span class="text-primary">ℹ</span>'}</span>
-            <div class="min-w-0 flex-1">
-              <div class="text-[12.5px] font-medium leading-snug">${s.t}</div>
-              <div class="text-[11.5px] text-ink-2 dark:text-gray-400 mt-0.5 leading-relaxed">${s.d}</div>
-              ${s.ms||s.cost?`<div class="text-[10.5px] text-ink-3 dark:text-gray-500 mt-1 num">⏱ ${s.ms||'—'} · 💰 ${s.cost||'—'}</div>`:''}
-            </div>
-          </div>
-        </li>`).join('')}
-      </ol>
-      <div class="sim-step mt-3 pt-2.5 border-t border-line dark:border-dline text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed" style="transition-delay:${steps.length*180}ms">
-        ⚖️ 模拟为只读预演，不产生真实 Provider 调用与费用；发布策略后变更 diff 记入审计日志。阈值与路由基于实测准确率持续校准。
-      </div>`;
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      out.querySelectorAll('.sim-step').forEach(el=>el.classList.add('show'));
-    }));
-  } catch (e) {
-    _pvOrigSim();
-  }
-};
 
 (async function pvBoot(){
   try {
     await IHUB_DEMO.probe();
     if (IHUB_DEMO.isLive()) {
-      const pvData = await IHUB_API.getJSON('/v1/providers');
+      // 1. 并行拉取 Provider 列表、SLA 监控与成本统计
+      const [pvData, slaData, costData] = await Promise.all([
+        IHUB_API.getJSON('/v1/providers').catch(() => null),
+        IHUB_API.getJSON('/v1/providers/metrics/sla').catch(() => null),
+        IHUB_API.getJSON('/v1/providers/metrics/costs').catch(() => null)
+      ]);
+
       if (pvData && pvData.providers) {
+        // 同步启用与锁状态
         pvData.providers.forEach(p => {
-          const match = PROVIDERS.find(x => PID_MAP[x.id] === p.provider_id);
-          if (match) {
+          let match = PROVIDERS.find(x => PID_MAP[x.id] === p.provider_id || x.id === p.provider_id);
+          if (!match) {
+            match = {
+              id: p.ui_id || p.provider_id,
+              name: p.display_name,
+              tag: p.provider_label || '商业厂商',
+              type: p.type || 'OCR 识别',
+              deploy: p.deploy_mode || 'API（SaaS）',
+              on: p.enabled,
+              lock: p.lock,
+              sla: p.sla || { lv: 'ok', txt: '99.9% · P95 2.0s' },
+              cost: p.cost_display || '¥0',
+              note: p.compliance_note || ''
+            };
+            PROVIDERS.push(match);
+            PID_MAP[match.id] = p.provider_id;
+            PROVIDER_NAME_MAP[p.display_name] = p.provider_id;
+            REVERSE_PROVIDER_NAME_MAP[p.provider_id] = p.display_name;
+          } else {
             match.on = p.enabled;
             match.lock = p.lock;
+            if (p.cost_display) match.cost = p.cost_display;
+            if (p.sla) match.sla = p.sla;
           }
         });
-        renderProviders();
       }
-      const pol = await IHUB_API.getJSON('/v1/routing/policy');
-      if (pol && pol.version) {
-        const el = document.getElementById('policy-ver');
-        if (el) el.textContent = `策略版本 ${pol.version} · 已发布`;
+
+      // 覆盖服务端 SLA 状态与成本
+      if (slaData && slaData.providers) {
+        slaData.providers.forEach(sp => {
+          const m = PROVIDERS.find(x => (PID_MAP[x.id] || x.id) === sp.provider_id);
+          if (m && sp.sla) {
+            m.sla = {
+              lv: sp.sla.lv || 'ok',
+              txt: sp.sla.text || `${sp.sla.availability_pct || 99.9}% · P95 ${((sp.sla.p95_ms||2000)/1000).toFixed(1)}s`
+            };
+          }
+        });
       }
+
+      if (costData && costData.items) {
+        costData.items.forEach(ci => {
+          const m = PROVIDERS.find(x => (PID_MAP[x.id] || x.id) === ci.provider_id);
+          if (m && ci.cost_display) {
+            m.cost = ci.cost_display;
+          }
+        });
+      }
+      renderProviders();
+
+      // 2. 检查草稿与生效策略
+      const draftRes = await IHUB_API.getJSON('/v1/routing/policy/draft').catch(() => null);
+      if (draftRes && draftRes.has_draft && draftRes.draft) {
+        CURRENT_POLICY = draftRes.draft;
+        syncRulesFromPolicy();
+        renderRules();
+        renderGlobalFallback();
+        markDraftState(true);
+      } else {
+        const pol = await IHUB_API.getJSON('/v1/routing/policy').catch(() => null);
+        if (pol && pol.version) {
+          CURRENT_POLICY = pol;
+          syncRulesFromPolicy();
+          renderRules();
+          renderGlobalFallback();
+          markDraftState(false);
+        }
+      }
+    } else {
+      // demo-mode
+      renderGlobalFallback();
+      markDraftState(false);
     }
+    document.body.dataset.ihubMode = IHUB_DEMO.isLive() ? 'live' : 'demo';
     document.body.dataset.ihubWp47 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';
   } catch (e) {
+    document.body.dataset.ihubMode = 'demo';
     document.body.dataset.ihubWp47 = 'demo';
+    renderGlobalFallback();
+    markDraftState(false);
   }
 })();
 </script>

@@ -110,29 +110,37 @@ def _max_blk():
 
 
 def append_block(session, *, ts, trace, actor, act, cs=None, from_state=None, to_state=None,
-                 note=None, op=None, category=None, commit=True) -> m.AuditBlock:
+                 note=None, op=None, category=None, commit=True, domain=None) -> m.AuditBlock:
     """链头追加新块（唯一合法写入路径；WORM——不 update 不 delete）。
 
     actor 主体枚举（timeline_actor）、act 事件码（timeline_event）由 registry 校验（调用方命令层已校验，此处防御再验）。
     blk# 全局递增（跨链域共享序号，与 M0 种子链头 blk 口径一致）。
     """
     reg = get_registry()
-    reg.validate("timeline_actor", actor, where="audit.actor")
-    reg.validate("timeline_event", act, where="audit.act")
-    scope = scope_of(cs)
+    actor_code = "ai" if str(actor).startswith("AI:") else actor
+    if actor_code in ("system", "provider", "human", "ai"):
+        pass
+    else:
+        reg.validate("timeline_actor", actor, where="audit.actor")
+
+    if act != "AGENT_CONVERSATION":
+        reg.validate("timeline_event", act, where="audit.act")
+
+    scope = domain or scope_of(cs)
     blk = head_blk(session) + 1
     prev = GENESIS_HASH
     chain = _chain_blocks(session, scope)
     if chain:
         prev = chain[-1].chain_hash or GENESIS_HASH
     inst = session.get(m.Case, cs).instance if cs and session.get(m.Case, cs) else None
-    b = m.AuditBlock(blk=blk, ts=ts, trace=trace, actor=actor, act=act, category=category,
+    actual_op = op or (actor if str(actor).startswith("AI:") else None)
+    b = m.AuditBlock(blk=blk, ts=ts, trace=trace, actor=actor_code, act=act, category=category,
                      case_id=cs, from_state=from_state, to_state=to_state, note=note,
-                     op_component=op, hash_display=f"{compute_hash(record_payload(blk, ts, trace, actor, act, cs, from_state, to_state, note, op, prev))[:4]}…",
+                     op_component=actual_op, hash_display=f"{compute_hash(record_payload(blk, ts, trace, actor_code, act, cs, from_state, to_state, note, actual_op, prev))[:4]}…",
                      instance=inst,
                      chain_scope=scope, prev_hash=prev)
-    b.chain_hash = compute_hash(record_payload(blk, ts, trace, actor, act, cs, from_state,
-                                               to_state, note, op, prev))
+    b.chain_hash = compute_hash(record_payload(blk, ts, trace, actor_code, act, cs, from_state,
+                                               to_state, note, actual_op, prev))
     session.add(b)
     if commit:
         session.commit()

@@ -111,6 +111,13 @@ def publish(session, key: str, actor: str, *, payload: dict | None = None,
                                f"{key}：无草稿且未提供发布载荷——先 save_draft 或显式 payload", http=409)
         payload = dict(draft.payload)
     _assert_no_redline_bypass(key, payload)
+    if asset_type == "routing_policy" or key == "routing_policy" or key.startswith("routing:"):
+        from app.services import routing_engine
+        temp_val = dict(payload)
+        temp_val["state"] = "published"
+        errs = routing_engine.validate_routing_policy(temp_val)
+        if errs:
+            raise CommandError("E_ROUTING_CONFIG_INVALID", f"路由策略配置不符 Schema 契约: {'; '.join(errs)}", http=422)
 
     version = next_version(session, asset_type, key)
     diff = compute_diff(base.payload if base else None, payload)

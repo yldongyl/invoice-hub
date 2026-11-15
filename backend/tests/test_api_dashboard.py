@@ -62,8 +62,10 @@ def test_kpi_card2_pending_live_counts(client):
     b = client.get("/v1/dashboard", params={"instance": "CN"}).json()["kpi"]["pending"]
     assert b["display"] == "37" and b["risk_display"] == "6 个高风险"  # 快照基线（历史全量口径）
     assert b["live_needs_review"] == 3 and b["live_blocked"] == 2       # cases 表 SQL 真算
+    assert "avg_wait_display" in b and "—" in b["avg_wait_display"] and "演示口径" in b["avg_wait_display"]
     b = client.get("/v1/dashboard", params={"instance": "OS"}).json()["kpi"]["pending"]
     assert b["live_needs_review"] == 1 and b["live_blocked"] == 1
+    assert "avg_wait_display" in b and "—" in b["avg_wait_display"] and "演示口径" in b["avg_wait_display"]
 
 
 def test_kpi_card3_donut_sum(client):

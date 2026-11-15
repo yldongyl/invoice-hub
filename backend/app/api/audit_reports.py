@@ -126,6 +126,12 @@ def search_logs(
     )
 
 
+@router.get("/verify-status")
+def get_verify_status(session=Depends(get_db)):
+    """轻量获取最近哈希链校验状态（FN-0-10）。"""
+    return audit_service.get_last_verify_status(session)
+
+
 @router.post("/verify-chain")
 def verify_chain(req: VerifyChainReq, session=Depends(get_db)):
     """重新校验哈希链并登记（FN-5-08）。"""

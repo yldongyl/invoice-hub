@@ -196,9 +196,33 @@ def _s1(session, batch, frow, content, payload):
         ["xml", "ofd", "pdf", "jpg", "jpeg", "png"]
     if ext and ext not in allowed:
         raise CommandError("E_INTAKE_TYPE", f"类型 .{ext} 不在白名单（FN-1-03/05①）", http=400)
+
+    # 多页混合 PDF 前置切分与支持文档（Supporting Documents）识别（S5 第 6 条 · #65）
+    split_info = intake_parsers.detect_pdf_pages_and_split(content, frow.file) if flags["kind"] in ("pdf", "image") else {
+        "total_pages": 1, "invoice_pages": [1], "supporting_doc_pages": [],
+        "has_supporting_docs": False, "supporting_pages_count": 0, "supporting_badge": None,
+        "note": "单一原件",
+    }
+    ir = dict(frow.intake_raw or {})
+    ir.update({
+        "total_pages": split_info["total_pages"],
+        "invoice_pages": split_info["invoice_pages"],
+        "supporting_doc_pages": split_info["supporting_doc_pages"],
+        "has_supporting_docs": split_info["has_supporting_docs"],
+        "supporting_pages_count": split_info["supporting_pages_count"],
+        "supporting_badge": split_info["supporting_badge"],
+    })
+    frow.intake_raw = ir
+    session.commit()
+
     detail = {"kind": flags["kind"], "ext": ext, "size": len(content),
               "header_ok": flags["header_ok"], "channel": batch.channel,
-              "d": f"文件头探测 → {flags['kind']} · {len(content)} B"}
+              "total_pages": split_info["total_pages"],
+              "has_supporting_docs": split_info["has_supporting_docs"],
+              "supporting_pages_count": split_info["supporting_pages_count"],
+              "supporting_badge": split_info["supporting_badge"],
+              "d": (f"文件头探测 → {flags['kind']} · {len(content)} B" +
+                    (f" · {split_info['supporting_badge']}" if split_info["has_supporting_docs"] else ""))}
     return detail
 
 
@@ -353,7 +377,7 @@ def _s5(session, batch, frow, content, payload):
         return {"terminal": True, "manual_sort": True, "d": frow.note}
 
     case = _derive_case(session, batch, frow, doc, route, sha, trace,
-                        provider_disp, source_code, parse_event, parse_v)
+                        provider_disp, source_code, parse_event, parse_v, content=content)
     ledger = session.scalar(select(m.IntakeLedger).where(
         m.IntakeLedger.sha256 == sha, m.IntakeLedger.target_doc_ref == (_target_for(session, batch, frow) or "")))
     if ledger is not None:
@@ -378,15 +402,29 @@ def _s5(session, batch, frow, content, payload):
         ir = dict(frow.intake_raw or {})
         ir.update({"bad": True, "note": frow.note})
         frow.intake_raw = ir
+    elif fresh.status == state_machine.STATUS.NEEDS_REVIEW:
+        # S5 第 1 条：置信度低（发票内容不清/<80）标记 NEEDS_REVIEW 并高亮提示人工介入复核
+        frow.note = f"置信度低（{fresh.confidence}% < 80% 阈值）· 强制人工复核（S5 第 1 条 · 不可自动放行）"
+        ir = dict(frow.intake_raw or {})
+        ir.update({"bad": True, "needs_review": True, "note": frow.note})
+        frow.intake_raw = ir
     session.commit()
+    is_stub_output = bool(source_code == "ocr" or "stub" in provider_disp.lower() or "演示口径" in provider_disp)
     return {"case_id": case.case_id, "confidence": fresh.confidence, "route": route,
-            "status": fresh.status, "compliance": {k: comp.get(k) for k in
-                                                   ("sm2", "verify", "dedup", "taxid", "reconcile",
-                                                    "transitions", "retry_task")},
+            "status": fresh.status,
+            "field_source": source_code,
+            "provider_disp": provider_disp,
+            "is_stub": is_stub_output,
+            "supporting_docs_stripped": bool((frow.intake_raw or {}).get("has_supporting_docs")),
+            "supporting_badge": (frow.intake_raw or {}).get("supporting_badge"),
+            "compliance": {k: comp.get(k) for k in
+                           ("sm2", "verify", "dedup", "taxid", "reconcile",
+                            "transitions", "retry_task")},
             "d": f"派生案件 {case.case_id} → {fresh.status}"
                  f"（合规链：验签 {comp['sm2']['ok'] if comp.get('sm2') else '—'} / "
                  f"查重 {'命中' if (comp.get('dedup') or {}).get('hit') else '通过'} · "
-                 f"置信度 {fresh.confidence} · trace {trace}"}
+                 f"置信度 {fresh.confidence} · trace {trace}" +
+                 (f" · {(frow.intake_raw or {}).get('supporting_badge')}" if (frow.intake_raw or {}).get("has_supporting_docs") else "") + ")"}
 
 
 _EXEC = {1: _s1, 2: _s2, 3: _s3, 4: _s4, 5: _s5}
@@ -451,12 +489,19 @@ def _ocr_stub_recognize(session, batch, frow, content, trace):
            "invoice_type": inv_type, "seller_name": seller_name, "seller_tax_id": "91110000717859846A" if seller_name else None,
            "buyer_name": buyer_name, "buyer_tax_id": None, "net": round(gross / 1.09, 2), "tax": round(gross - gross / 1.09, 2), "gross": gross,
            "currency": "CNY", "lines": [], "xml": None, "ns": "ocr_stub"}
+    ir = dict(frow.intake_raw or {})
+    has_supp = bool(ir.get("has_supporting_docs"))
+    total_p = int(ir.get("total_pages") or 1)
+    supp_p = int(ir.get("supporting_pages_count") or 0)
+    # 红线隔离：非发票页面不送入主 OCR 引擎（S5 第 6 条 · 数据最小外发）
+    bytes_out = max(1, int(len(content) * (1 / total_p))) if (has_supp and total_p > 1) else len(content)
     session.add(m.EgressLog(
         ts=now_iso(), batch_id=batch.batch_id, file_seq=frow.seq, case_id=None,
         provider_id="selfhosted-ocr-vlm-stub", purpose="recognize", payload_digest=sha,
-        bytes_out=len(content),
-        note="演示口径：M4 前 OCR 路由 stub Provider 外发登记（数据最小外发台账 FN-5-08；"
-             "直读路径零外发为 E2E 断言项）"))
+        bytes_out=bytes_out,
+        note=("演示口径：M4 前 OCR 路由 stub Provider 外发登记（数据最小外发台账 FN-5-08；"
+              "直读路径零外发为 E2E 断言项）" +
+              (f" · [已清洗剥离 {supp_p} 页支持文档未外发]" if has_supp else ""))))
     session.commit()
     return doc, "自托管 OCR-VLM（SPI stub · 演示口径）", "ocr"
 
@@ -464,13 +509,20 @@ def _ocr_stub_recognize(session, batch, frow, content, trace):
 # ───────────────────────── 案件派生（⑤ 路由识别引擎） ─────────────────────────
 
 def _derive_case(session, batch, frow, doc, route, sha, trace,
-                 provider_disp, source_code, parse_event, parse_v):
+                 provider_disp, source_code, parse_event, parse_v, content=b""):
     """结构化/归一化输出 → InvoiceCase 全量聚合（RECOGNIZED 建档；checks 由紧随的合规编排写入）。"""
     from app.services.issuer import next_case_no
     inst = batch.instance
     year = datetime.now(timezone.utc).astimezone().year
     case_id = next_case_no(session, inst, year)
-    conf = _CONF_BY_ROUTE.get(route, 82)
+
+    # 扫描图像/PDF 清晰度置信度探测（S5 第 1 条 · <80 强制人工复核）
+    clarity_conf = intake_parsers.detect_scan_clarity_confidence(content, frow.file) if content else 88.0
+    if clarity_conf < 80:
+        conf = int(clarity_conf)
+    else:
+        conf = _CONF_BY_ROUTE.get(route, 82)
+
     currency = doc.get("currency") or ("CNY" if inst == "CN" else "SGD")
     gross = float(doc["gross"])
     po_ref = (frow.intake_raw or {}).get("po_ref")
@@ -497,11 +549,18 @@ def _derive_case(session, batch, frow, doc, route, sha, trace,
              "taxAmount": doc.get("tax"), "currency": currency, "variance": None}
     evidence = _build_evidence(session, doc, source_code, provider_disp)
     items = _build_items(doc, currency)
+
+    ir = dict(frow.intake_raw or {})
+    has_supp = bool(ir.get("has_supporting_docs"))
+    supp_pages = ir.get("supporting_doc_pages") or []
+    total_pages = ir.get("total_pages") or 1
+
     file_obj = {
-        "display": f"{frow.file} · {'1' if route != 'L2_ocr_vlm' else '—'} 页 · SHA-256 {sha[:4]}…{sha[-4:]}",
-        "name": frow.file, "pages": 1, "sha256": f"{sha[:4]}…{sha[-4:]}",
+        "display": f"{frow.file} · {total_pages if total_pages > 1 else ('1' if route != 'L2_ocr_vlm' else '—')} 页 · SHA-256 {sha[:4]}…{sha[-4:]}",
+        "name": frow.file, "pages": total_pages, "sha256": f"{sha[:4]}…{sha[-4:]}",
         "has_xml_original": bool(doc.get("xml")),
-        "note": "原件摘要（SHA-256）于受理时登记，任何替换可被检测（intake_ledger 幂等台账同源）。",
+        "note": "原件摘要（SHA-256）于受理时登记，任何替换可被检测（intake_ledger 幂等台账同源）。" +
+                (f" [已清洗剥离支持文档附件 {len(supp_pages)} 页]" if has_supp else ""),
     }
     links = {"invoice": case_id, "supplier": meta["supplier"], "supplier_id": None,
              "po": po_ref, "po_state": None, "grn": [],
@@ -529,6 +588,22 @@ def _derive_case(session, batch, frow, doc, route, sha, trace,
     )
     session.add(case)
     session.flush()
+
+    # 包含关系（ObjectLink · link_type="包含"）：支持文档附件存证（S5 第 6 条）
+    if has_supp:
+        session.add(m.ObjectLink(
+            case_id=case_id, seq=0, link_type="包含",
+            ref=f"{case_id}-att-supporting-docs",
+            po_state=None,
+            link_raw={
+                "type": "supporting_attachment",
+                "name": f"{frow.file}（支持文档附件）",
+                "pages": supp_pages,
+                "cleaned_and_stripped": True,
+                "badge": ir.get("supporting_badge"),
+                "note": "前置清洗剥离：非发票页面留存为附件，不送入主 OCR 引擎（专家口径 S5 #65 · 演示口径：规则切分）",
+            }
+        ))
     for i, ev in enumerate(evidence):
         session.add(m.FieldEvidence(case_id=case_id, seq=i, field=ev["field"],
                                     source=ev["source"], confidence=float(ev["confidence"]),

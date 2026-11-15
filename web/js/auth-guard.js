@@ -4,7 +4,7 @@ window.IHUB_AUTH = (function () {
   const KEY = 'ihub.auth';
   const IS_FILE = location.protocol === 'file:';
   const page = (location.pathname.split('/').pop() || 'dashboard-overview.html').toLowerCase();
-  const PUBLIC = new Set(['login.html', 'demo-landing.html']);
+  const PUBLIC = new Set(['login.html']);   // demo-landing.html 已移出交付范围（2026-11-15 业务口径），页面已删除
 
   function get() {
     try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); }

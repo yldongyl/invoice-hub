@@ -9,9 +9,10 @@
 """
 
 from typing import Any
+from sqlalchemy import select
 from app.domain import models as m
 from app.services import alert_engine, audit_chain
-from app.services.audit_chain import now_iso, new_trace_id
+from app.services.audit_chain import GENESIS_HASH, compute_hash, new_trace_id, now_iso, record_payload
 from app.services.rbac_service import assert_not_ai_agent, require_permission
 
 SAMPLING_RECORDS = [
@@ -53,9 +54,10 @@ def list_sampling_records(session) -> list[dict]:
 def run_periodic_sampling(session, actor: str, target_scope: str = "CN_XML", sample_size: int = 500) -> dict:
     """执行新一轮周期抽检任务（FN-5-07）。
     1. 校验操作人权限；
-    2. 执行 SHA-256 比对与审计链校验；
-    3. 抽检记录写入不可篡改审计链；
-    4. 返回抽检批次与判定结果。
+    2. 执行真实 SHA-256 摘要重算与审计链校验；
+    3. 异常数真实输出、异常时联动冻结自动放行提示；
+    4. 抽检记录写入不可篡改审计链；
+    5. 返回抽检批次与判定结果。
     """
     assert_not_ai_agent(actor)
     require_permission(session, actor, "审计导出")
@@ -68,10 +70,34 @@ def run_periodic_sampling(session, actor: str, target_scope: str = "CN_XML", sam
     seq = len(SAMPLING_RECORDS) + 1
     batch_no = f"QA-{year}-W{week_num:02d}-{seq:02d}"
 
+    # 演示口径 TODO(FN-5-07)：当前以抽检样本范围内的审计块重算 SHA-256 摘要比对，输出真实异常数统计
+    scope_map = {"CN_XML": "CN", "OS_PDF": "OS", "INTERMEDIATE": "PLATFORM"}
+    target_chain_scope = scope_map.get(target_scope, target_scope if target_scope in ("CN", "OS", "PLATFORM") else None)
+
+    if target_chain_scope:
+        blocks = list(session.scalars(select(m.AuditBlock).where(m.AuditBlock.chain_scope == target_chain_scope).order_by(m.AuditBlock.blk)))
+    else:
+        blocks = list(session.scalars(select(m.AuditBlock).order_by(m.AuditBlock.blk)))
+
+    anomalies = 0
+    prev_map = {}
+    for b in blocks:
+        prev = prev_map.get(b.chain_scope, GENESIS_HASH)
+        expected = compute_hash(record_payload(
+            b.blk, b.ts, b.trace, b.actor, b.act, b.case_id,
+            b.from_state, b.to_state, b.note, b.op_component, prev
+        ))
+        if (b.prev_hash or GENESIS_HASH) != prev or (b.chain_hash or "") != expected:
+            anomalies += 1
+        prev_map[b.chain_scope] = b.chain_hash or expected
+
+    passed = (anomalies == 0)
+    result_text = "✓ 通过 · 0 异常" if passed else f"⚠ 异常 · {anomalies} 处摘要不一致"
+
     trace = new_trace_id()
     note_msg = (
         f"归档完整性周期抽检 · 批次：{batch_no} · 范围：{target_scope} · "
-        f"样本量：{sample_size} 份 · SHA-256 比对结果：0 异常 · 校验人：{actor}"
+        f"样本量：{sample_size} 份 · SHA-256 比对结果：{anomalies} 异常 · 校验人：{actor}"
     )
     blk = audit_chain.append_block(
         session,
@@ -90,19 +116,29 @@ def run_periodic_sampling(session, actor: str, target_scope: str = "CN_XML", sam
         "date": now_iso()[:10],
         "scope": f"{target_scope}（SHA-256 全量比对 + 版本一致性 + 链完整性）",
         "sample_size": sample_size,
-        "result": "✓ 通过 · 0 异常",
-        "passed": True,
+        "result": result_text,
+        "passed": passed,
+        "anomalies": anomalies,
         "verifier": f"{actor} · 财务复核",
     }
     SAMPLING_RECORDS.insert(0, new_rec)
 
+    # 抽检异常时联动冻结自动放行（alert_engine 既有链路）
+    if not passed:
+        alert_engine.freeze_auto_release_due_to_sampling_anomaly(
+            session, actor, batch_no, f"周期抽检发现 {anomalies} 处摘要不一致（SHA-256 校验失败）"
+        )
+
+    msg = f"周期抽检批次 {batch_no} 执行完成，0 异常，抽检记录已入链" if passed else f"周期抽检批次 {batch_no} 发现 {anomalies} 处异常，已触发告警并联动冻结自动放行"
+
     return {
         "batch_no": batch_no,
-        "passed": True,
+        "passed": passed,
+        "anomalies": anomalies,
         "sample_size": sample_size,
         "audit_blk": blk.blk,
         "trace": trace,
-        "message": f"周期抽检批次 {batch_no} 执行完成，0 异常，抽检记录已入链",
+        "message": msg,
     }
 
 

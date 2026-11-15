@@ -4,8 +4,8 @@
 功能与规则：
   - SSO 演示桩（FN-9-03）：SAP IAS (SAML 2.0) / SAP BTP xsuaa (OIDC) / 客户 AD（预留未连）；
     IdP 断言自动推导租户（前端只读锁定 + 服务端二次校验归属）；
-  - 账密登录与会话安全（FN-9-04）：复核员/管理员强制 MFA（6 位动态验证码）；
-    记住设备（30 天会话信任标记）；登录成功/失败全量写不可篡改审计链；
+  - 账密登录与会话安全（FN-9-04 / FN-9-05）：全员强制 MFA（6 位动态验证码；FN-9-05 验收口径）；
+    记住设备（30 天受信任设备免挑战策略 · TODO(FN-9-04) 演示口径）；登录成功/失败全量写不可篡改审计链；
   - 用户管理（FN-9-05）：用户表（姓名/组织/角色/状态/最近登录/MFA 状态），全部用户 MFA 启用。
 """
 
@@ -59,6 +59,23 @@ USER_TENANT_AFFINITY = {
     "刘工": ["TENANT-CN-LANWU-001"],
     "张审计": ["TENANT-SG-LANWU-001"],  # 新加坡只读审计
 }
+
+# 演示口径邮箱别名 → users 表主键（中文姓名）。web/login.html 账号框预填企业邮箱、
+# placeholder 承诺「企业邮箱 / 用户名」，而 UserAccount 主键为中文姓名；此处统一规范化，
+# 使邮箱与中文名等价可登录（修复 2026-11-15：预填邮箱登录报「用户不存在」）。
+# TODO(FN-9-04)：正式实现由企业 IdP 断言统一提供 username（UPN/email claim），本别名表随之移除。
+EMAIL_ALIASES = {
+    "wangli@lanwu-procurement.com": "王莉",
+    "chenzheng@lanwu-procurement.com": "陈铮",
+    "liugong@lanwu-procurement.com": "刘工",
+    "zhangshenji@lanwu-procurement.com": "张审计",
+}
+
+
+def canonical_username(username: str | None) -> str:
+    """邮箱别名 → 用户主键（中文姓名）；非别名原样返回（去首尾空白）。"""
+    u = (username or "").strip()
+    return EMAIL_ALIASES.get(u.lower(), u)
 
 # 演示会话登记表：PoC 口径进程内保存（重启失效），用于 web 登录闭环与 API Bearer 头校验。
 # 正式实现应替换为签名 JWT / 服务端 Session Store，并补充过期清理 Job。
@@ -153,6 +170,7 @@ def _mfa_code(username: str, step: int | None = None) -> str:
 
 def issue_mfa_challenge(session, username: str, tenant_id: str) -> dict:
     """签发 MFA 挑战：返回 challenge_id；演示环境同时返回 dev_code 供本地验证。"""
+    username = canonical_username(username)  # 邮箱别名 → 用户主键（演示口径，见 EMAIL_ALIASES）
     assert_not_ai_agent(username)
     user = session.get(m.UserAccount, username)
     if not user or user.status != "启用":
@@ -226,6 +244,7 @@ def authenticate_sso(session, idp_id: str, assertion: dict) -> dict:
     if not username or not claimed_tenant_id:
         raise CommandError("E_SSO_ASSERTION_INVALID", "SSO 断言缺失 username 或 tenant_id 声明", http=400)
 
+    username = canonical_username(username)  # 邮箱别名 → 用户主键（演示口径，见 EMAIL_ALIASES）
     assert_not_ai_agent(username)
 
     user = session.get(m.UserAccount, username)
@@ -293,14 +312,17 @@ def authenticate_sso(session, idp_id: str, assertion: dict) -> dict:
 
 def authenticate_password(session, username: str, password: str, tenant_id: str,
                            mfa_code: str | None = None, remember_device: bool = False,
-                           mfa_challenge_id: str | None = None) -> dict:
-    """账密登录 + 租户手选 + MFA 验证（FN-9-04）。
+                           mfa_challenge_id: str | None = None,
+                           device_token: str | None = None) -> dict:
+    """账密登录 + 租户手选 + 全员强制 MFA 验证（FN-9-04 / FN-9-05）。
     1. 校验用户身份与状态；
     2. 校验租户归属；
-    3. 复核员/管理员角色强制要求 MFA；
-    4. 记录登录成功/失败到不可篡改审计链；
-    5. 设备信任 30 天标记。
+    3. 受信任设备校验：若提供有效 30 天内 device_token，免 MFA 挑战（FN-9-04 · 演示口径 TODO(FN-9-04)）；
+    4. 全员强制 MFA 校验（FN-9-05 验收口径：任意角色未过受信任免挑战者必须输入 6 位验证码）；
+    5. 若勾选 remember_device，在 trusted_devices 表落盘 device_token 并赋予 30 天有效期；
+    6. 记录登录成功/失败到不可篡改审计链。
     """
+    username = canonical_username(username)  # 邮箱别名 → 用户主键（演示口径，见 EMAIL_ALIASES）
     assert_not_ai_agent(username)
 
     user = session.get(m.UserAccount, username)
@@ -331,13 +353,43 @@ def authenticate_password(session, username: str, password: str, tenant_id: str,
     if tenant_id not in allowed_tenants:
         raise CommandError(E_TENANT_MISMATCH, f"用户 {username} 未分配至租户 {tenant_id}", http=403)
 
-    # ══════ MFA 校验（FN-9-04：复核员 / 管理员强制启用） ══════
-    is_mfa_required = any(k in (user.role or "") for k in ("管理员", "复核员"))
-    if is_mfa_required:
+    # ══════ 3. 受信任设备 30 天免挑战检查（FN-9-04 · 演示口径 TODO(FN-9-04)） ══════
+    is_device_trusted = False
+    if device_token:
+        trusted_record = session.get(m.TrustedDevice, device_token)
+        if (trusted_record and trusted_record.username == username
+                and trusted_record.tenant_id == tenant_id
+                and trusted_record.expires_at > now_iso()):
+            is_device_trusted = True
+
+    # ══════ 4. 全员 MFA 强制校验（FN-9-05 口径：全部用户启用 MFA；受信任设备免除重复挑战） ══════
+    if not is_device_trusted:
         _verify_mfa_challenge(username, tenant_id, mfa_challenge_id, mfa_code)
+
+    # ══════ 5. remember_device 受信任设备登记 / 续期 ══════
+    active_device_token: str | None = None
+    if remember_device:
+        now_dt = datetime.now(timezone.utc)
+        now_str = now_dt.isoformat()
+        expires_str = (now_dt + timedelta(days=30)).isoformat()
+        existing_td = session.get(m.TrustedDevice, device_token) if device_token else None
+        if existing_td and existing_td.username == username:
+            existing_td.expires_at = expires_str
+            active_device_token = existing_td.device_token
+        else:
+            active_device_token = f"dev-tok-{secrets.token_hex(16)}"
+            session.add(m.TrustedDevice(
+                device_token=active_device_token,
+                username=username,
+                tenant_id=tenant_id,
+                created_at=now_str,
+                expires_at=expires_str,
+            ))
+        session.flush()
 
     trace = new_trace_id()
     session_token = f"pwd-sess-{secrets.token_hex(16)}"
+    mfa_audit_desc = "受信任设备30天免挑战" if is_device_trusted else "已验证"
     audit_chain.append_block(
         session,
         ts=now_iso(),
@@ -346,7 +398,7 @@ def authenticate_password(session, username: str, password: str, tenant_id: str,
         act="POLICY_PUBLISHED",
         cs=None,
         category="security",
-        note=f"用户账密登录成功：用户={username} · 租户={tenant_id} · MFA={'已验证' if is_mfa_required else '免密'} · 受信任设备30天={remember_device}",
+        note=f"用户账密登录成功：用户={username} · 租户={tenant_id} · MFA={mfa_audit_desc} · 受信任设备30天={remember_device}",
         op="login/auth",
     )
 
@@ -363,10 +415,11 @@ def authenticate_password(session, username: str, password: str, tenant_id: str,
             "readonly_locked": False,
         },
         "session_token": session_token,
-        "mfa_verified": is_mfa_required,
-        "trusted_device_30d": remember_device,
+        "mfa_verified": True,
+        "trusted_device_30d": remember_device or is_device_trusted,
+        "device_token": active_device_token or (device_token if is_device_trusted else None),
         "trace": trace,
-    }, remember_device=remember_device)
+    }, remember_device=remember_device or is_device_trusted)
 
 
 def list_users(session) -> list[dict]:

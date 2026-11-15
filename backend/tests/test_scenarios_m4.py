@@ -273,3 +273,100 @@ def test_s_m4_05_policy_publish_draft_update_and_rollback(fresh_session):
     )
     assert restored_out["status"] == "done"
     assert restored_out["final_provider"] == "nuonuo-cn"
+
+
+def test_s_m4_06_outbound_filing_lifecycle_and_controlled_repush(api_client):
+    """S-M4-06 出站建档与受控重推全生命周期闭环场景（FN-7-05 / FN-7-06 · 20261102 S4）。
+
+    链路：
+      ① 放行案件（NEEDS_REVIEW → 放行受控命令 → RESOLVED）；
+      ② 正式建档（触发 Ariba 生产建档五步链路 → 生成 AID-* 回执并归档时间线）；
+      ③ 台账出现成功记录（GET /v1/outbound/batches 包含成功建档记录，状态语义为对账完成，严禁已付款）；
+      ④ 失败记录核实（INV-CN-2026-0381 Custom Field 超长失败待人工）；
+      ⑤ 受控重推（复核员无权拦截 403 → 运营刘工五要素重推 → 状态闭环为建档成功/对账完成）。
+    """
+    cid = "INV-CN-2026-0387"
+
+    # 1. 模拟复核员放行受控操作
+    ch_rel = api_client.post(
+        f"/v1/cases/{cid}/risk-challenge",
+        json={"actor": "王莉", "instance": "CN", "action": "release"},
+    )
+    assert ch_rel.status_code == 200
+    tkn = ch_rel.json()["token"]
+
+    rel_res = api_client.post(
+        f"/v1/cases/{cid}/actions/release",
+        json={
+            "actor": "王莉",
+            "instance": "CN",
+            "token": tkn,
+            "self_confirmed": True,
+            "opinion": "确认含税口径差异，回填 PO 后正式放行",
+        },
+    )
+    assert rel_res.status_code == 200
+    assert rel_res.json()["case"]["status"] == "RESOLVED"
+
+    # 2. 触发 Ariba 正式建档（is_sandbox=False）
+    filing_res = api_client.post(
+        "/v1/adapters/ariba/file",
+        json={"case_id": cid, "is_sandbox": False, "actor": "王莉"},
+    )
+    assert filing_res.status_code == 200
+    f_data = filing_res.json()
+    assert f_data["success"] is True
+    receipt_no = f_data["receipt_no"]
+    assert receipt_no.startswith("AID-2026-")
+
+    # 3. 查验出站台账出现该成功记录（GET /v1/outbound/batches）
+    ob_res = api_client.get("/v1/outbound/batches?adapter=ariba")
+    assert ob_res.status_code == 200
+    ob_data = ob_res.json()
+    all_details = [d for b in ob_data["batches"] for d in b["detail"]]
+    rec_0387 = next((d for d in all_details if d["caseId"] == cid and d["receipt"] == receipt_no), None)
+    assert rec_0387 is not None
+    assert rec_0387["docType"] == "Invoice(PO)"
+    assert rec_0387["writeback"] == "已回写"
+    assert rec_0387["filing_status"] == "建档成功/对账完成（生成支付凭证传会计系统）"
+    assert "已付款" not in rec_0387["filing_status"]
+
+    # 4. 找到既有失败待人工记录（INV-CN-2026-0381）
+    rec_fail = next(d for d in all_details if d["caseId"] == "INV-CN-2026-0381")
+    fail_id = rec_fail["id"]
+
+    # 5. 受控重推五要素闭环
+    # 权限隔离：复核员王莉无权重推被拦截 403
+    ch_rev = api_client.post(f"/v1/outbound/records/{fail_id}/risk-challenge", json={"actor": "王莉"})
+    assert ch_rev.status_code == 403
+    assert "复核员不直接重推出站" in ch_rev.json()["detail"]["message"]
+
+    # 平台运营人员刘工签发风险提示与确认凭据
+    ch_ops = api_client.post(f"/v1/outbound/records/{fail_id}/risk-challenge", json={"actor": "刘工"})
+    assert ch_ops.status_code == 200
+    ops_token = ch_ops.json()["token"]
+
+    # 执行受控重推（五要素齐全）
+    repush_res = api_client.post(
+        f"/v1/outbound/records/{fail_id}/repush",
+        json={
+            "actor": "刘工",
+            "token": ops_token,
+            "self_confirmed": True,
+            "opinion": "管理员确认截断策略，执行受控重推并归档回执",
+        },
+    )
+    assert repush_res.status_code == 200
+    repush_data = repush_res.json()
+    assert repush_data["success"] is True
+    assert "AID-2026-" in repush_data["receipt_no"]
+    assert repush_data["filing_status"] == "建档成功/对账完成（生成支付凭证传会计系统）"
+
+    # 6. 查验重推后的状态闭环
+    ob_res2 = api_client.get(f"/v1/outbound/batches/OB-20261029-001")
+    assert ob_res2.status_code == 200
+    b_detail = ob_res2.json()["detail"]
+    rec_after = next(d for d in b_detail if d["id"] == fail_id)
+    assert rec_after["filing_status"] == "建档成功/对账完成（生成支付凭证传会计系统）"
+    assert rec_after["writeback"] == "已回写"
+    assert rec_after["error_reason"] is None

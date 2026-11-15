@@ -112,10 +112,10 @@
       </div>
     </div>
     <div class="flex items-center gap-3 shrink-0 text-[12px]">
-      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-success">3</b><span class="text-ink-3 dark:text-gray-500">目标系统已对接</span></div>
-      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-warning">1</b><span class="text-ink-3 dark:text-gray-500">适配中</span></div>
-      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-ink-2 dark:text-gray-400">1</b><span class="text-ink-3 dark:text-gray-500">规划中</span></div>
-      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b class="block text-[16px] num text-primary">5,836</b><span class="text-ink-3 dark:text-gray-500">本月建档总量（张）</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b id="kpi-live" class="block text-[16px] num text-success">3</b><span class="text-ink-3 dark:text-gray-500">目标系统已对接</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b id="kpi-wip" class="block text-[16px] num text-warning">1</b><span class="text-ink-3 dark:text-gray-500">适配中</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b id="kpi-plan" class="block text-[16px] num text-ink-2 dark:text-gray-400">1</b><span class="text-ink-3 dark:text-gray-500">规划中</span></div>
+      <div class="px-3 py-2 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline text-center"><b id="kpi-month-filing" class="block text-[16px] num text-primary">5,836</b><span class="text-ink-3 dark:text-gray-500">本月建档总量（张）</span></div>
     </div>
   </section>
   <div class="-mt-1.5 text-[11px] text-ink-3 dark:text-gray-500">＊「已对接 3」口径为采购平台 / 应付系统等建档目标系统；另有 Data Lake / BI 数据输出通道已对接（只读输出，不计入建档统计）。</div>
@@ -169,7 +169,7 @@
     <div class="px-6 py-4 space-y-4">
       <!-- 测试通道提示 -->
       <div class="px-3 py-2.5 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-[12px] text-ink-2 dark:text-gray-300 leading-relaxed">
-        ⚠ <b class="text-warning">测试通道，不影响生产数据；真实建档为受控写操作，需人工确认后执行</b>（二次确认 + Adapter 管理员权限校验 + 操作人 / 时间 / 报文摘要记入审计日志）。
+        ⚠ <b class="text-warning">测试通道，不影响生产数据；真实建档为受控写操作，需人工确认后执行</b>（二次确认 + Adapter 管理员权限校验 + 操作人 / 时间 / 报文摘要记入审计日志）。正式建档由案件放行链路自动触发（<a href="case-detail.html" class="text-primary underline font-medium hover:text-primary-dark">case-detail</a>）。
       </div>
 
       <!-- 案件信息 -->
@@ -257,6 +257,15 @@ const ADAPTERS = [
         { t:'回执', d:'Ariba 回执校验通过 · InvoiceDocument ID 登记 · 回执归档案件时间线（测试标记）' }
       ],
       ok:'✓ 测试建档成功 · Ariba Invoice Document ID: <b class="num">AID-2026-90341</b> · 回执已归档案件时间线'
+    },
+    data_sync_job:{
+      mechanism:'每日定时全量拉取（01:30 SGT）+ 变更时间段增量查询（Delta Query by UpdatedTimestamp）',
+      last_sync_time:'2026-10-20 01:30:15',
+      status:'SUCCESS',
+      status_label:'正常运行',
+      cached_po_count:1420,
+      cached_supplier_count:385,
+      standard_note:'符合 S5 第 4 条要求：事前通过 Ariba API 准备主数据底座'
     }
   },
   {
@@ -352,7 +361,7 @@ const ADAPTERS = [
     wipToast:'Coupa Invoicing 适配中 · 联调沙箱预计 2026-11 开放测试建档（当前仅支持契约评审与映射预配置）'
   },
   {
-    id:'s4hana', mono:'S4', name:'SAP S/4HANA Supplier Invoice', sub:'ERP 建档 · 规划中', status:'plan',
+    id:'s4', mono:'S4', name:'SAP S/4HANA Supplier Invoice', sub:'ERP 建档 · 规划中', status:'plan',
     contracts:['Supplier Invoice API（OData）/ MIRO 兼容建档','Tax Code 映射 · Accounting Document 回写引用','依赖 Adapter 契约 v1（已冻结）'],
     metrics:[{k:'规划评估',v:'2027-Q1'},{k:'契约',v:'v1（冻结）'},{k:'开发方式',v:'Adapter 模板'}],
     plan:{
@@ -444,10 +453,10 @@ function renderCards(){
 }
 
 /* ════════════════ ③ 详情区 ════════════════ */
-function selectAdapter(id){
+async function selectAdapter(id){
   selected = id;
   renderCards();
-  renderDetail();
+  await renderDetail();
   const el = document.getElementById('detail');
   if(el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
@@ -458,32 +467,59 @@ function srcBadge(kind, label){
   return `<span class="inline-block px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-400 border border-line dark:border-dline">${label}</span>`;
 }
 
-function renderDetail(){
+async function renderDetail(){
   const a = ADAPTERS.find(x=>x.id===selected);
   const box = document.getElementById('detail');
   if(!a || !box) return;
 
+  // live 态拉取详情三端点数据（FN-7-02/03/05/06 · 连接配置、字段映射模板、回执队列）
+  if (typeof IHUB_DEMO !== 'undefined' && IHUB_DEMO.isLive()) {
+    try {
+      const [pRes, mMap, qRes] = await Promise.all([
+        IHUB_API.getJSON('/v1/adapters/' + selected).catch(()=>null),
+        IHUB_API.getJSON('/v1/adapters/' + selected + '/mapping').catch(()=>null),
+        IHUB_API.getJSON('/v1/adapters/' + selected + '/queue').catch(()=>null)
+      ]);
+      if (pRes) {
+        if (pRes.conn) a.conn = pRes.conn;
+        if (pRes.metrics) a.metrics = pRes.metrics;
+        if (pRes.plan) a.plan = pRes.plan;
+        if (pRes.data_sync_job) a.data_sync_job = pRes.data_sync_job;
+      }
+      if (mMap && mMap.rows) {
+        a.mapping = mMap;
+      }
+      if (qRes && Array.isArray(qRes.queue)) {
+        a.queue = qRes.queue;
+      }
+    } catch(e) {
+      console.warn('Live detail fetch failed, fallback to local seed copy', e);
+    }
+  }
+
   let body = '';
   if(a.status==='live'){
-    /* (a) 连接配置（只读表单样式） */
+    /* (a) 连接配置（只读表单样式 · 凭证 KMS 掩码不回显） */
     body += `
       <div class="border-t border-line dark:border-dline px-5 py-4">
-        <div class="text-[14px] font-semibold mb-1">（a）连接配置 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">只读展示 · 变更需 Adapter 管理员权限 + 二次确认，记入审计日志（操作人 / 时间 / 前后值）</span></div>
+        <div class="text-[14px] font-semibold mb-1">（a）连接配置 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">只读展示 · 凭证托管 KMS/Vault 界面不回显 · 变更需 Adapter 管理员权限 + 二次确认，记入审计日志（操作人 / 时间 / 前后值）</span></div>
         <div class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
-          ${a.conn.map(([k,v])=>`
+          ${(a.conn || []).map(([k,v])=>`
             <div>
               <label class="block text-[11px] text-ink-3 dark:text-gray-500 mb-1">${k}</label>
               <div class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] px-2.5 py-2 text-[12.5px] text-ink-2 dark:text-gray-300 leading-snug">${v}</div>
             </div>`).join('')}
         </div>
       </div>`;
+
     /* (b) 字段映射模板 */
+    const mappingRows = (a.mapping && a.mapping.rows) ? a.mapping.rows : [];
     body += `
       <div class="border-t border-line dark:border-dline px-5 py-4">
         <div class="flex items-center justify-between flex-wrap gap-2">
-          <div class="text-[14px] font-semibold">（b）字段映射模板 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">统一 Schema（InvoiceCase）→ ${a.mapping.target}</span></div>
+          <div class="text-[14px] font-semibold">（b）字段映射模板 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">统一 Schema（InvoiceCase）→ ${(a.mapping && a.mapping.target) || a.name}</span></div>
           <div class="flex items-center gap-2 text-[11px]">
-            <span class="num px-2 py-1 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B] font-medium">映射规则版本 ${a.mapping.ver}</span>
+            <span class="num px-2 py-1 rounded-card bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B] font-medium">映射规则版本 ${(a.mapping && a.mapping.ver) || (a.mapping && a.mapping.version) || 'v1.4'}</span>
             <span class="px-2 py-1 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">来源标注：预设 / 人工沉淀 / AI 生成（待确认）</span>
           </div>
         </div>
@@ -497,24 +533,35 @@ function renderDetail(){
             </tr>
           </thead>
           <tbody class="divide-y divide-line dark:divide-dline">
-            ${a.mapping.rows.map(r=>`
-              <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
-                <td class="px-3 py-2 num text-primary whitespace-nowrap">${r[0]}</td>
-                <td class="px-3 py-2 num text-ink-1 dark:text-gray-200 whitespace-nowrap">${r[1]}</td>
-                <td class="px-3 py-2 text-ink-2 dark:text-gray-400">${r[2]}</td>
-                <td class="px-3 py-2 whitespace-nowrap">${srcBadge(r[3], r[4])}</td>
-              </tr>
-              ${r[3]==='ai'?`<tr><td colspan="4" class="px-3 pb-2 pt-0"><div class="px-2.5 py-1.5 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-[11px] text-ink-2 dark:text-gray-400 leading-relaxed">✦ <b class="text-warning">AI 生成</b> · 映射助手 v0.9.2 · 置信度 <b class="num text-warning">88%</b>（中 · 80–95% 橙档）· <b>AI 建议不自动执行业务操作，请人工确认后生效</b>（确认动作需权限校验并留痕）。</div></td></tr>`:''}`).join('')}
+            ${mappingRows.map(r=>{
+              const src = r.src || r[0];
+              const tgt = r.target || r[1];
+              const desc = r.note || r[2];
+              const cls = r.class || r[3];
+              const srcTxt = r.source || r[4] || (cls==='ai'?'AI 生成 · 映射助手 v0.9.2 · 置信度 88% · 待人工确认':(cls==='manual'?'人工沉淀':'预设 v1.0'));
+              return `
+                <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+                  <td class="px-3 py-2 num text-primary whitespace-nowrap">${src}</td>
+                  <td class="px-3 py-2 num text-ink-1 dark:text-gray-200 whitespace-nowrap">${tgt}</td>
+                  <td class="px-3 py-2 text-ink-2 dark:text-gray-400">${desc}</td>
+                  <td class="px-3 py-2 whitespace-nowrap">${srcBadge(cls, srcTxt)}</td>
+                </tr>
+                ${cls==='ai'?`<tr><td colspan="4" class="px-3 pb-2 pt-0"><div class="px-2.5 py-1.5 rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 text-[11px] text-ink-2 dark:text-gray-400 leading-relaxed">✦ <b class="text-warning">AI 生成</b> · 映射助手 v0.9.2 · 置信度 <b class="num text-warning">88%</b>（中 · 80–95% 橙档）· <b>AI 建议不自动执行业务操作，请人工确认后生效</b>（确认动作需权限校验并留痕）。</div></td></tr>`:''}`;
+            }).join('')}
           </tbody>
         </table>
       </div>`;
+
     /* (c) 建档回执与失败重试队列 */
-    const qBadge = { ok:'bg-success-light dark:bg-[#1C2E22] text-success border-success/30',
-                     retry:'bg-primary-light dark:bg-[#1B2A4A] text-primary border-primary-mid dark:border-[#2A3F6B]',
-                     manual:'bg-danger-light dark:bg-[#3A2426] text-danger border-danger/30' };
+    const qBadge = {
+      ok:'bg-success-light dark:bg-[#1C2E22] text-success border-success/30',
+      retry:'bg-primary-light dark:bg-[#1B2A4A] text-primary border-primary-mid dark:border-[#2A3F6B]',
+      manual:'bg-danger-light dark:bg-[#3A2426] text-danger border-danger/30'
+    };
+    const queueList = a.queue || [];
     body += `
       <div class="border-t border-line dark:border-dline px-5 py-4">
-        <div class="text-[14px] font-semibold mb-1">（c）建档回执与失败重试队列 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">最近 3 条样例 · 全量记录见审计日志（不可篡改）</span></div>
+        <div class="text-[14px] font-semibold mb-1">（c）建档回执与失败重试队列 <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500 ml-1">出站台账最近记录 · 全量记录见审计日志（不可篡改）</span></div>
         <table class="mt-3 w-full text-[12.5px]">
           <thead>
             <tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
@@ -525,32 +572,73 @@ function renderDetail(){
             </tr>
           </thead>
           <tbody class="divide-y divide-line dark:divide-dline">
-            ${a.queue.map(q=>`
-              <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
-                <td class="px-3 py-2.5 num font-medium text-primary whitespace-nowrap">${q.c}</td>
-                <td class="px-3 py-2.5 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${qBadge[q.st]}">${q.s}</span></td>
-                <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">${q.d}</td>
-                <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">${q.a}</td>
-              </tr>`).join('')}
+            ${queueList.map(q=>{
+              const cid = q.case_id || q.caseId || q.c;
+              const st = q.status || q.st || 'ok';
+              const title = q.title || q.s || (st==='retry'?'失败重试中':(st==='manual'?'失败待人工':'成功回执'));
+              const desc = q.desc || q.d || '';
+              const act = q.action || q.a || '';
+              return `
+                <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+                  <td class="px-3 py-2.5 num font-medium text-primary whitespace-nowrap">${cid}</td>
+                  <td class="px-3 py-2.5 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium border ${qBadge[st] || qBadge.ok}">${title}</span></td>
+                  <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">${desc}</td>
+                  <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">${act}</td>
+                </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>`;
+
+    /* (d) 任务 6｜Ariba PO 与供应商主数据同步 Job 状态呈现（20261102 专家口径 S5 第 4 条 · #68） */
+    if(a.data_sync_job){
+      const job = a.data_sync_job;
+      body += `
+        <div class="border-t border-line dark:border-dline px-5 py-4 bg-primary-light/10 dark:bg-[#1B2A4A]/20">
+          <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+            <div class="text-[14px] font-semibold flex items-center gap-2">
+              <span>（d）PO 与供应商主数据同步（Data Sync Job）</span>
+              <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">● ${job.status || 'SUCCESS'} ${job.status_label || '正常运行'}</span>
+            </div>
+            <span class="text-[11px] num px-2 py-1 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500">最近同步：${job.last_sync_time || '—'}</span>
+          </div>
+          <div class="grid grid-cols-3 gap-3 text-[12.5px] mt-2.5">
+            <div class="rounded-card border border-line dark:border-dline bg-card dark:bg-dcard p-3">
+              <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-1">同步机制</div>
+              <div class="text-ink-1 dark:text-gray-200 font-medium">${job.mechanism}</div>
+            </div>
+            <div class="rounded-card border border-line dark:border-dline bg-card dark:bg-dcard p-3 text-center">
+              <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-1">已缓存 PO 单数</div>
+              <div class="num text-[18px] font-semibold text-primary">${(job.cached_po_count != null ? job.cached_po_count.toLocaleString() : '1,420')} <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500">单</span></div>
+            </div>
+            <div class="rounded-card border border-line dark:border-dline bg-card dark:bg-dcard p-3 text-center">
+              <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-1">已缓存供应商主数据</div>
+              <div class="num text-[18px] font-semibold text-success">${(job.cached_supplier_count != null ? job.cached_supplier_count.toLocaleString() : '385')} <span class="text-[11px] font-normal text-ink-3 dark:text-gray-500">家</span></div>
+            </div>
+          </div>
+          <div class="mt-2.5 px-3 py-2 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[11.5px] text-ink-2 dark:text-gray-400 leading-relaxed flex items-center gap-1.5">
+            <span class="text-primary font-bold">ℹ</span>
+            <span><b>事前通过 Ariba API 同步主数据底座</b>：发票识别与匹配阶段通过 Ariba 接口获取供应商主数据和 PO 订单明细存入本地缓存，作为全链路比对底座。</span>
+          </div>
+        </div>`;
+    }
   } else {
     /* 适配中 / 规划中：进度面板 */
     const stIcon = { done:'<span class="w-5 h-5 rounded-full bg-success text-white text-[11px] flex items-center justify-center shrink-0">✓</span>',
                      doing:'<span class="w-5 h-5 rounded-full bg-warning-light dark:bg-[#2E2417] border border-warning text-warning text-[11px] flex items-center justify-center shrink-0">◐</span>',
                      todo:'<span class="w-5 h-5 rounded-full bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 text-[11px] flex items-center justify-center shrink-0">○</span>' };
+    const planItems = (a.plan && a.plan.items) ? a.plan.items : [];
     body += `
       <div class="border-t border-line dark:border-dline px-5 py-4">
-        <div class="text-[14px] font-semibold mb-3">${a.plan.title}</div>
+        <div class="text-[14px] font-semibold mb-3">${(a.plan && a.plan.title) || '适配进度'}</div>
         <div class="space-y-2.5">
-          ${a.plan.items.map(it=>`
+          ${planItems.map(it=>`
             <div class="flex items-start gap-2.5 p-3 rounded-card border ${it.st==='doing'?'border-warning/30 bg-warning-light dark:bg-[#2E2417]':'border-line dark:border-dline bg-surface dark:bg-[#23282F]'}">
-              ${stIcon[it.st]}
-              <div class="text-[12.5px] text-ink-2 dark:text-gray-300 leading-relaxed">${it.t}</div>
+              ${stIcon[it.st || it.status] || stIcon.todo}
+              <div class="text-[12.5px] text-ink-2 dark:text-gray-300 leading-relaxed">${it.t || it.title}</div>
             </div>`).join('')}
         </div>
-        <div class="mt-3 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">📋 ${a.plan.note}</div>
+        <div class="mt-3 text-[11.5px] text-ink-3 dark:text-gray-500 leading-relaxed">📋 ${(a.plan && a.plan.note) || '规划阶段不开放配置与测试建档'}</div>
       </div>`;
   }
 
@@ -562,10 +650,11 @@ function renderDetail(){
           <div class="text-[15px] font-semibold flex items-center gap-2">${a.name} ${statusBadge(a.status)}
             <span class="text-[10.5px] num px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-normal">Adapter 契约 v1 · 冻结</span>
           </div>
-          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">${a.sub} · 仅覆盖供应商采购发票建档 / 输出 · 不涉及报销、差旅、销项开票、税务申报与资金支付</div>
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">${a.sub} · 仅覆盖供应商采购发票建档 / 输出 · 正式建档由案件放行链路自动触发（<a href="case-detail.html" class="text-primary underline font-medium hover:text-primary-dark">case-detail</a>）</div>
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
+        <span class="text-[11px] text-ink-3 dark:text-gray-500 hidden sm:inline">正式建档由 <a href="case-detail.html" class="text-primary underline hover:text-primary-dark">case-detail</a> 放行触发</span>
         ${a.status==='live'
           ? `<button onclick="openTest('${a.id}')" class="px-3 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">▶ 测试建档（沙箱）</button>`
           : `<button onclick="toast('${a.wipToast}')" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-3 dark:text-gray-500 font-medium">▶ 测试建档（未开放）</button>`}
@@ -714,20 +803,63 @@ window.runTest = async function(){
   try {
     await IHUB_DEMO.probe();
     if (IHUB_DEMO.isLive()) {
-      const adRes = await IHUB_API.getJSON('/v1/adapters');
+      document.body.dataset.ihubMode = 'live';
+      const [adRes, outRes] = await Promise.all([
+        IHUB_API.getJSON('/v1/adapters').catch(()=>null),
+        IHUB_API.getJSON('/v1/outbound/batches').catch(()=>null)
+      ]);
+
       if (adRes && adRes.adapters) {
-        // 同步状态与指标
+        // 1. 同步各适配器状态与指标
         adRes.adapters.forEach(remote => {
           const local = ADAPTERS.find(x => x.id === remote.id);
-          if (local && remote.metrics) {
-            local.metrics = remote.metrics;
+          if (local) {
+            if (remote.metrics) local.metrics = remote.metrics;
+            if (remote.conn) local.conn = remote.conn;
+            if (remote.contracts) local.contracts = remote.contracts;
+            if (remote.plan) local.plan = remote.plan;
+            if (remote.data_sync_job) local.data_sync_job = remote.data_sync_job;
+            if (remote.status) local.status = remote.status;
+            if (remote.status_code) local.status_code = remote.status_code;
           }
         });
         renderCards();
+
+        // 2. 顶部统计卡派生（FN-7-01）：由 /v1/adapters 服务端返回集状态派生
+        const summary = adRes.summary || {};
+        const liveTargetCount = summary.live_target_count !== undefined
+          ? summary.live_target_count
+          : adRes.adapters.filter(a => (a.status_code || '').startsWith('已对接') && a.id !== 'datalake').length;
+        const wipCount = summary.wip_count !== undefined
+          ? summary.wip_count
+          : adRes.adapters.filter(a => (a.status_code || '').startsWith('适配中')).length;
+        const planCount = summary.plan_count !== undefined
+          ? summary.plan_count
+          : adRes.adapters.filter(a => (a.status_code || '').startsWith('规划中')).length;
+
+        const elLive = document.getElementById('kpi-live');
+        const elWip = document.getElementById('kpi-wip');
+        const elPlan = document.getElementById('kpi-plan');
+        if (elLive) elLive.textContent = liveTargetCount;
+        if (elWip) elWip.textContent = wipCount;
+        if (elPlan) elPlan.textContent = planCount;
       }
+
+      // 3. 顶部统计卡「本月建档量」读 P06 出站台账聚合端点
+      if (outRes && outRes.kpi) {
+        const elMonthFiling = document.getElementById('kpi-month-filing');
+        if (elMonthFiling) {
+          elMonthFiling.textContent = outRes.kpi.month_filing_display || (outRes.kpi.month_filing_count ? outRes.kpi.month_filing_count.toLocaleString() : '5,836');
+        }
+      }
+
+      await renderDetail();
+    } else {
+      document.body.dataset.ihubMode = 'demo';
     }
     document.body.dataset.ihubWp47 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';
   } catch (e) {
+    document.body.dataset.ihubMode = 'demo';
     document.body.dataset.ihubWp47 = 'demo';
   }
 })();

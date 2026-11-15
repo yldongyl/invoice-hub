@@ -26,7 +26,7 @@
 
 - **ADR-0001 双轨制**：`backend/` 确定性核心（Python + FastAPI，**零 LLM 依赖**：规则引擎/状态机/审计链/受控写）；`agent/` LangGraph 域（对话、主动调查、差异解释、映射推荐、归因——**只能调用 backend 内部 API**）；`mcp/` MCP Server 对外（6 工具=4 只读+2 受控写 confirm_token）。
 - **ADR-0002 核心栈**：Python + FastAPI；数据层/队列/对象存储走 PoC 口径（SQLite 可切 PostgreSQL、本地目录可切 MinIO、内存队列可切 Redis），组件选型须留 ADR。
-- **ADR-0003 仓库**：`invoice-hub/`（结构见实施规划 §2），`web/` 为 `ui-design/` 12 页的接线副本（保留 demo-mode 回退：backend 不可达时回落内嵌 mock，页面可独立演示）。
+- **ADR-0003 仓库**：`invoice-hub/`（结构见实施规划 §2），`web/` 为 `ui-design/` 的接线副本（保留 demo-mode 回退：backend 不可达时回落内嵌 mock，页面可独立演示）。**范围调整（2026-11-15 业务口径）**：`demo-landing.html` 已移出对象范围（web/ 现存 12 页，不再为其接线或测试；ui-design/ 冻结基线不动）。
 
 ## 4. 依赖纪律（代码评审红线，违反即缺陷）
 

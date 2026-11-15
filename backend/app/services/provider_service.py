@@ -291,3 +291,115 @@ def get_cost_stats(session) -> dict[str, Any]:
             for p in providers
         ],
     }
+
+
+def register_provider(
+    session,
+    *,
+    provider_id: str,
+    display_name: str,
+    provider_label: str = "商业厂商",
+    provider_type: str = "OCR 识别",
+    deploy_mode: str = "API（SaaS）",
+    capabilities: Optional[dict[str, Any]] = None,
+    compliance_note: Optional[str] = None,
+    credentials: Optional[dict[str, Any]] = None,
+    actor: str = "human",
+    opinion: Optional[str] = None,
+) -> dict[str, Any]:
+    """注册新 Provider（FN-2-02 最小实装，受控五要素与 SPI 契约校验）。"""
+    existing = session.get(m.Provider, provider_id)
+    if existing is not None:
+        raise CommandError("E_PROVIDER_EXISTS", f"Provider {provider_id!r} 已存在，不可重复注册", http=409)
+
+    caps = capabilities or {
+        "provider_id": provider_id,
+        "display_name": display_name,
+        "provider_label": provider_label,
+        "deploy_mode": deploy_mode,
+        "regions": ["CN"],
+        "invoice_types": ["增值税专票/普票（纸质扫描）"],
+        "formats": ["pdf_scan", "image"],
+        "services": ["recognize"],
+        "sla": {
+            "availability_pct": 99.8,
+            "p95_latency_ms": 3000,
+        },
+        "compliance_note": compliance_note or "合同含「不留存、不训练」条款 ✓",
+    }
+    cap_errors = validate_capabilities(caps)
+    if cap_errors:
+        raise CommandError(
+            "E_SPI_CAPABILITIES_INVALID",
+            f"Provider 能力声明不符契约: {'; '.join(cap_errors)}",
+            http=422,
+            details={"errors": cap_errors},
+        )
+
+    # KMS 凭证托管演示桩（TODO(FN-2-07)）
+    kms_masked = _mask_credentials(credentials or {"kms_key_arn": f"arn:kms:demo:provider/{provider_id}", "api_secret": "sk-live-custom-mask"})
+
+    praw = {
+        "ui_id": provider_id,
+        "provider_id": provider_id,
+        "display_name": display_name,
+        "provider_label": provider_label,
+        "type": provider_type,
+        "deploy_mode": deploy_mode,
+        "enabled": False,
+        "lock": False,
+        "sla": {
+            "lv": "ok",
+            "text": f"{caps.get('sla', {}).get('availability_pct', 99.8)}% · P95 {caps.get('sla', {}).get('p95_latency_ms', 3000)/1000:.1f}s",
+            "availability_pct": caps.get("sla", {}).get("availability_pct", 99.8),
+            "p95_ms": caps.get("sla", {}).get("p95_latency_ms", 3000),
+            "warn_threshold_ms": 8000,
+        },
+        "cost_display": "¥0 · 0 张",
+        "unit_cost": {"currency": "CNY", "cost_per_invoice": 0.05},
+        "compliance_note": compliance_note or caps.get("compliance_note", "数据不出客户控制域"),
+        "contract_ref": caps.get("contract_ref", "DPA-2026-CUSTOM"),
+        "services": caps.get("services", ["recognize"]),
+        "regions": caps.get("regions", ["CN"]),
+        "formats": caps.get("formats", ["pdf_scan", "image"]),
+        "credentials": kms_masked,
+    }
+
+    new_p = m.Provider(
+        provider_id=provider_id,
+        display_name=display_name,
+        enabled=False,  # 注册后进入列表并默认停用
+        lock=False,
+        provider_raw=praw,
+    )
+    session.add(new_p)
+    session.commit()
+
+    audit_actor = actor if actor in ("system", "provider", "human", "ai") else "human"
+    op_user = actor if actor not in ("system", "provider", "human", "ai") else "陈铮"
+    trace = new_trace_id()
+    note = f"✓ 注册新 Provider「{display_name}」（{provider_id}）· 契约校验合规 · 默认停用" + (f" · 处置意见：{opinion}" if opinion else "")
+
+    audit_chain.append_block(
+        session,
+        ts=now_iso(),
+        trace=trace,
+        actor=audit_actor,
+        act="CARRIER_ROUTED",
+        cs=None,
+        from_state="unregistered",
+        to_state="registered_disabled",
+        note=note,
+        op=f"provider_service v1.0 · {op_user}",
+        category="provider",
+        commit=True,
+    )
+
+    return {
+        "registered": True,
+        "provider_id": provider_id,
+        "display_name": display_name,
+        "enabled": False,
+        "message": note,
+        "trace": trace,
+    }

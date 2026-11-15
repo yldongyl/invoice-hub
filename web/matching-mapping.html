@@ -193,7 +193,7 @@
             <th class="px-3 py-2.5 font-medium pr-5">来源</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-line dark:divide-dline">
+        <tbody id="taxcodes-tbody" class="divide-y divide-line dark:divide-dline">
           <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 13%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J1</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">一般纳税人 · 货物 / 加工修理修配</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
           <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 9%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J2</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">交通运输 / 建筑 / 农产品等</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
           <tr><td class="px-5 py-2.5">🇨🇳 CN</td><td class="px-3 py-2.5 num font-medium">增值税 6%</td><td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">J3</code></td><td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">现代服务 / 增值电信等</td><td class="px-3 py-2.5 num text-ink-3">v1.4</td><td class="px-3 py-2.5 num text-ink-3">2026-09-30</td><td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">预设</span></td></tr>
@@ -212,13 +212,13 @@
       <div class="col-span-5 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
         <div class="px-4 pt-4 pb-3 border-b border-line dark:border-dline">
           <div class="text-[14px] font-semibold">① 预设规则库 <span class="text-[11px] text-ink-3 dark:text-gray-500 font-normal">Preset Mapping Rules</span></div>
-          <div class="text-[12px] text-ink-2 dark:text-gray-400 mt-1">本月命中 <b class="num text-primary">12,847</b> 次 · 覆盖率 <b class="num text-success">96.2%</b> · 命中即自动映射，无需人工</div>
+          <div class="text-[12px] text-ink-2 dark:text-gray-400 mt-1">本月命中 <b id="preset-month-hits" class="num text-primary">12,847</b> 次 · 覆盖率 <b id="preset-coverage-pct" class="num text-success">96.2%</b> · 命中即自动映射，无需人工</div>
         </div>
         <table class="w-full text-[12.5px]">
           <thead><tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
             <th class="px-4 py-2 font-medium">源字段（票面 / 原件）</th><th class="px-3 py-2 font-medium">目标字段</th><th class="px-3 py-2 font-medium text-right pr-4">本月命中</th>
           </tr></thead>
-          <tbody class="divide-y divide-line dark:divide-dline num">
+          <tbody id="presets-tbody" class="divide-y divide-line dark:divide-dline num">
             <tr><td class="px-4 py-2.5">价税合计（小写）</td><td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">total.gross_amount</code></td><td class="px-3 py-2.5 text-right pr-4">4,213</td></tr>
             <tr><td class="px-4 py-2.5">合计金额（不含税）</td><td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">total.net_amount</code></td><td class="px-3 py-2.5 text-right pr-4">3,980</td></tr>
             <tr><td class="px-4 py-2.5">销售方名称 / Supplier Name</td><td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">seller.name</code></td><td class="px-3 py-2.5 text-right pr-4">2,554</td></tr>
@@ -233,7 +233,7 @@
       <div class="col-span-7 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
         <div class="px-4 pt-4 pb-3 border-b border-line dark:border-dline flex items-center justify-between">
           <div>
-            <div class="text-[14px] font-semibold">② LLM 推荐待确认队列 <span class="inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 font-medium align-middle">AI 生成 · 仅建议</span></div>
+            <div class="text-[14px] font-semibold">② LLM 推荐待确认队列 <span class="inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 font-medium align-middle">智能推荐</span></div>
             <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1">预设库未覆盖的新字段 / 语义差异，由 LLM 推荐映射；<b class="text-ink-2 dark:text-gray-400">确认一次即沉淀为规则（人工确认沉淀机制）</b>，长期复用</div>
           </div>
           <span class="text-[11px] text-ink-3 dark:text-gray-500 num shrink-0">模型：qwen-finance-v2 · 2026-10-15</span>
@@ -252,7 +252,7 @@
         <thead><tr class="text-left text-[11.5px] text-ink-3 dark:text-gray-500 bg-surface dark:bg-[#23282F]">
           <th class="px-4 py-2 font-medium">确认时间</th><th class="px-3 py-2 font-medium">源字段</th><th class="px-3 py-2 font-medium">沉淀映射</th><th class="px-3 py-2 font-medium">确认人</th><th class="px-3 py-2 font-medium pr-4">沉淀后命中</th>
         </tr></thead>
-        <tbody class="divide-y divide-line dark:divide-dline">
+        <tbody id="history-tbody" class="divide-y divide-line dark:divide-dline">
           <tr>
             <td class="px-4 py-2.5 num text-ink-3">2026-10-12 15:22</td>
             <td class="px-3 py-2.5">GST Reg. No（海外票面 Tax ID）</td>
@@ -344,7 +344,7 @@ const DIFFBADGE = {
   danger: {cls:'bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30'},
   purple: {cls:'bg-purple-light dark:bg-[#2B1F3D] text-purple border border-purple/30'}
 };
-const AI_TAG = `<span class="inline-block text-[10px] px-1.5 py-0.5 rounded bg-warning text-white font-medium align-middle">AI 生成</span>`;
+const AI_TAG = `<span class="inline-block text-[10px] px-1.5 py-0.5 rounded bg-warning text-white font-medium align-middle">AI 建议</span>`;
 const AI_MODEL = 'qwen-finance-v2 · 2026-10-15';
 const AI_DISCLAIMER = `⚠ 大模型生成的建议不自动执行业务操作，请人工确认后操作`;
 
@@ -464,13 +464,36 @@ function renderQueue(){
   document.getElementById('q1-done').textContent = QUEUE.filter(c=>c.processed).length;
 }
 
-function selectCase(i){
+async function selectCase(i){
   selectedIdx = i;
   renderQueue();
   renderConfirm(i);
   const el = document.getElementById('q1-card');
   el.classList.remove('hidden');
   el.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  // 若处于 live 态，调用 /v1/matching/queue/{id} 获取服务端实时规则计算与容差（FN-6-02 / CON-12）
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive && IHUB_DEMO.isLive()) {
+    try {
+      const liveDetail = await IHUB_API.getJSON('/v1/matching/queue/' + QUEUE[i].id);
+      if (liveDetail && selectedIdx === i) {
+        if (liveDetail.detail) QUEUE[i].detail = liveDetail.detail;
+        if (liveDetail.allowed_actions) QUEUE[i].allowed_actions = liveDetail.allowed_actions;
+        if (liveDetail.realtime_calc) QUEUE[i].realtime_calc = liveDetail.realtime_calc;
+        if (liveDetail.uom_check) QUEUE[i].uom_check = liveDetail.uom_check;
+        if (liveDetail.cost_center_check) QUEUE[i].cost_center_check = liveDetail.cost_center_check;
+        if (liveDetail.aggregate_check) QUEUE[i].aggregate_check = liveDetail.aggregate_check;
+        QUEUE[i]._liveComputed = true;
+        renderConfirm(i);
+      }
+    } catch (e) {
+      console.warn('获取单案实时匹配规则详情失败，回退种子文案', e);
+      if (selectedIdx === i) {
+        QUEUE[i]._fallbackSeed = true;
+        renderConfirm(i);
+      }
+    }
+  }
 }
 function closeCard(){
   selectedIdx = -1;
@@ -480,6 +503,44 @@ function closeCard(){
 
 function renderConfirm(i){
   const c = QUEUE[i], d = c.detail;
+
+  // 动作可用性校验：服务端下发优先，否则按状态机前置边推导（消灭 live 态 409 · FN-0-02 / FN-6-11）
+  const acts = c.allowed_actions || (
+    c.status === 'INVESTIGATING'
+      ? {
+          q1_release: { allowed: true, reason: null },
+          q1_po: { allowed: false, reason: '案件已处于 INVESTIGATING 调查状态，证据收集进行中，无法再次补PO行' },
+          q1_return: { allowed: true, reason: null }
+        }
+      : (c.status === 'NEEDS_REVIEW'
+          ? {
+              q1_release: { allowed: true, reason: null },
+              q1_po: { allowed: true, reason: null },
+              q1_return: { allowed: false, reason: '退回供应商仅限已进入 INVESTIGATING 调查状态的案件（当前为 NEEDS_REVIEW）' }
+            }
+          : {
+              q1_release: { allowed: false, reason: `当前态 ${c.status} 不可放行` },
+              q1_po: { allowed: false, reason: `当前态 ${c.status} 不可补PO行` },
+              q1_return: { allowed: false, reason: `当前态 ${c.status} 不可退回供应商` }
+            })
+  );
+
+  const canRel = acts.q1_release ? acts.q1_release.allowed : true;
+  const canPo = acts.q1_po ? acts.q1_po.allowed : true;
+  const canRet = acts.q1_return ? acts.q1_return.allowed : true;
+
+  const btnRel = canRel
+    ? `<button onclick="openAct('q1',${i},'q1_release')" class="px-3.5 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF] shadow-card transition-colors">✓ 确认口径差异并放行建议</button>`
+    : `<button disabled title="${(acts.q1_release && acts.q1_release.reason) || '当前状态不可放行'}" class="px-3.5 py-2 rounded-card bg-primary/40 text-white/70 text-[13px] font-medium opacity-50 cursor-not-allowed shadow-none">✓ 确认口径差异并放行建议</button>`;
+
+  const btnPo = canPo
+    ? `<button onclick="openAct('q1',${i},'q1_po')" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">＋ 要求补PO行</button>`
+    : `<button disabled title="${(acts.q1_po && acts.q1_po.reason) || '当前状态不可补PO行'}" class="px-3.5 py-2 rounded-card border border-line/40 dark:border-dline/40 text-ink-3 dark:text-gray-600 text-[13px] font-medium opacity-50 cursor-not-allowed">＋ 要求补PO行</button>`;
+
+  const btnRet = canRet
+    ? `<button onclick="openAct('q1',${i},'q1_return')" class="px-3.5 py-2 rounded-card border border-warning text-warning text-[13px] font-medium hover:bg-warning-light dark:hover:bg-[#2E2417] transition-colors">↩ 退回供应商</button>`
+    : `<button disabled title="${(acts.q1_return && acts.q1_return.reason) || '当前状态不可退回供应商'}" class="px-3.5 py-2 rounded-card border border-warning/40 text-warning/40 text-[13px] font-medium opacity-50 cursor-not-allowed">↩ 退回供应商</button>`;
+
   const btnRow = c.processed
     ? `<div class="flex items-center gap-3 px-5 py-3.5 border-t border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
          <span class="text-[13px] text-success font-medium">✓ 已执行「${c.doneLabel}」· 权限校验通过（王莉 · 复核员）· 已写入不可篡改审计日志与案件时间线</span>
@@ -488,19 +549,84 @@ function renderConfirm(i){
     : `<div class="px-5 py-3.5 border-t border-line dark:border-dline flex items-center justify-between gap-3">
          <div class="text-[11px] text-ink-3 dark:text-gray-500 leading-snug">⚖️ <b class="text-ink-2 dark:text-gray-400">受控写操作</b>：需复核员权限（王莉）+ 二次确认 + 勾选本人执行，写入不可篡改审计日志；AI 建议<b class="text-danger">不自动执行</b>。</div>
          <div class="flex items-center gap-2.5 shrink-0">
-           <button onclick="openAct('q1',${i},'q1_release')" class="px-3.5 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF] shadow-card transition-colors">✓ 确认口径差异并放行建议</button>
-           <button onclick="openAct('q1',${i},'q1_po')" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">＋ 要求补PO行</button>
-           <button onclick="openAct('q1',${i},'q1_return')" class="px-3.5 py-2 rounded-card border border-warning text-warning text-[13px] font-medium hover:bg-warning-light dark:hover:bg-[#2E2417] transition-colors">↩ 退回供应商</button>
+           ${btnRel}
+           ${btnPo}
+           ${btnRet}
          </div>
        </div>`;
+
+  // 1. 数量与 UOM 换算展示（任务 6 · 20261102 专家口径 S5 第 5 条 · #64）
+  const uom = c.uom_check || d.uom_check;
+  const uomHtml = uom ? `
+    <div class="px-3.5 py-2.5 flex items-start justify-between gap-3 bg-surface/50 dark:bg-[#23282F]/50">
+      <div class="min-w-0">
+        <div class="text-[12.5px] font-medium flex items-center gap-1.5 flex-wrap">
+          <span>数量与计量单位比对 (UOM)</span>
+          ${uom.status === 'UOM_VARIANCE'
+            ? `<span class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/40">UOM_VARIANCE · 需复核</span>`
+            : (uom.status === 'CONVERTED_MATCH'
+                ? `<span class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/40">✓ 换算一致</span>`
+                : `<span class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/40">✓ 单位一致</span>`)}
+        </div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 leading-snug">${uom.note || uom.reason || ''}</div>
+      </div>
+      <span class="num text-[12px] font-semibold shrink-0 text-right text-ink-2 dark:text-gray-300">${uom.invoice_qty != null ? uom.invoice_qty : '—'} ${uom.invoice_uom || ''} ↔ ${uom.po_qty != null ? uom.po_qty : '—'} ${uom.po_uom || ''}</span>
+    </div>` : '';
+
+  // 2. 主数据成本中心会计比对（任务 8 · 20261102 专家口径 S4 场景 1 · #61）
+  const cc = c.cost_center_check || d.cost_center_check;
+  const ccHtml = cc ? `
+    <div class="px-3.5 py-2.5 flex items-start justify-between gap-3 bg-surface/50 dark:bg-[#23282F]/50">
+      <div class="min-w-0">
+        <div class="text-[12.5px] font-medium flex items-center gap-1.5">
+          <span>成本中心会计比对 (Cost Center Match)</span>
+          ${cc.matched
+            ? `<span class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/40">✓ 通过</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/40">⚠ 核对预警</span>`}
+        </div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 leading-snug">${cc.note || cc.reason || ''}</div>
+      </div>
+      <span class="num text-[12px] font-semibold shrink-0 text-right text-ink-2 dark:text-gray-300">${cc.invoice_cc} ↔ ${cc.po_cc}</span>
+    </div>` : '';
+
+  // 3. 多明细合计开票与概括描述消歧（任务 7 · 20261102 专家口径 S5 第 2/3 条 · #66/#67）
+  const agg = c.aggregate_check || d.aggregate_check;
+  const aggHtml = agg && agg.line_count > 1 ? `
+    <div class="px-3.5 py-2.5 flex items-start justify-between gap-3 bg-surface/50 dark:bg-[#23282F]/50">
+      <div class="min-w-0">
+        <div class="text-[12.5px] font-medium flex items-center gap-1.5 flex-wrap">
+          <span>多 PO 明细合计开票</span>
+          ${agg.within_tolerance
+            ? `<span class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/40">✓ 合计匹配 (${agg.line_count}行)</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/40">超容差</span>`}
+          ${agg.has_ambiguity
+            ? `<span class="px-1.5 py-0.5 rounded text-[10.5px] font-medium bg-warning text-white">存在多条相似 PO 项（歧义待消歧）</span>`
+            : ''}
+        </div>
+        <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5 leading-snug">${agg.note || agg.reason || ''}</div>
+      </div>
+      <span class="num text-[12px] font-semibold shrink-0 text-right text-ink-2 dark:text-gray-300">Σ PO行 ¥${(agg.po_sum||0).toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+    </div>` : '';
+
+  // 服务端实时计算标签
+  const sourceTag = c._liveComputed
+    ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/40">● 服务端实时计算</span>`
+    : (c._fallbackSeed ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/40">⚠ 种子回退数据</span>` : '');
+
+  // 主动调查高亮提示
+  const invHook = (c.realtime_calc && c.realtime_calc.trigger_investigating) || (c.status === 'INVESTIGATING')
+    ? `<div class="mt-2 text-[11.5px] px-2.5 py-1.5 rounded bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30 font-medium">⚡ 超出容差阈值：已自动触发 INVESTIGATING 主动调查钩子（只读调取 PO、GRN 与合同证据）</div>`
+    : '';
+
   document.getElementById('q1-card').innerHTML = `
     <div class="rounded-card bg-card dark:bg-dcard border-2 border-primary-mid dark:border-[#2A3F6B] shadow-card overflow-hidden">
       <div class="px-5 py-3.5 border-b border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2.5 min-w-0">
+        <div class="flex items-center gap-2.5 min-w-0 flex-wrap">
           <span class="text-[14px] font-semibold num text-primary">${c.id}</span>
           <span class="text-[13px] text-ink-2 dark:text-gray-400 truncate">${c.supplier}</span>
           <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium shrink-0 ${STATUS[c.status].cls}">${STATUS[c.status].label}</span>
           ${c.badges.map(b=>`<span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-medium shrink-0 ${DIFFBADGE[b.c].cls}">${b.t}</span>`).join('')}
+          ${sourceTag}
         </div>
         <button onclick="closeCard()" class="text-ink-3 hover:text-ink-1 dark:hover:text-white text-lg leading-none px-1 shrink-0" title="收起确认卡">✕</button>
       </div>
@@ -518,12 +644,16 @@ function renderConfirm(i){
                   </div>
                   <span class="num text-[13px] font-semibold shrink-0 text-right">${r.v}</span>
                 </div>`).join('')}
+              ${uomHtml}
+              ${ccHtml}
+              ${aggHtml}
             </div>
             <div class="mt-2 text-[11.5px] text-ink-2 dark:text-gray-400 leading-relaxed">📦 ${d.grn}</div>
           </div>
           <div class="rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-3.5 py-2.5">
-            <div class="text-[11px] font-medium text-ink-3 dark:text-gray-500 mb-1">容差说明（规则引擎判定 · 非模型推断）</div>
+            <div class="text-[11px] font-medium text-ink-3 dark:text-gray-500 mb-1">容差说明（规则引擎判定）</div>
             <div class="text-[12px] text-ink-2 dark:text-gray-300 leading-relaxed">${d.tol}</div>
+            ${invHook}
           </div>
           ${d.hint?`<div class="rounded-card bg-warning-light dark:bg-[#2E2417] border border-warning/30 px-3.5 py-2.5 text-[12px] text-ink-2 dark:text-gray-300 leading-relaxed">🔗 ${d.hint} <button onclick="switchTab(3)" class="ml-1 text-primary font-medium hover:underline">前往 Tab3 →</button></div>`:''}
         </div>
@@ -879,6 +1009,7 @@ window.doAct = async function(){
         toast('已拒绝该推荐 · 字段回落人工队列 · 备注已记入审计日志');
       }
       renderQ2();
+      await refreshHistory(); // 任务 1：采纳/拒绝操作成功后即时刷新 history 区
     } else {
       const L = LINKS[pending.idx];
       if (pending.key === 'q3_confirm') {
@@ -902,6 +1033,67 @@ window.doAct = async function(){
     closeAct();
   }
 };
+
+/* ════════════════ Tab2 只读区渲染函数（任务 1 · FN-6-04/07/09） ════════════════ */
+function renderTaxCodes(items){
+  const tbody = document.getElementById('taxcodes-tbody');
+  if (!tbody || !items || !items.length) return;
+  tbody.innerHTML = items.map(r => `
+    <tr>
+      <td class="px-5 py-2.5">${r.instance_display || r.instance}</td>
+      <td class="px-3 py-2.5 num font-medium">${r.from_rate}</td>
+      <td class="px-3 py-2.5"><code class="num text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[12px]">${r.to_tax_code}</code></td>
+      <td class="px-3 py-2.5 text-ink-2 dark:text-gray-400">${r.usage}</td>
+      <td class="px-3 py-2.5 num text-ink-3">${r.version || 'v1.4'}</td>
+      <td class="px-3 py-2.5 num text-ink-3">${r.updated_at || '—'}</td>
+      <td class="px-3 py-2.5 pr-5"><span class="text-[11px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-2 dark:text-gray-400">${r.source || '预设'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderPresets(data){
+  if (!data) return;
+  if (data.stats) {
+    const hitsEl = document.getElementById('preset-month-hits');
+    if (hitsEl && data.stats.preset_month_hits != null) hitsEl.textContent = Number(data.stats.preset_month_hits).toLocaleString();
+    const covEl = document.getElementById('preset-coverage-pct');
+    if (covEl && data.stats.preset_coverage_pct != null) covEl.textContent = data.stats.preset_coverage_pct + '%';
+  }
+  const tbody = document.getElementById('presets-tbody');
+  if (!tbody || !data.presets || !data.presets.length) return;
+  tbody.innerHTML = data.presets.map(p => `
+    <tr>
+      <td class="px-4 py-2.5">${p.src}</td>
+      <td class="px-3 py-2.5"><code class="text-primary bg-primary-light dark:bg-[#1B2A4A] px-1.5 py-0.5 rounded text-[11.5px]">${p.to}</code></td>
+      <td class="px-3 py-2.5 text-right pr-4 num">${(p.month_hits || 0).toLocaleString()}</td>
+    </tr>
+  `).join('');
+}
+
+function renderHistory(items){
+  const tbody = document.getElementById('history-tbody');
+  if (!tbody || !items || !items.length) return;
+  tbody.innerHTML = items.map(h => `
+    <tr>
+      <td class="px-4 py-2.5 num text-ink-3">${h.confirmed_at}</td>
+      <td class="px-3 py-2.5">${h.src}</td>
+      <td class="px-3 py-2.5"><code class="num text-success bg-success-light dark:bg-[#1C2E22] px-1.5 py-0.5 rounded text-[11.5px]">${h.settled_to}</code> <span class="text-[11px] text-success ml-1">✓ 已沉淀 · 长期复用</span></td>
+      <td class="px-3 py-2.5">${h.confirmed_by}</td>
+      <td class="px-3 py-2.5 pr-4 num">${h.hits_after_settle != null ? h.hits_after_settle + ' 次' : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+async function refreshHistory(){
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive && IHUB_DEMO.isLive()) {
+    try {
+      const hRes = await IHUB_API.getJSON('/v1/matching/history');
+      if (hRes && hRes.items) renderHistory(hRes.items);
+    } catch (e) {
+      console.warn('刷新人工确认历史失败', e);
+    }
+  }
+}
 
 (async function mmBoot(){
   try {
@@ -938,6 +1130,19 @@ window.doAct = async function(){
           state: it.confirmed ? 'confirmed' : 'pending', note: '', open: false
         }));
         renderQ3();
+      }
+      // 4. Tab2 三个只读区接线（FN-6-04/07/09）
+      try {
+        const [taxRes, presetRes, histRes] = await Promise.all([
+          IHUB_API.getJSON('/v1/matching/taxcodes'),
+          IHUB_API.getJSON('/v1/matching/presets'),
+          IHUB_API.getJSON('/v1/matching/history'),
+        ]);
+        if (taxRes && taxRes.items) renderTaxCodes(taxRes.items);
+        if (presetRes) renderPresets(presetRes);
+        if (histRes && histRes.items) renderHistory(histRes.items);
+      } catch (errTab2) {
+        console.warn('Tab2 只读区端点拉取失败，保留硬编码回退', errTab2);
       }
     }
     document.body.dataset.ihubWp47 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';

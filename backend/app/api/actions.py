@@ -45,6 +45,14 @@ class ActionBody(BaseModel):
     config_payload: dict | None = None
     to_version: str | None = None          # rollback
     advice_id: str | None = None           # advice_reject（不采纳 AI 建议留痕，WP3.4）
+    channel: str | None = None             # manual_verify (FN-8-15 / CON-13)
+    result: str | None = None
+    receipt: str | None = None
+    note: str | None = None
+    verify_channel: str | None = None
+    verify_result: str | None = None
+    receipt_no: str | None = None
+    verify_note: str | None = None
 
 
 class BatchActionBody(ActionBody):
@@ -110,6 +118,9 @@ def _execute(session, body: ActionBody, action: str, request: Request, case_id: 
                       self_confirmed=body.self_confirmed, opinion=body.opinion,
                       co_signer=body.co_signer, co_signer_self=body.co_signer_self,
                       field=body.field, new_value=body.new_value, reason=body.reason,
+                      channel=body.channel, result=body.result, receipt=body.receipt, note=body.note,
+                      verify_channel=body.verify_channel, verify_result=body.verify_result,
+                      receipt_no=body.receipt_no, verify_note=body.verify_note,
                       filters=body.filters, rows=body.rows,
                       config_key=body.config_key, to_version=body.to_version,
                       config_payload=body.config_payload, advice_id=body.advice_id)

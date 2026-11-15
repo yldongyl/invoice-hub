@@ -54,6 +54,7 @@ ACTION_PERMS = {
     "publish": PERM_PUBLISH, "rollback": PERM_PUBLISH,
     "intake": PERM_INTAKE,                 # 受理提交（FN-1-08：门户上传=业务写，走五要素全序）
     "advice_reject": PERM_VIEW,            # 不采纳 AI 建议留痕（FN-0-09/8-09 · WP3.4，前提=案件查看）
+    "manual_verify": PERM_ACTION,          # 人工查验登记（FN-8-15/CON-13 · 受控 Action，复核员权限位）
 }
 
 RISK_TEXT = {
@@ -72,6 +73,7 @@ RISK_TEXT = {
               "逐文件清单与原件摘要将写入不可篡改审计日志；非发票文档将被拒绝入池并退回通知留痕（FN-1-08）。",
     "advice_reject": "不采纳 AI 建议：仅写入 LLM_ADVICE_REJECTED 留痕事件（时间线+审计链双写），"
                      "建议卡片保留可追溯、建议不会被执行、案件状态不变（FN-0-09/8-09）。",
+    "manual_verify": "人工查验登记将更新发票验真（authenticity）校验项结果为 manual 来源，若查验通过且无其余阻断项将解除未验证阻断；操作写入不可篡改审计链（FN-8-15/CON-13）。",
 }
 
 
@@ -174,7 +176,9 @@ def _action_event(session, case, *, act, d, x, user, role):
 
 _ACT_TO = {"ACTION_RELEASE": "放行（RELEASE）", "ACTION_HOLD": "挂起（HOLD）",
            "ACTION_RETURN": "退回供应商（RETURN）", "FIELD_EDITED": "已修正",
-           "REVIEW_OPENED": "已认领", "AUDIT_EXPORT": "已导出", "STATUS_CHANGE": "已流转"}
+           "REVIEW_OPENED": "已认领", "AUDIT_EXPORT": "已导出", "STATUS_CHANGE": "已流转",
+           "SM2_VERIFY": "人工查验（通过）", "SM2_VERIFY_FAILED": "人工查验（失败）",
+           "TAXID_CHECK": "人工查验（名录核验通过）"}
 
 
 def _do_release(session, case, user, role, opinion):
@@ -259,7 +263,125 @@ def _do_edit_field(session, case, user, role, *, field, new_value, reason, opini
                  from_state=f"{field} {results[0]['from']}（{results[0]['provider_retained']}）",
                  to_state=f"{results[0]['to']}（manual · 置信度 1.0）",
                  note=x, op=_op(user), category="field", commit=False)
+
+    # 样本自动回流机制（FN-8-13 · 修正样本自动回流标注队列）
+    try:
+        from app.services import annotation_service
+        reflux_detail = (f"人工修正字段 {field}：{results[0]['from']} → {results[0]['to']}（原因：{reason}）"
+                         f" · 操作人：{user.name} · 案件：{case.case_id}")
+        annotation_service.reflux_error_sample(session, case_id=case.case_id,
+                                              error_type="FIELD_EDITED",
+                                              detail=reflux_detail)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("修正样本回流标注队列失败（非阻断）：%s", e)
+
     return {"edited": True, "caseId": case.case_id, "results": results}
+
+
+def _do_manual_verify(session, case, user, role, *, channel: str | None, result: str | None,
+                       receipt: str | None, note: str | None, opinion: str | None = None):
+    """人工查验登记（FN-8-15/CON-13 · 受控 Action）。"""
+    if not (channel and str(channel).strip() and
+            result and str(result).strip() and
+            receipt and str(receipt).strip() and
+            note and str(note).strip()):
+        raise CommandError(E_EDIT_PARAM_REQUIRED,
+                           "人工查验登记入参（查验渠道/结论/回执号/说明）均为必填项（FN-8-15/CON-13）", http=422)
+
+    channel = str(channel).strip()
+    result = str(result).strip().upper()
+    receipt = str(receipt).strip()
+    note = str(note).strip()
+
+    reg = get_registry()
+    reg.validate("check_result", result, where="manual_verify.result")
+    reg.validate("field_source", "manual", where="manual_verify.source")
+
+    # 1. 更新 authenticity 校验结果（内存字典快照 + 关联表）
+    checks = dict(case.checks_raw or {})
+    auth_check = dict(checks.get("authenticity") or {})
+    prev_result = auth_check.get("result", "NOT_VERIFIED")
+
+    note_text = f"人工查验登记（{channel} · 回执: {receipt}）：{note} · 操作人: {user.name} (method=manual)"
+    auth_check["result"] = result
+    auth_check["note"] = note_text
+    checks["authenticity"] = auth_check
+    case.checks_raw = checks
+
+    cr = session.scalars(select(m.CheckResult).where(
+        m.CheckResult.case_id == case.case_id,
+        m.CheckResult.item == "authenticity"
+    )).first()
+    if cr is not None:
+        cr.result = result
+        cr.note = note_text
+    else:
+        seq = max([r.seq for r in session.scalars(
+            select(m.CheckResult).where(m.CheckResult.case_id == case.case_id))] or [-1]) + 1
+        session.add(m.CheckResult(case_id=case.case_id, seq=seq, item="authenticity",
+                                  result=result, note=note_text))
+
+    # 2. 时间线与不可篡改审计双写
+    inst = case.instance or "CN"
+    act = "TAXID_CHECK" if inst == "OS" else ("SM2_VERIFY" if result == "PASSED" else "SM2_VERIFY_FAILED")
+    d = f"人工查验登记（{result} · method=manual）"
+    x = f"渠道：{channel} · 回执：{receipt} · 说明：{note} · 操作人：{_op(user)} · CON-13 决议落地"
+    v = state_machine.component_version(session, "review-ui")
+
+    state_machine.append_case_event(session, case, a="human", act=act, d=d, x=x, v=v, commit=False)
+    append_block(session, ts=now_iso(), trace=case.trace_id or new_trace_id(), actor="human",
+                 act=act, cs=case.case_id, from_state=f"authenticity={prev_result}",
+                 to_state=f"authenticity={result}（manual）", note=x, op=_op(user),
+                 category="action", commit=False)
+
+    # 3. 按 FN-0-02 判定是否触发状态转换
+    status_changed = False
+    new_status = case.status
+    if result == "FAILED" and case.status != STATUS.BLOCKED:
+        if case.status in (STATUS.RECOGNIZED, STATUS.INVESTIGATING):
+            trans_res = state_machine.transition(session, case.case_id, "BLOCKED", subject="human",
+                                                 op=_op(user), extra=f"人工查验 FAILED 命中红线：{note}",
+                                                 commit=False)
+            status_changed = True
+            new_status = trans_res.get("to", STATUS.BLOCKED)
+        elif case.status == STATUS.NEEDS_REVIEW:
+            # 严格遵循合法边：NEEDS_REVIEW→INVESTIGATING→BLOCKED
+            state_machine.transition(session, case.case_id, "INVESTIGATING", subject="human",
+                                     op=_op(user), extra=f"人工查验 FAILED 存疑，启动调查：{note}",
+                                     commit=False)
+            trans_res = state_machine.transition(session, case.case_id, "BLOCKED", subject="human",
+                                                 op=_op(user), extra=f"人工查验 FAILED 命中红线，终止建档：{note}",
+                                                 commit=False)
+            status_changed = True
+            new_status = trans_res.get("to", STATUS.BLOCKED)
+    elif result == "PASSED" and case.status == STATUS.VERIFYING:
+        all_passed = all(
+            (c.get("result") == "PASSED")
+            for k, c in checks.items()
+        )
+        if all_passed and (case.confidence or 100) >= 80:
+            trans_res = state_machine.transition(session, case.case_id, "RESOLVED", subject="human",
+                                                 op=_op(user), extra="人工查验通过，全部 Checks 均已通过",
+                                                 commit=False)
+            status_changed = True
+            new_status = trans_res.get("to", STATUS.RESOLVED)
+        else:
+            trans_res = state_machine.transition(session, case.case_id, "NEEDS_REVIEW", subject="human",
+                                                 op=_op(user), extra="人工查验通过，转入待复核",
+                                                 commit=False)
+            status_changed = True
+            new_status = trans_res.get("to", STATUS.NEEDS_REVIEW)
+
+    return {
+        "manual_verified": True,
+        "caseId": case.case_id,
+        "authenticity": result,
+        "receipt": receipt,
+        "channel": channel,
+        "status": new_status,
+        "status_changed": status_changed,
+    }
 
 
 def _do_claim(session, case, user, role, opinion):
@@ -454,6 +576,10 @@ def execute(session, *, actor: str, action: str, instance: str | None = None,
             self_confirmed: bool = False, opinion: str | None = None,
             co_signer: str | None = None, co_signer_self: bool = False,
             field: str | None = None, new_value=None, reason: str | None = None,
+            channel: str | None = None, result: str | None = None,
+            receipt: str | None = None, note: str | None = None,
+            verify_channel: str | None = None, verify_result: str | None = None,
+            receipt_no: str | None = None, verify_note: str | None = None,
             filters=None, rows: int | None = None,
             config_key: str | None = None, to_version: str | None = None,
             config_payload: dict | None = None,
@@ -525,6 +651,15 @@ def execute(session, *, actor: str, action: str, instance: str | None = None,
             elif action == "advice_reject":
                 result = _do_advice_reject(session, case, user, role,
                                            advice_id=advice_id, reason=reason)
+            elif action == "manual_verify":
+                v_chan = channel or verify_channel
+                v_res = result or verify_result
+                v_rcpt = receipt or receipt_no
+                v_nt = note or verify_note or opinion
+                result = _do_manual_verify(session, case, user, role,
+                                           channel=v_chan, result=v_res,
+                                           receipt=v_rcpt, note=v_nt,
+                                           opinion=opinion)
             else:
                 raise CommandError("UNKNOWN_ACTION", action)
         session.commit()  # ⑤ 双写与业务写同事务提交（原子）

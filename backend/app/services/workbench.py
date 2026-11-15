@@ -12,7 +12,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from app.domain import models as m
 from app.services import config_center, state_machine
@@ -28,13 +28,34 @@ QUEUE_LABEL = {"CN": "亚太采购共享中心", "OS": "新加坡共享中心"} 
 EXPORT_TTL_HOURS = 24                                             # FN-8-07 页面口径「24 小时后失效（演示口径）」
 
 
-def queue_stats(session, ctx: TenantContext) -> dict:
-    """队列归属 + 待复核数 + BLOCKED 高风险数（SLA 30 分钟认领口径=sla_targets）。"""
+def queue_stats(session, ctx: TenantContext, actor: str | None = None) -> dict:
+    """队列归属 + 待复核数 + BLOCKED 高风险数 + 我的认领（SLA 30 分钟认领口径=sla_targets · FN-8-02）。"""
     from app.services import case_repository as repo
     def _count(status: str) -> int:
         return session.scalar(select(func.count()).select_from(m.Case).where(
             m.Case.instance == ctx.instance, m.Case.status == status)) or 0
     sla = config_center.get_effective(session, "__sla_targets")
+
+    # 统计当前操作人已认领且未结案的案件数（真实计算，FN-8-02）
+    claimed_by_me = 0
+    if actor:
+        active_statuses = [
+            STATUS.NEEDS_REVIEW, STATUS.INVESTIGATING,
+            STATUS.VERIFYING, STATUS.BLOCKED, STATUS.RECOGNIZED
+        ]
+        claimed_by_me = session.scalar(
+            select(func.count()).select_from(m.Case).where(
+                m.Case.instance == ctx.instance,
+                m.Case.status.in_(active_statuses),
+                m.Case.claimed_by.isnot(None),
+                or_(
+                    m.Case.claimed_by == actor,
+                    m.Case.claimed_by.like(f"{actor}%"),
+                    m.Case.claimed_by.like(f"%{actor}%"),
+                )
+            )
+        ) or 0
+
     return {
         "instance": ctx.instance,
         "queue": QUEUE_LABEL.get(ctx.instance, ctx.instance),
@@ -44,7 +65,8 @@ def queue_stats(session, ctx: TenantContext) -> dict:
         "blocked": _count(STATUS.BLOCKED),
         "claim_high_risk_minutes": (sla.value_raw or {}).get("claim_high_risk_minutes", 30)
                                    if sla else 30,
-        "claimed_by_me": 0,   # 会话身份演示桩：actor 级认领统计待 M5 身份（FN-9-05）
+        "claimed_by_me": claimed_by_me,
+        "actor": actor,
         "note": "待复核数=NEEDS_REVIEW+INVESTIGATING 队列态合计（CON-11）；"
                 "BLOCKED 高风险案件 30 分钟内认领 SLA（FN-8-02）",
     }
@@ -86,7 +108,8 @@ def create_ticket(session, *, actor: str, ctx: TenantContext, filters: dict | No
     now_dt = datetime.now(timezone.utc).astimezone()
     fname = f"audit-export-{now_dt.strftime('%Y%m%d-%H%M')}-{token[:8]}.csv"
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-    (EXPORT_DIR / fname).write_text(content, encoding="utf-8-sig")   # BOM：Excel 中文兼容（演示口径）
+    # 演示口径：BOM Excel 中文兼容，导出 CSV 写入 runtime/exports/ 并发放 24h 限时凭据（生产对接对象存储）
+    (EXPORT_DIR / fname).write_text(content, encoding="utf-8-sig")
     session.add(m.ExportTicket(
         token=token, actor=actor, instance=ctx.instance, filters_raw=filters, rows=rows,
         filename=fname, created_ts=now_dt.isoformat(timespec="seconds"),
@@ -99,7 +122,7 @@ def create_ticket(session, *, actor: str, ctx: TenantContext, filters: dict | No
 
 
 def download(session, token: str) -> tuple[bytes, str]:
-    """限时下载：过期 410（重导重签发）；命中返回 (csv_bytes, filename)。"""
+    """限时下载：过期 410（重导重签发）；命中返回 (csv_bytes, filename)（演示口径：本地文件 24h 有效期）。"""
     t = session.get(m.ExportTicket, token)
     if t is None:
         raise CommandError("E_EXPORT_NOT_FOUND", "导出链接无效（未签发或已清除）", http=404)
@@ -113,7 +136,7 @@ def download(session, token: str) -> tuple[bytes, str]:
 
 
 def co_signers(session) -> list[dict]:
-    """BLOCKED 双人解除可选会签人（管理员角色、启用状态真人——FN-8-06；身份服务 M5 实装前为演示桩）。"""
+    """BLOCKED 双人解除可选会签人（从 UserAccount 表筛选管理员角色且启用状态的真人——FN-8-06 / FN-9-02 · RBAC 实装口径）。"""
     out = []
     for u in session.scalars(select(m.UserAccount)):
         if u.status == "启用" and "管理员" in (u.role or ""):

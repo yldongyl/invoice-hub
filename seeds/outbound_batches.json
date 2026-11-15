@@ -1,0 +1,172 @@
+{
+  "version": "1.0.0",
+  "status": "v1 · FROZEN（20261102 S4 / FN-7-06）",
+  "source": "采购平台票据智能与合规中台 · 出站建档与回写台账基线",
+  "note": "出站批次 OB-YYYYMMDD-NNN；单据类型严格区分 Ariba 4 类标准枚举：Invoice(PO)、Invoice(Contract)、Invoice(Non-PO)、Invoice(Credit Memo)；出站建档最终成功状态语义为「建档成功/对账完成（生成支付凭证传会计系统）」，严禁使用「已付款」误导性语义。",
+  "batches": [
+    {
+      "id": "OB-20261029-001",
+      "adapter": "SAP Ariba",
+      "adapter_id": "ariba",
+      "docs": 18,
+      "status": "部分失败",
+      "ok": 16,
+      "fail": 1,
+      "retry": 1,
+      "time": "13:42",
+      "detail": [
+        {
+          "caseId": "INV-CN-2026-0386",
+          "docType": "Invoice(PO)",
+          "receipt": "AID-2026-90218",
+          "payload": "cXML InvoiceDetailRequest · 摘要 9f2c…e41a",
+          "payload_body": "<InvoiceDetailRequest invoiceID='24112000000386'><OrderReference orderID='PO-2026-0881'/><Total><Money currency='CNY'>113000.00</Money></Total><InvoiceDetailItemList><InvoiceDetailItem lineNumber='1'><SubtotalAmount><Money currency='CNY'>100000.00</Money></SubtotalAmount></InvoiceDetailItem></InvoiceDetailItemList></InvoiceDetailRequest>",
+          "attach": "XML+PDF 已上传",
+          "writeback": "已回写",
+          "filing_status": "建档成功/对账完成（生成支付凭证传会计系统）",
+          "error_reason": null,
+          "note": "成功回执已归档案件时间线",
+          "retry_count": 0,
+          "max_retries": 3,
+          "next_retry_at": null,
+          "latency_ms": 1820.0
+        },
+        {
+          "caseId": "INV-CN-2026-0383",
+          "docType": "Invoice(Contract)",
+          "receipt": "—",
+          "payload": "cXML · requestId=INV-CN-2026-0383",
+          "payload_body": "<InvoiceDetailRequest invoiceID='24112000000383'><MasterAgreementReference><DocumentInfo documentID='CTR-2026-0182'/></MasterAgreementReference><Total><Money currency='CNY'>5680.00</Money></Total><InvoiceDetailItemList><InvoiceDetailItem lineNumber='1'><SubtotalAmount><Money currency='CNY'>5026.55</Money></SubtotalAmount></InvoiceDetailItem></InvoiceDetailItemList></InvoiceDetailRequest>",
+          "attach": "待确认",
+          "writeback": "未回写",
+          "filing_status": "失败重试中",
+          "error_reason": "网络超时（Timeout）· 自动第 2/3 次重试",
+          "note": "网络超时 · 30s/2min/10min 退避第 2/3 次",
+          "retry_count": 2,
+          "max_retries": 3,
+          "next_retry_at": "2026-10-29T13:44:00+08:00",
+          "latency_ms": null
+        },
+        {
+          "caseId": "INV-CN-2026-0381",
+          "docType": "Invoice(Non-PO)",
+          "receipt": "—",
+          "payload": "cXML · Extrinsic ProjectDesc",
+          "payload_body": "<InvoiceDetailRequest invoiceID='24112000000381'><Accounting name='CostCenter'><Segment id='CC-9012' description='IT运营'/></Accounting><Total><Money currency='CNY'>5680.00</Money></Total></InvoiceDetailRequest>",
+          "attach": "未发送",
+          "writeback": "转人工",
+          "filing_status": "失败待人工",
+          "error_reason": "Custom Field「项目说明」超长（>255 字符）",
+          "note": "Custom Field 超长，需实施管理员确认截断/转附件策略",
+          "retry_count": 3,
+          "max_retries": 3,
+          "next_retry_at": null,
+          "latency_ms": null
+        },
+        {
+          "caseId": "INV-CN-2026-0384",
+          "docType": "Invoice(Credit Memo)",
+          "receipt": "AID-2026-4C102",
+          "payload": "cXML InvoiceDetailRequest · Credit Memo 摘要 7a3b…51cf",
+          "payload_body": "<InvoiceDetailRequest invoiceID='24112000000384'><MasterInvoiceNumber invoiceID='24112000000310'/><Total><Money currency='CNY'>-12000.00</Money></Total></InvoiceDetailRequest>",
+          "attach": "XML+PDF 已上传",
+          "writeback": "已回写",
+          "filing_status": "建档成功/对账完成（生成支付凭证传会计系统）",
+          "error_reason": null,
+          "note": "红字冲减凭证已生成 · 关联原票 24112000000310 校验通过",
+          "retry_count": 0,
+          "max_retries": 3,
+          "next_retry_at": null,
+          "latency_ms": 2050.0
+        }
+      ]
+    },
+    {
+      "id": "OB-20261029-002",
+      "adapter": "Oracle Fusion Payables",
+      "adapter_id": "oracle",
+      "docs": 7,
+      "status": "已完成",
+      "ok": 7,
+      "fail": 0,
+      "retry": 0,
+      "time": "12:18",
+      "detail": [
+        {
+          "caseId": "INV-CN-2026-0387",
+          "docType": "Invoice(PO)",
+          "receipt": "302455F3E23",
+          "payload": "AP Invoice Import REST · 摘要 a81b…93de",
+          "payload_body": "{\"invoiceNumber\": \"24112000000387\", \"invoiceAmount\": 113000.0, \"currency\": \"CNY\", \"poNumber\": \"PO-2026-0881\"}",
+          "attach": "影像外链已绑定",
+          "writeback": "已回写",
+          "filing_status": "建档成功/对账完成（生成支付凭证传会计系统）",
+          "error_reason": null,
+          "note": "Supplier/PO/Tax 映射通过",
+          "retry_count": 0,
+          "max_retries": 3,
+          "next_retry_at": null,
+          "latency_ms": 2400.0
+        }
+      ]
+    },
+    {
+      "id": "OB-20261029-003",
+      "adapter": "Coupa Invoicing",
+      "adapter_id": "coupa",
+      "docs": 5,
+      "status": "待人工处理",
+      "ok": 0,
+      "fail": 0,
+      "retry": 0,
+      "time": "—",
+      "detail": [
+        {
+          "caseId": "INV-SG-2026-0125",
+          "docType": "Invoice(PO)",
+          "receipt": "—",
+          "payload": "Coupa Invoice API draft",
+          "payload_body": "{\"invoice-header\": {\"invoice-number\": \"INV-SG-2026-0125\", \"order-header\": {\"order-number\": \"PO-SG-2026-0042\"}}}",
+          "attach": "待上传",
+          "writeback": "未回写",
+          "filing_status": "失败待人工",
+          "error_reason": "Adapter 仍为适配中，生产出站未开放；可沙箱预演",
+          "note": "Adapter 仍为适配中，生产出站未开放；可沙箱预演",
+          "retry_count": 0,
+          "max_retries": 3,
+          "next_retry_at": null,
+          "latency_ms": null
+        }
+      ]
+    },
+    {
+      "id": "OB-20261029-004",
+      "adapter": "自研应付系统",
+      "adapter_id": "custom",
+      "docs": 12,
+      "status": "推送中",
+      "ok": 8,
+      "fail": 0,
+      "retry": 0,
+      "time": "13:55",
+      "detail": [
+        {
+          "caseId": "INV-CN-2026-0379",
+          "docType": "Invoice(PO)",
+          "receipt": "AP-2026-A18CC",
+          "payload": "REST/JSON · HMAC 已签名",
+          "payload_body": "{\"caseId\": \"INV-CN-2026-0379\", \"amount\": 10000.0, \"po\": \"PO-2026-0720\"}",
+          "attach": "对象存储链接",
+          "writeback": "处理中",
+          "filing_status": "推送中",
+          "error_reason": null,
+          "note": "MQ 回执等待中",
+          "retry_count": 0,
+          "max_retries": 3,
+          "next_retry_at": null,
+          "latency_ms": 950.0
+        }
+      ]
+    }
+  ]
+}

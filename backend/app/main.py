@@ -10,15 +10,16 @@ M3 受理通道面（WP3.1/3.2：intake——recognize 契约端点 / 门户上�
 import json
 import os
 from pathlib import Path
+import httpx
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import (actions as actions_api, cases as cases_api, dashboard as dashboard_api,
                      intake as intake_api, workbench as workbench_api, providers as providers_api,
                      matching as matching_api, adapters as adapters_api, platform as platform_api,
-                     audit_reports as audit_reports_api)
+                     audit_reports as audit_reports_api, outbound as outbound_api)
 from app.domain.registry import get_registry
 from app.services import identity_service, persistence
 from app.services.errors import CommandError
@@ -44,7 +45,10 @@ def create_app() -> FastAPI:
         """
         path = request.url.path
         request.state.ihub_session = None
-        public_api = path in {"/healthz", "/api/platform/auth/login", "/api/platform/auth/mfa/challenge", "/api/platform/sso/login"}
+        public_api = path in {
+            "/healthz", "/api/platform/auth/login", "/api/platform/auth/mfa/challenge",
+            "/api/platform/sso/login", "/v1/agent/audit-events"
+        }
         auth_disabled = os.environ.get("INVOICE_HUB_DISABLE_AUTH") == "1"
         if (path.startswith("/v1") or path.startswith("/api")) and not public_api and not auth_disabled:
             auth = request.headers.get("authorization", "")
@@ -78,6 +82,7 @@ def create_app() -> FastAPI:
     app.include_router(platform_api.router)
     app.include_router(audit_reports_api.router)
     app.include_router(audit_reports_api.anno_router)
+    app.include_router(outbound_api.router)
 
     # M2 WP2.3：web 运行副本同源托管（/web/*.html 直访；仅目录存在时挂载，测试/最小部署不受影响）
     if WEB_DIR.is_dir():
@@ -104,6 +109,44 @@ def create_app() -> FastAPI:
             "enum_registry_version": get_registry().version,
             "database": "reachable" if db_ok else "unreachable",
         }
+
+    @app.api_route("/agent-api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"], include_in_schema=False)
+    async def agent_proxy(path: str, request: Request):
+        """反向代理转发至 Agent 域（默认端口 8001），提供同源反代与跨域隔离能力（FN-8-08 · WP5.5）。"""
+        agent_base = os.environ.get("AGENT_BASE_URL", "http://127.0.0.1:8001").rstrip("/")
+        target_url = f"{agent_base}/{path}"
+        if request.url.query:
+            target_url = f"{target_url}?{request.url.query}"
+
+        # 转发请求头并排除 hop-by-hop 头
+        forward_headers = dict(request.headers)
+        forward_headers.pop("host", None)
+        forward_headers.pop("content-length", None)
+
+        body = await request.body()
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.request(
+                    method=request.method,
+                    url=target_url,
+                    headers=forward_headers,
+                    content=body,
+                )
+                # 排除响应 hop-by-hop 头
+                resp_headers = dict(resp.headers)
+                resp_headers.pop("content-length", None)
+                resp_headers.pop("content-encoding", None)
+                return Response(
+                    content=resp.content,
+                    status_code=resp.status_code,
+                    headers=resp_headers,
+                    media_type=resp.headers.get("content-type"),
+                )
+        except Exception as e:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": {"error_code": "E_AGENT_UNAVAILABLE", "message": f"Agent 域服务暂未启动或无法连接（{str(e)}）"}}
+            )
 
     return app
 

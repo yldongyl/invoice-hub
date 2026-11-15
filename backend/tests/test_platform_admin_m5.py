@@ -199,16 +199,22 @@ def test_sso_secondary_verification_rejects_mismatch(api_client):
 
 # ───────────────────────── 4. 登录、MFA 与用户管理 (FN-9-04, FN-9-05) ─────────────────────────
 
-def test_password_login_mfa_enforced(api_client):
-    """复核员/管理员角色强制要求 MFA 动态验证码。"""
-    # 复核员王莉，未填 MFA 验证码 -> 401 拦截
-    res = api_client.post("/api/platform/auth/login", json={
-        "username": "王莉",
-        "password": "valid_password",
-        "tenant_id": "TENANT-CN-LANWU-001",
-    })
-    assert res.status_code == 401
-    assert "MFA" in res.json()["detail"]
+def test_password_login_mfa_enforced_for_all_roles(api_client):
+    """全员强制要求 MFA 动态验证码（FN-9-05 验收口径：任意角色无 MFA 码登录均被拒绝）。"""
+    users_under_test = [
+        ("王莉", "TENANT-CN-LANWU-001"),    # 复核员
+        ("陈铮", "TENANT-CN-LANWU-001"),    # 管理员
+        ("刘工", "TENANT-CN-LANWU-001"),    # 运营
+        ("张审计", "TENANT-SG-LANWU-001"),  # 审计只读
+    ]
+    for username, tenant_id in users_under_test:
+        res = api_client.post("/api/platform/auth/login", json={
+            "username": username,
+            "password": "valid_password",
+            "tenant_id": tenant_id,
+        })
+        assert res.status_code == 401, f"角色 {username} 未填 MFA 验证码未被拒绝"
+        assert "MFA" in res.json()["detail"]
 
     # 先签发 MFA 挑战，再携带有效动态验证码 -> 成功登录
     chal = api_client.post("/api/platform/auth/mfa/challenge", json={
@@ -230,11 +236,121 @@ def test_password_login_mfa_enforced(api_client):
     assert data["authenticated"] is True
     assert data["mfa_verified"] is True
     assert data["trusted_device_30d"] is True
+    assert data["device_token"] is not None
     assert data["session_token"].startswith("pwd-sess-")
 
     session_res = api_client.get("/api/platform/auth/session", headers={"Authorization": f"Bearer {data['session_token']}"})
     assert session_res.status_code == 200
     assert session_res.json()["user"]["name"] == "王莉"
+
+
+def test_email_alias_login_maps_to_user_primary_key(api_client):
+    """演示口径邮箱别名登录（修复 2026-11-15）：web 登录页预填企业邮箱，users 表主键为中文姓名。
+
+    EMAIL_ALIASES 规范化后：MFA 挑战与账密登录均接受邮箱别名，会话绑定规范化主键（王莉）；
+    租户亲和校验仍按主键生效（王莉邮箱不可登录海外租户）。
+    """
+    # 1. 邮箱别名签发 MFA 挑战 → 成功
+    chal = api_client.post("/api/platform/auth/mfa/challenge", json={
+        "username": "wangli@lanwu-procurement.com",
+        "tenant_id": "TENANT-CN-LANWU-001",
+    })
+    assert chal.status_code == 200
+    c = chal.json()
+
+    # 2. 邮箱别名 + dev_code 登录成功，会话用户为规范化主键「王莉」
+    res = api_client.post("/api/platform/auth/login", json={
+        "username": "wangli@lanwu-procurement.com",
+        "password": "demo-password",
+        "tenant_id": "TENANT-CN-LANWU-001",
+        "mfa_challenge_id": c["challenge_id"],
+        "mfa_code": c["dev_code"],
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["authenticated"] is True
+    assert data["user"]["name"] == "王莉"
+
+    # 3. 邮箱别名 + 未授权租户 → 仍按租户亲和拒绝（E_TENANT_MISMATCH 403）
+    chal_os = api_client.post("/api/platform/auth/mfa/challenge", json={
+        "username": "wangli@lanwu-procurement.com",
+        "tenant_id": "TENANT-SG-LANWU-001",
+    })
+    assert chal_os.status_code == 403
+
+    # 4. 未登记别名（未知邮箱）→ 仍报用户不存在（401），不被静默放行
+    chal_unknown = api_client.post("/api/platform/auth/mfa/challenge", json={
+        "username": "nobody@lanwu-procurement.com",
+        "tenant_id": "TENANT-CN-LANWU-001",
+    })
+    assert chal_unknown.status_code == 401
+
+
+def test_remember_device_30d_bypasses_mfa_challenge_and_audited(api_client):
+    """受信任设备 30 天实装（FN-9-04 方案 A）：
+    1. 勾选 remember_device 登录成功，落盘 device_token；
+    2. 有效期内凭该 device_token 免 MFA 挑战直接登录；
+    3. 免挑战登录仍入不可篡改审计链；
+    4. 无效或篡改 device_token 仍被强制要求 MFA。
+    """
+    # 1. 首次登录（获取 MFA 挑战 + 勾选记住设备）
+    chal = api_client.post("/api/platform/auth/mfa/challenge", json={
+        "username": "刘工",
+        "tenant_id": "TENANT-CN-LANWU-001",
+    })
+    assert chal.status_code == 200
+    c = chal.json()
+
+    res1 = api_client.post("/api/platform/auth/login", json={
+        "username": "刘工",
+        "password": "valid_password",
+        "tenant_id": "TENANT-CN-LANWU-001",
+        "mfa_challenge_id": c["challenge_id"],
+        "mfa_code": c["dev_code"],
+        "remember_device": True,
+    })
+    assert res1.status_code == 200
+    data1 = res1.json()
+    dev_token = data1.get("device_token")
+    assert dev_token is not None and dev_token.startswith("dev-tok-")
+
+    # 查库验证 trusted_devices 记录存在且有效期为 30 天
+    with persistence.get_session() as s:
+        td = s.get(m.TrustedDevice, dev_token)
+        assert td is not None
+        assert td.username == "刘工"
+        assert td.tenant_id == "TENANT-CN-LANWU-001"
+        old_head = audit_chain.head_blk(s)
+
+    # 2. 第二次登录：携带 device_token，不提供 MFA 验证码与挑战 ID
+    res2 = api_client.post("/api/platform/auth/login", json={
+        "username": "刘工",
+        "password": "valid_password",
+        "tenant_id": "TENANT-CN-LANWU-001",
+        "device_token": dev_token,
+    })
+    assert res2.status_code == 200
+    data2 = res2.json()
+    assert data2["authenticated"] is True
+    assert data2["trusted_device_30d"] is True
+
+    # 3. 验证审计链记录：免挑战登录同样严格入链
+    with persistence.get_session() as s:
+        new_head = audit_chain.head_blk(s)
+        assert new_head > old_head
+        blk = s.get(m.AuditBlock, new_head)
+        assert "刘工" in blk.note
+        assert "受信任设备30天免挑战" in blk.note
+
+    # 4. 无效 device_token 尝试无 MFA 登录被拒
+    res_fake = api_client.post("/api/platform/auth/login", json={
+        "username": "刘工",
+        "password": "valid_password",
+        "tenant_id": "TENANT-CN-LANWU-001",
+        "device_token": "fake-invalid-token",
+    })
+    assert res_fake.status_code == 401
+    assert "MFA" in res_fake.json()["detail"]
 
 
 def test_users_list_all_mfa_enabled(api_client):
@@ -465,3 +581,100 @@ def test_model_data_boundary_and_cleanup(api_client):
     assert clean_res.json()["cleaned_records"] > 0
     with persistence.get_session() as s:
         assert audit_chain.head_blk(s) > old_head
+
+
+# ───────────────────────── 9. 持久化、回滚与合规增强断言 (FN-9-09 / FN-8-13) ─────────────────────────
+
+def test_config_sqlite_persistence_and_rollback(api_client):
+    """验证配置持久化至 SQLite（重启后版本不回退）与回滚链条。"""
+    # 1. 取得当前基准版本
+    res_init = api_client.get("/api/platform/config")
+    assert res_init.status_code == 200
+    v1 = res_init.json()["published"]["version"]
+
+    # 2. 发布新版
+    res_pub = api_client.post("/api/platform/config/publish", json={
+        "actor": "陈铮",
+        "values": {
+            "threshold": 0.88,
+            "tolerance": "±0.06",
+            "po_tolerance": "±S$50",
+            "lowConfManual": True,
+            "newCustReview": False,
+            "regionRoute": "中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域",
+        },
+        "opinion": "发布测试版本",
+    })
+    assert res_pub.status_code == 200
+    v2 = res_pub.json()["version"]
+    assert v2 != v1
+
+    # 3. 模拟进程重启：清空内存全局变量
+    platform_config_service._PUBLISHED_CONFIG = None  # 模拟内存丢失
+    platform_config_service._DRAFT_CONFIG = None
+
+    # 重新读取，断言从 SQLite 加载最新版本，未回退到初始版本
+    res_after_restart = api_client.get("/api/platform/config")
+    assert res_after_restart.status_code == 200
+    assert res_after_restart.json()["published"]["version"] == v2
+    assert res_after_restart.json()["published"]["values"]["threshold"] == 0.88
+
+    # 4. 回滚测试：回滚到 v1
+    res_rb = api_client.post("/api/platform/config/rollback", json={
+        "actor": "陈铮",
+        "target_version": v1,
+        "opinion": "回滚测试",
+    })
+    assert res_rb.status_code == 200
+    v3 = res_rb.json()["version"]
+    assert v3 != v2
+    res_after_rb = api_client.get("/api/platform/config")
+    assert res_after_rb.json()["published"]["version"] == v3
+    assert res_after_rb.json()["published"]["values"]["threshold"] == 0.85
+
+
+def test_data_stay_toggle_dual_direction(api_client):
+    """测试 data-stay 开关双向流转：开启方向写审计，关闭方向 403 拦截并回弹。"""
+    with persistence.get_session() as s:
+        old_head = audit_chain.head_blk(s)
+
+    # 1. 开启方向 -> 200 成功并写入审计链
+    res_on = api_client.post("/api/platform/annotation/data-stay/toggle", json={
+        "actor": "陈铮",
+        "new_state": True,
+    })
+    assert res_on.status_code == 200
+    assert res_on.json()["data_stay_in_domain"] is True
+    with persistence.get_session() as s:
+        assert audit_chain.head_blk(s) > old_head
+        old_head = audit_chain.head_blk(s)
+
+    # 2. 关闭方向 -> 403 拦截，状态保持 True 并写入安全审计
+    res_off = api_client.post("/api/platform/annotation/data-stay/toggle", json={
+        "actor": "陈铮",
+        "new_state": False,
+    })
+    assert res_off.status_code == 403
+    assert "合规硬约束" in res_off.json()["detail"]
+    with persistence.get_session() as s:
+        assert audit_chain.head_blk(s) > old_head
+
+
+def test_annotation_sample_reflux_and_tasks(api_client):
+    """测试样本自动回流接入与标注看板联动。"""
+    # 1. 触发错误样本回流
+    reflux_res = api_client.post("/api/platform/annotation/reflux", json={
+        "case_id": "INV-CN-2026-0387",
+        "error_type": "FIELD_EDITED",
+        "detail": "金额手工修正回流测试",
+    })
+    assert reflux_res.status_code == 200
+    assert reflux_res.json()["enqueued"] is True
+
+    # 2. 查询标注看板，确认回流队列包含该案件
+    anno_res = api_client.get("/api/platform/annotation")
+    assert anno_res.status_code == 200
+    data = anno_res.json()
+    assert any(q["case_id"] == "INV-CN-2026-0387" for q in data["reflux_queue"])
+    assert data["stats"]["monthly_samples"] > 0
+    assert len(data["tasks"]) >= 4

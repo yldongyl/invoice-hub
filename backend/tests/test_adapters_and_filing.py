@@ -227,3 +227,96 @@ def test_adapter_retry_backoff_sequence():
     assert len(retry_items) >= 1
     assert any("30s/2min/10min" in item["action"] for item in retry_items)
 
+
+def test_profile_seed_consistency(fresh_session):
+    """[任务 1.1] 断言 profile ↔ seed 一致性、全链路 id 统一与单源装载。"""
+    import json
+    from pathlib import Path
+    from app.domain.registry import get_registry
+
+    seed_path = Path(__file__).resolve().parents[2] / "seeds" / "adapters.json"
+    with open(seed_path, "r", encoding="utf-8") as f:
+        seed_data = json.load(f)
+
+    # 1. 验证 seeds profiles 存在且为 6 个实例
+    seed_profiles = seed_data.get("profiles", [])
+    assert len(seed_profiles) == 6
+    seed_map = {p["id"]: p for p in seed_profiles}
+
+    # 2. 权威 id 集合验证：严格为 6 实例
+    expected_ids = {"ariba", "oracle", "custom", "datalake", "coupa", "s4"}
+    assert set(seed_map.keys()) == expected_ids
+
+    # 3. DB 中 AdapterProfile 记录与 seeds 1:1 一致
+    db_adapters = adapter_service.list_adapters(fresh_session)
+    assert len(db_adapters) == 6
+    db_map = {a["id"]: a for a in db_adapters}
+    assert set(db_map.keys()) == expected_ids
+
+    for aid in expected_ids:
+        sp = seed_map[aid]
+        dp = db_map[aid]
+        assert dp["id"] == sp["id"]
+        assert dp["name"] == sp["name"]
+        assert dp["status"] == sp["status"]
+        assert dp["status_code"] == sp["status_code"]
+        assert dp["metrics"] == sp["metrics"]
+
+    # 4. 消除 datalake 双源矛盾文案：验证为 12,846 快照，严禁 15,820
+    dl_metrics = {m["k"]: m["v"] for m in db_map["datalake"]["metrics"]}
+    assert dl_metrics.get("本月输出") == "12,846 快照"
+    assert "15,820" not in str(db_map["datalake"]["metrics"])
+
+    # 5. s4hana 历史别名平滑兼容断言
+    s4_prof = adapter_service.get_adapter_profile("s4hana", fresh_session)
+    assert s4_prof["id"] == "s4"
+    assert s4_prof["status"] == "plan"
+
+    # 6. enum-registry.json 状态枚举覆盖 6 实例同一 id 集合
+    reg = get_registry()
+    status_cat = reg._data.get("categories", {}).get("adapter_status", {})
+    reg_adapter_ids = set()
+    for v in status_cat.get("values", []):
+        if "adapters" in v:
+            reg_adapter_ids.update(v["adapters"])
+    assert reg_adapter_ids == expected_ids
+
+    # 7. Ariba 具备 PO 与主数据同步 Job（Task 6 / S5 第 4 条）
+    ariba_job = db_map["ariba"].get("data_sync_job")
+    assert ariba_job is not None
+    assert ariba_job["status"] == "SUCCESS"
+    assert ariba_job["cached_po_count"] > 0
+    assert ariba_job["cached_supplier_count"] > 0
+    assert "符合 S5 第 4 条要求" in ariba_job["standard_note"]
+
+
+def test_adapters_api_summary_and_endpoints(api_client):
+    """[任务 2 / 任务 3] 端点与顶部统计卡服务端派生断言。"""
+    res = api_client.get("/v1/adapters")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 6
+    assert "summary" in data
+    # 已对接目标系统 3（Ariba, Oracle, 自研；Data Lake 为只读输出通道不计入目标系统已对接），适配中 1，规划中 1
+    assert data["summary"]["live_target_count"] == 3
+    assert data["summary"]["wip_count"] == 1
+    assert data["summary"]["plan_count"] == 1
+
+    # s4 与 s4hana 均可通过 API 访问并解析
+    r_s4 = api_client.get("/v1/adapters/s4")
+    assert r_s4.status_code == 200
+    assert r_s4.json()["id"] == "s4"
+
+    r_s4h = api_client.get("/v1/adapters/s4hana")
+    assert r_s4h.status_code == 200
+    assert r_s4h.json()["id"] == "s4"
+
+    # 出站台账本月建档量聚合端点存在性与数值断言（基准 5836 + 库内非沙箱建档成功增量）
+    r_out = api_client.get("/v1/outbound/batches")
+    assert r_out.status_code == 200
+    kpi = r_out.json()["kpi"]
+    assert "month_filing_count" in kpi
+    assert kpi["month_filing_count"] >= 5836
+    assert kpi["month_filing_display"] == f"{kpi['month_filing_count']:,}"
+
+

@@ -169,7 +169,7 @@
         <div class="flex items-center gap-2.5 shrink-0">
           <button onclick="openManualVerifyModal()" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-success hover:text-success transition-colors" title="查验超时/失败人工查验登记（CON-13 决议）">🔍 人工查验</button>
           <button onclick="openEdit()" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary transition-colors">✎ 人工修正字段</button>
-          <button onclick="openAction('return')" class="px-3.5 py-2 rounded-card border border-warning text-warning text-[13px] font-medium hover:bg-warning-light dark:hover:bg-[#2E2417] transition-colors">退回供应商</button>
+          <button id="act-return-btn" onclick="openAction('return')" class="px-3.5 py-2 rounded-card border border-warning text-warning text-[13px] font-medium hover:bg-warning-light dark:hover:bg-[#2E2417] transition-colors">退回供应商</button>
           <button onclick="openAction('hold')" class="px-3.5 py-2 rounded-card border border-line dark:border-dline text-[13px] font-medium text-ink-2 dark:text-gray-300 hover:border-warning hover:text-warning transition-colors">挂起调查</button>
           <button onclick="openAction('release')" class="px-3.5 py-2 rounded-card bg-primary text-white text-[13px] font-medium hover:bg-[#4080FF] shadow-card transition-colors">✓ 放行案件</button>
         </div>
@@ -182,7 +182,10 @@
     <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden sticky top-0">
       <div class="px-4 pt-3.5 pb-0 flex items-center justify-between">
         <div class="text-[14px] font-semibold">原件预览</div>
-        <span id="pv-file" class="text-[11px] text-ink-3 dark:text-gray-500 num"></span>
+        <div class="flex items-center gap-2">
+          <span id="pv-file" class="text-[11px] text-ink-3 dark:text-gray-500 num"></span>
+          <a id="pv-orig-link" href="#" target="_blank" class="text-[11px] text-primary hover:underline flex items-center gap-0.5" title="受控读取/下载发票原始文件（受权限与租户校验，操作留痕）">📄 查看原件文件</a>
+        </div>
       </div>
       <div class="px-4 pt-2.5 flex items-center gap-1">
         <button id="tab-pdf" onclick="switchTab('pdf')" class="px-3 py-1.5 text-[12px] font-medium rounded-t-card border-b-2 border-primary text-primary">票面原件</button>
@@ -906,6 +909,10 @@ async function refreshCase(id){
   } catch (e) {
     if (e.status === 404) { showBanner(`案件 ${id} 不存在（CASE_NOT_FOUND）——已回退演示案件 0387（深链可分享性校验 FN-0-14）`, 'danger'); return false; }
     if (e.status === 403) { showBanner(`无权访问 ${id}（E_TENANT_MISMATCH · 租户四隔离 FN-0-11）——已回退演示案件`, 'danger'); return false; }
+    if (IHUB_DEMO.isLive()) {
+      showBanner(`实时取数失败（${e.message_cn || e.message || e}），部分数据已回退演示样例`, 'warn');
+      return false;
+    }
     console.warn('详情取数失败，本案件回退内嵌 mock：', e.message || e); return true;
   }
 }
@@ -914,6 +921,36 @@ async function loadCaseAsync(id){
   if (ok) { hideBanner(); }
   else if (CASES[id] === undefined) { id = 'INV-CN-2026-0387'; }   // 友好回退（banner 保留说明原因）
   return loadCase(id);
+}
+
+/* 案件切换器接线（FN-8-03、FN-0-14 · view=switcher） */
+async function loadSwitcherOptions(selectedId){
+  if(!IHUB_DEMO.isLive()) return;
+  const sel = document.getElementById('case-switch');
+  if(!sel) return;
+  try {
+    const [resCN, resOS] = await Promise.all([
+      IHUB_API.getJSON('/v1/cases', { view: 'switcher', instance: 'CN' }),
+      IHUB_API.getJSON('/v1/cases', { view: 'switcher', instance: 'OS' })
+    ]);
+    const items = [
+      ...((resCN && resCN.items) || []),
+      ...((resOS && resOS.items) || [])
+    ];
+    if(items.length > 0){
+      sel.innerHTML = '';
+      items.forEach(it => {
+        const flag = it.instance === 'CN' ? '🇨🇳' : '🌏';
+        const opt = document.createElement('option');
+        opt.value = it.caseId;
+        opt.textContent = `${flag} ${it.caseId} · ${it.type_short || it.type} · ${it.status}`;
+        sel.appendChild(opt);
+      });
+      if(selectedId) sel.value = selectedId;
+    }
+  } catch(e) {
+    console.warn('加载案件切换器失败，保留演示预置列表：', e);
+  }
 }
 
 /* ═══════════════════════ 渲染 ═══════════════════════ */
@@ -927,6 +964,12 @@ function loadCase(id){
 
   /* 面包屑 + 状态 */
   document.getElementById('bc-case').textContent = id;
+  const mIdElem = document.getElementById('m-id');
+  if (mIdElem) mIdElem.textContent = id;
+  const origLink = document.getElementById('pv-orig-link');
+  if (origLink) {
+    origLink.href = '/v1/cases/' + encodeURIComponent(id) + '/original?instance=' + encodeURIComponent(IHUB_API.instanceOfCase(id));
+  }
   renderStatus();
 
   /* 左栏元信息 */
@@ -1051,19 +1094,55 @@ function renderTimeline(){
 
 /* ═══════════════ 证据弹窗 & 原件定位 ═══════════════ */
 let evIdx = null;
-function openEv(i){
-  evIdx = i; const f = flatFields[i], e = f.ev;
+async function openEv(i){
+  evIdx = i; const f = flatFields[i];
+  let e = f.ev;
+  let val = f.v;
+  let src = f.src;
+  let conf = f.conf;
+  let isFallback = false;
+
+  if (IHUB_DEMO.isLive()) {
+    try {
+      const inst = IHUB_API.instanceOfCase(curId);
+      const res = await IHUB_API.getJSON(`/v1/cases/${curId}/evidence`, { field: f.path, instance: inst });
+      if (res && res.items && res.items.length > 0) {
+        const item = res.items[0];
+        val = item.value !== undefined ? item.value : val;
+        src = item.source || src;
+        conf = item.confidence !== undefined ? Math.round(Number(item.confidence) * (Number(item.confidence) <= 1 ? 100 : 1)) : conf;
+        const ev = item.evidence || {};
+        e = {
+          raw: ev.raw_text || e.raw,
+          page: ev.page ?? e.page,
+          bbox: ev.bbox || e.bbox,
+          provider: ev.provider || e.provider,
+          model: ev.model_version || e.model,
+          rule: ev.rule || e.rule
+        };
+      } else {
+        isFallback = true;
+      }
+    } catch(err) {
+      console.warn(`字段级证据查询失败（field=${f.path}），回退聚合数据：`, err);
+      isFallback = true;
+    }
+  }
+
   document.getElementById('ev-body').innerHTML = `
     <div class="flex items-center justify-between gap-2 pb-3 border-b border-line dark:border-dline">
-      <code class="text-[12px] num text-primary bg-primary-light dark:bg-[#1B2A4A] px-2 py-1 rounded">${f.path}</code>
+      <div class="flex items-center gap-1.5">
+        <code class="text-[12px] num text-primary bg-primary-light dark:bg-[#1B2A4A] px-2 py-1 rounded">${f.path}</code>
+        ${isFallback ? '<span class="text-[10px] text-warning bg-warning-light dark:bg-[#2E2417] px-1.5 py-0.5 rounded border border-warning/30" title="字段端点未命中或异常，已回退本地聚合数据">回退聚合</span>' : '<span class="text-[10px] text-success bg-success-light dark:bg-[#183426] px-1.5 py-0.5 rounded border border-success/30" title="经 GET /v1/cases/{id}/evidence 权威端点取数">字段端点</span>'}
+      </div>
       <div class="flex items-center gap-2">
-        <span class="text-[11px] px-2 py-0.5 rounded font-medium ${SRC[f.src].cls}">source: ${f.src}</span>
-        ${confBadge(f.conf)}
+        <span class="text-[11px] px-2 py-0.5 rounded font-medium ${SRC[src] ? SRC[src].cls : 'bg-gray-100 text-gray-700'}">source: ${src}</span>
+        ${confBadge(conf)}
       </div>
     </div>
     <div class="mt-3 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline p-3">
       <div class="text-[11px] text-ink-3 dark:text-gray-500 mb-1">识别值</div>
-      <div class="text-[16px] font-semibold num">${f.v}</div>
+      <div class="text-[16px] font-semibold num">${val}</div>
     </div>
     <table class="w-full mt-3 text-[12px]">
       <tr class="border-b border-line dark:border-dline"><td class="py-2 text-ink-3 dark:text-gray-500 w-[110px]">原文片段 raw_text</td><td class="py-2 font-medium">“${e.raw}”</td></tr>
@@ -1119,9 +1198,11 @@ const ACTIONS = {
     to:'BLOCKED' }
 };
 let pendingAction = null;
+let pendingChallenge = null;
 
-function openAction(key, presetNote){
+async function openAction(key, presetNote){
   pendingAction = key; const A = ACTIONS[key];
+  pendingChallenge = null;
   document.getElementById('act-head').innerHTML = `${A.icon} ${A.label} · 受控写操作二次确认`;
   document.getElementById('act-warn').innerHTML = A.warn;
   document.getElementById('act-warn').className = `text-[12px] leading-relaxed rounded-card border p-3 ${A.danger?'border-danger/40 bg-danger-light dark:bg-[#3A2426] text-ink-1 dark:text-gray-200':'border-primary-mid dark:border-[#2A3F6B] bg-primary-light dark:bg-[#1B2A4A] text-ink-1 dark:text-gray-200'}`;
@@ -1135,11 +1216,27 @@ function openAction(key, presetNote){
   };
   chk.onchange();
   showModal('act-modal');
+
+  /* 风险提示单一来源（FN-0-08）：live 态优先拉取服务端权威 risk_text，前端文案仅作 demo 兜底 */
+  if (IHUB_DEMO.isLive()) {
+    try {
+      const inst = IHUB_API.instanceOfCase(curId);
+      const actor = IHUB_API.ACTOR.reviewer;
+      const ch = await IHUB_API.postJSON(`/v1/cases/${curId}/risk-challenge`,
+                                          { actor, instance: inst, action: key });
+      if (ch && ch.risk_text) {
+        document.getElementById('act-warn').innerHTML = `<b>【服务端权威风险提示】</b>${ch.risk_text}`;
+        pendingChallenge = ch;
+      }
+    } catch(e) {
+      console.warn('获取服务端风险提示失败，保留前端兜底文案：', e);
+    }
+  }
 }
-function closeAct(){ hideModal('act-modal'); pendingAction=null; }
+function closeAct(){ hideModal('act-modal'); pendingAction=null; pendingChallenge=null; }
 
 /* M3 WP3.5 写路径激活（P04；替代 M2 的「受控写待 M3 激活」门禁注记）：
- * 弹窗五要素 UI 与原型逐字一致（风险提示=原型文案基准，服务端 risk_text 同源语义，P09 以原型口径核验）；
+ * 弹窗五要素 UI 与原型逐字一致（风险提示=服务端 risk_text 优先，前端为 demo 兜底）；
  * 提交链：POST /v1/cases/{id}/risk-challenge（要素②③凭据）→ POST /v1/cases/{id}/actions/{action}
  * （要素①④⑤由后端全序校验；本人勾选=要素③，未勾选按钮禁用）→ 成功整案重载（时间线实时追加+徽章流转）。
  * demo-mode 未连接：回落原型本地行为（事件 push+状态翻转+toast），页面仍可独立演示。 */
@@ -1147,10 +1244,17 @@ function closeAct(){ hideModal('act-modal'); pendingAction=null; }
 async function submitControlled(action, extra){
   const inst = IHUB_API.instanceOfCase(curId);
   const actor = IHUB_API.ACTOR.reviewer;
-  const ch = await IHUB_API.postJSON(`/v1/cases/${curId}/risk-challenge`,
-                                      { actor, instance: inst, action });
+  let token = null;
+  if (pendingChallenge && pendingChallenge.action === action && pendingChallenge.token) {
+    token = pendingChallenge.token;
+    pendingChallenge = null;
+  } else {
+    const ch = await IHUB_API.postJSON(`/v1/cases/${curId}/risk-challenge`,
+                                        { actor, instance: inst, action });
+    token = ch.token;
+  }
   const out = await IHUB_API.postJSON(`/v1/cases/${curId}/actions/${action}`,
-      Object.assign({ actor, instance: inst, token: ch.token, self_confirmed: true }, extra || {}));
+      Object.assign({ actor, instance: inst, token: token, self_confirmed: true }, extra || {}));
   return out;
 }
 function demoApplyAction(key, A, note){
@@ -1277,10 +1381,24 @@ async function openUnblock(){
 }
 function closeUnblock(){ if(_ubOverlay){ _ubOverlay.remove(); _ubOverlay = null; } }
 async function doUnblock(){
-  if(!IHUB_DEMO.isLive()){ closeUnblock(); toast('演示模式：解除会签为本地演示（不连接后台）· 状态未变更'); return; }
-  const signer = _ubOverlay.querySelector('#ub-signer').value;
-  const note = _ubOverlay.querySelector('#ub-note').value.trim();
+  const signer = _ubOverlay ? _ubOverlay.querySelector('#ub-signer').value : '陈铮';
+  const note = _ubOverlay ? _ubOverlay.querySelector('#ub-note').value.trim() : '';
   closeUnblock();
+  if(!IHUB_DEMO.isLive()){
+    /* demo 态本地模拟（与 demoApplyAction / doEdit 统一口径，保持可独立演示） */
+    cur.meta.status = 'NEEDS_REVIEW';
+    cur.timeline.push({
+      t: nowStr(), a: 'human', act: 'STATUS_CHANGE',
+      d: '解除拦截（双人会签）',
+      x: `双人会签：复核员 王莉 + 管理员 ${signer} · 处置意见：${note || '（未填写处置意见）'} · 演示本地口径`,
+      v: 'review-ui v1.2'
+    });
+    CASES[curId].meta.status = 'NEEDS_REVIEW';
+    CASES[curId].timeline = cur.timeline;
+    loadCase(curId);
+    toast(`已解除拦截（会签：王莉 + ${signer}）· 案件回落 NEEDS_REVIEW · 已写入不可篡改时间线（演示本地口径）`);
+    return;
+  }
   try{
     const out = await submitControlled('unblock',
       { co_signer: signer, co_signer_self: true, opinion: note || null });
@@ -1289,7 +1407,7 @@ async function doUnblock(){
   }catch(e){ toast('解除被拒：' + (e.message_cn || e.message)); loadCaseAsync(curId); }
 }
 function ensureUnblockBtn(){
-  const bar = document.querySelector('#act-return-btn') ;
+  const bar = document.querySelector('#act-return-btn');
   const anchor = bar || Array.from(document.querySelectorAll('button'))
     .find(b => b.getAttribute('onclick') === "openAction('return')");
   if(!anchor) return;
@@ -1353,29 +1471,52 @@ function openManualVerifyModal(){
   document.body.appendChild(_mvOverlay);
 }
 function closeManualVerifyModal(){ if(_mvOverlay){ _mvOverlay.remove(); _mvOverlay = null; } }
-function doManualVerify(){
+async function doManualVerify(){
   const channel = _mvOverlay.querySelector('#mv-channel').value;
   const res = _mvOverlay.querySelector('#mv-result').value;
   const receipt = _mvOverlay.querySelector('#mv-receipt').value.trim() || 'manual-rcpt-' + Date.now();
   const note = _mvOverlay.querySelector('#mv-note').value.trim();
   if(!note){ toast('查验说明为必填项（CON-13 审计要求）'); return; }
   closeManualVerifyModal();
-  const authCheck = cur.checks.find(c => c.k.includes('authenticity'));
-  if(authCheck){
-    authCheck.v = res;
-    authCheck.note = `人工查验登记（${channel} · 回执: ${receipt}）：${note} · 操作人: 王莉 (method=manual)`;
+
+  if(!IHUB_DEMO.isLive()){
+    const authCheck = cur.checks.find(c => c.k.includes('authenticity'));
+    if(authCheck){
+      authCheck.v = res;
+      authCheck.note = `人工查验登记（${channel} · 回执: ${receipt}）：${note} · 操作人: 王莉 (method=manual)`;
+    }
+    const inst = curId.includes('SG') ? 'OS' : 'CN';
+    const act = inst === 'OS' ? 'TAXID_CHECK' : (res === 'PASSED' ? 'SM2_VERIFY' : 'SM2_VERIFY_FAILED');
+    cur.timeline.push({
+      t: nowStr(),
+      a: 'human',
+      act: act,
+      d: `人工查验登记（${res} · method=manual）`,
+      x: `渠道：${channel} · 回执：${receipt} · 备注：${note} · CON-13 决议落地`,
+      v: 'manual-verify v1.0'
+    });
+    if(CASES[curId]){
+      CASES[curId].checks = cur.checks;
+      CASES[curId].timeline = cur.timeline;
+    }
+    loadCase(curId);
+    toast(`✓ 已登记人工查验结果（${res} · method=manual · CON-13 决议）· 操作人王莉 · 已写入不可篡改时间线（演示本地口径）`);
+    return;
   }
-  cur.timeline.push({
-    t: nowStr(),
-    a: 'human',
-    act: res === 'PASSED' ? 'SM2_VERIFY' : 'SM2_VERIFY_FAILED',
-    d: `人工查验登记（${res} · method=manual）`,
-    x: `渠道：${channel} · 回执：${receipt} · 备注：${note} · CON-13 决议落地`,
-    v: 'manual-verify v1.0'
-  });
-  renderChecks();
-  renderTimeline();
-  toast(`✓ 已登记人工查验结果（${res} · method=manual · CON-13 决议）· 操作人王莉 · 已写入不可篡改时间线`);
+
+  try{
+    await submitControlled('manual_verify', {
+      channel: channel,
+      result: res,
+      receipt: receipt,
+      note: note
+    });
+    await loadCaseAsync(curId);
+    toast(`✓ 已登记人工查验结果（${res} · method=manual · CON-13 决议）· 操作人王莉 · 已写入不可篡改时间线并落库`);
+  }catch(e){
+    toast(`受控登记被拒：${e.message_cn || e.message}`);
+    await loadCaseAsync(curId);
+  }
 }
 
 /* ═══════════════ 工具 ═══════════════ */
@@ -1396,7 +1537,9 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeEv(); close
 (async function boot(){
   try {
     await IHUB_DEMO.probe();
-    await loadCaseAsync(new URLSearchParams(location.search).get('case') || 'INV-CN-2026-0387');
+    const initCase = new URLSearchParams(location.search).get('case') || 'INV-CN-2026-0387';
+    await loadCaseAsync(initCase);
+    await loadSwitcherOptions(curId || initCase);
     document.body.dataset.ihubWp35 = IHUB_DEMO.isLive() ? 'live-ok' : 'demo';
   } catch (e) {
     document.body.dataset.ihubWp35 = 'err:' + (e && (e.message_cn || e.message) || e);

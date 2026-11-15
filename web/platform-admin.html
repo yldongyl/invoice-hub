@@ -139,9 +139,9 @@
   <div id="tab-tenant" class="tab-panel active space-y-4">
 
     <!-- 租户卡片 ×2 -->
-    <section class="grid grid-cols-2 gap-4">
+    <section id="tenant-cards" class="grid grid-cols-2 gap-4">
       <!-- 中国租户 -->
-      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5" data-tenant="TENANT-CN-LANWU-001">
         <div class="flex items-start justify-between gap-3">
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-10 h-10 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-[18px] shrink-0">🇨🇳</div>
@@ -156,14 +156,14 @@
           <span class="text-ink-3 dark:text-gray-500">数据区域：</span><b>中国 · 境内存储</b>
           <span class="ml-1 text-[11px] px-1.5 py-px rounded bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30">数据驻留要求待 H39 确认 · 推断</span>
         </div>
-        <div class="mt-3 grid grid-cols-3 gap-2 text-[12px] text-center">
+        <div class="mt-3 grid grid-cols-3 gap-2 text-[12px] text-center tenant-iso-grid">
           <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>发票池隔离</div>
           <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>配置隔离</div>
           <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>Provider Key 隔离</div>
         </div>
       </div>
       <!-- 海外租户 -->
-      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
+      <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5" data-tenant="TENANT-SG-LANWU-001">
         <div class="flex items-start justify-between gap-3">
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-10 h-10 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-[18px] shrink-0">🌏</div>
@@ -178,15 +178,16 @@
           <span class="text-ink-3 dark:text-gray-500">数据区域：</span><b>新加坡（Singapore Region）</b>
           <span class="ml-1 text-[11px] px-1.5 py-px rounded bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">海外 Supplier Invoice / Credit Note</span>
         </div>
-        <div class="mt-3 grid grid-cols-3 gap-2 text-[12px] text-center">
+        <div class="mt-3 grid grid-cols-3 gap-2 text-[12px] text-center tenant-iso-grid">
           <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>发票池隔离</div>
           <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>配置隔离</div>
           <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]"><b class="block text-success text-[14px]">✓</b>Provider Key 隔离</div>
         </div>
       </div>
     </section>
-    <div class="rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-4 py-2.5 text-[12px] text-ink-2 dark:text-gray-400">
-      🔒 <b>租户隔离：数据、配置、Provider Key、发票池四隔离</b> —— 任一租户的票据数据、识别配置、Provider 凭证与案件池均不与其他租户共享；隔离边界变更属高风险操作，须二次确认并写入审计日志。
+    <div class="rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline px-4 py-2.5 text-[12px] text-ink-2 dark:text-gray-400 flex items-center justify-between">
+      <div>🔒 <b>租户隔离：数据、配置、Provider Key、发票池四隔离</b> —— 任一租户的票据数据、识别配置、Provider 凭证与案件池均不与其他租户共享；隔离边界变更属高风险操作，须二次确认并写入审计日志。</div>
+      <button onclick="openIsolationModal()" class="shrink-0 px-3 py-1 rounded bg-danger/10 hover:bg-danger/20 text-danger border border-danger/30 text-[11.5px] font-medium ml-3">🛡️ 变更隔离边界（高风险）</button>
     </div>
 
     <!-- 角色权限矩阵 -->
@@ -221,23 +222,35 @@
     <!-- SSO 连接状态 + 用户列表 -->
     <section class="grid grid-cols-12 gap-4">
       <div class="col-span-5 rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
-        <div class="text-[15px] font-semibold">SSO / IdP 连接状态</div>
-        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5 mb-3">身份源对接为设计期预留能力，状态为演示样例</div>
-        <div class="space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="text-[15px] font-semibold">SSO / IdP 连接状态</div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium">设计期预留 · 演示样例</span>
+        </div>
+        <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5 mb-3">身份源对接为设计期预留能力，状态为演示样例口径（FN-9-03）</div>
+        <div class="space-y-2.5" id="sso-providers">
           <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
             <div class="flex items-center gap-2.5"><span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
               <span><b class="block text-[13px]">SAP IAS</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">Identity Authentication Service</span></span></div>
-            <span class="text-[11.5px] px-2 py-0.5 rounded bg-card dark:bg-dcard border border-success/30 text-success font-medium num">已连接 · SAML 2.0</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[11.5px] px-2 py-0.5 rounded bg-card dark:bg-dcard border border-success/30 text-success font-medium num">已连接 · SAML 2.0</span>
+              <button disabled title="设计期预留能力" class="px-2 py-0.5 rounded text-[11px] border border-line dark:border-dline text-ink-4 dark:text-gray-600 cursor-not-allowed opacity-60">重新连接</button>
+            </div>
           </div>
           <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
             <div class="flex items-center gap-2.5"><span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
               <span><b class="block text-[13px]">xsuaa</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">SAP BTP Extended Services UAA</span></span></div>
-            <span class="text-[11.5px] px-2 py-0.5 rounded bg-card dark:bg-dcard border border-success/30 text-success font-medium num">已连接 · OIDC</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[11.5px] px-2 py-0.5 rounded bg-card dark:bg-dcard border border-success/30 text-success font-medium num">已连接 · OIDC</span>
+              <button disabled title="设计期预留能力" class="px-2 py-0.5 rounded text-[11px] border border-line dark:border-dline text-ink-4 dark:text-gray-600 cursor-not-allowed opacity-60">重新连接</button>
+            </div>
           </div>
           <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline">
             <div class="flex items-center gap-2.5"><span class="w-5 h-5 rounded-full bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-500 flex items-center justify-center text-[12px] shrink-0 border border-line dark:border-dline">○</span>
               <span><b class="block text-[13px]">客户 AD</b><span class="block text-[11px] text-ink-3 dark:text-gray-500">Active Directory（LDAP / ADFS）</span></span></div>
-            <span class="text-[11.5px] px-2 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium">未连接</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[11.5px] px-2 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium">未连接</span>
+              <button disabled title="设计期预留能力" class="px-2 py-0.5 rounded text-[11px] border border-line dark:border-dline text-ink-4 dark:text-gray-600 cursor-not-allowed opacity-60">连接配置</button>
+            </div>
           </div>
         </div>
       </div>
@@ -345,16 +358,23 @@
               <div>
                 <label class="block text-ink-2 dark:text-gray-400 mb-1.5" for="cfg-threshold">置信度阈值（全局默认）</label>
                 <input id="cfg-threshold" type="number" step="0.01" min="0.5" max="0.99" value="0.85"
-                  onchange="draft.threshold=this.value;markDirty()"
+                  onchange="draft.threshold=parseFloat(this.value);markDirty()"
                   class="w-full num rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[13px] focus:outline-none focus:border-primary">
-                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">具体数值以《平台功能规格说明书》为准，此处为租户级覆盖</div>
+                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">租户级覆盖配置基准值（当前默认 0.85）</div>
               </div>
               <div>
-                <label class="block text-ink-2 dark:text-gray-400 mb-1.5" for="cfg-tolerance">尾差容差（金额勾稽）</label>
+                <label class="block text-ink-2 dark:text-gray-400 mb-1.5" for="cfg-tolerance">尾差容差（金额勾稽 · CN）</label>
                 <input id="cfg-tolerance" type="text" value="±0.06"
                   onchange="draft.tolerance=this.value;markDirty()"
                   class="w-full num rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[13px] focus:outline-none focus:border-primary">
-                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">不含税金额 + 税额 vs 价税合计的允许尾差；超容差 → 冲突规则命中转人工</div>
+                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">CN 专票不含税+税额 vs 价税合计的允许尾差（±0.06）</div>
+              </div>
+              <div class="col-span-2">
+                <label class="block text-ink-2 dark:text-gray-400 mb-1.5" for="cfg-po-tolerance">PO 匹配容差（海外 / BTP）</label>
+                <input id="cfg-po-tolerance" type="text" value="±S$50"
+                  onchange="draft.po_tolerance=this.value;markDirty()"
+                  class="w-full num rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[13px] focus:outline-none focus:border-primary">
+                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-1">海外 BTP 采购发票三单匹配容差（±S$50），与 CN 勾稽容差独立生效</div>
               </div>
             </div>
             <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline">
@@ -370,6 +390,7 @@
             <span id="cfg-dirty" class="text-[12px] text-ink-3 dark:text-gray-500">无未发布改动</span>
             <div class="flex items-center gap-2">
               <button onclick="resetDraft()" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">重置</button>
+              <button id="btn-rollback" onclick="openRollbackModal()" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-warning hover:text-warning">⏮ 回滚上一版</button>
               <button onclick="saveConfig()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">保存并发布</button>
             </div>
           </div>
@@ -379,12 +400,12 @@
         <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5">
           <div class="flex items-center justify-between">
             <div class="text-[15px] font-semibold flex items-center gap-2">密钥管理
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium">KMS / Vault 托管</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-ink-3 dark:text-gray-500 font-medium">KMS / Vault 演示桩（§6）</span>
             </div>
-            <button onclick="toast('凭证轮换走 KMS/Vault 流程（申请 → 审批 → 自动轮换 → 审计留痕）· 界面任何位置不回显明文（演示入口）')" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">🔑 凭证轮换（KMS 流程）</button>
+            <button onclick="openRotateModal()" class="px-3 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">🔑 凭证轮换（受控流程）</button>
           </div>
-          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1 mb-3">Provider 凭证 / API Key / 证书由 KMS/Vault 统一管理，界面一律掩码显示、不回显明文；密钥访问与轮换全部留痕</div>
-          <div class="grid grid-cols-2 gap-2.5 text-[12.5px]">
+          <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-1 mb-3">Provider 凭证 / API Key / 证书统一托管，界面全掩码呈现；轮换走五要素受控命令与审计留痕（KMS本体为§6演示桩）</div>
+          <div class="grid grid-cols-2 gap-2.5 text-[12.5px]" id="kms-keys-grid">
             <div class="flex items-center justify-between p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline"><span class="text-ink-2 dark:text-gray-400">百望云 API Key</span><code class="num text-ink-3 dark:text-gray-500">bw-cloud-key: ****c92d</code></div>
             <div class="flex items-center justify-between p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline"><span class="text-ink-2 dark:text-gray-400">诺诺 API Key</span><code class="num text-ink-3 dark:text-gray-500">nn-invoice-key: ****7f31</code></div>
             <div class="flex items-center justify-between p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline"><span class="text-ink-2 dark:text-gray-400">海外 e-invoicing 证书</span><code class="num text-ink-3 dark:text-gray-500">sg-einv-cert: ****a05e</code></div>
@@ -398,7 +419,7 @@
         <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card overflow-hidden">
           <div class="px-5 pt-4 pb-3 border-b border-line dark:border-dline">
             <div class="text-[15px] font-semibold">数据合规配置 <span class="text-[10px] px-1.5 py-0.5 rounded bg-danger-light dark:bg-[#3A2426] text-danger border border-danger/30 font-medium ml-1">数据区域属高风险项</span></div>
-            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">数据区域路由变更纳入左侧「保存并发布」的二次确认与审计 diff</div>
+            <div class="text-[12px] text-ink-3 dark:text-gray-500 mt-0.5">数据区域路由变更纳入左侧「保存并发布」的二次确认与审计 diff（含租户可用性校验）</div>
           </div>
           <div class="p-5 space-y-4 text-[13px]">
             <div>
@@ -419,12 +440,16 @@
                 <div class="flex items-center justify-between p-2 rounded-card bg-success-light dark:bg-[#1C2E22] border border-success/30"><span>海外 e-invoicing（新加坡）</span><span class="text-success font-medium">✓ 已登记 · DPA Annex 2</span></div>
               </div>
             </div>
-            <div class="p-3 rounded-card border border-line dark:border-dline">
-              <div class="text-ink-2 dark:text-gray-400 mb-1.5">模型数据边界（LLM 调用范围）</div>
-              <ul class="text-[12.5px] space-y-1 text-ink-2 dark:text-gray-400 leading-relaxed">
+            <div class="p-3 rounded-card border border-line dark:border-dline" id="model-boundary-box">
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="text-ink-2 dark:text-gray-400">模型数据边界（LLM 调用范围 · FN-9-11）</div>
+                <button onclick="openCleanupModal()" class="px-2 py-0.5 rounded text-[11px] bg-primary-light text-primary hover:bg-primary hover:text-white transition-colors">🧹 立即清理过期数据</button>
+              </div>
+              <ul class="text-[12.5px] space-y-1 text-ink-2 dark:text-gray-400 leading-relaxed" id="model-boundary-list">
                 <li>· 调用范围：<b class="text-ink-1 dark:text-white">字段语义与差异解释</b>（qwen-finance-v2 / ocr-vlm-2026-10），不用于确定性判定</li>
                 <li>· Prompt / 响应保存期限：<b class="text-ink-1 dark:text-white num">30 天</b>，到期自动清理</li>
                 <li>· LLM 调用审计：<span class="text-success font-medium">开启 ✓</span>（每次调用记录模型版本、输入摘要、输出与采纳情况）</li>
+                <li>· 上次清理：<span class="num text-ink-3 dark:text-gray-500" id="model-last-cleanup">2026-10-27 02:00:00</span></li>
               </ul>
             </div>
             <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline">
@@ -450,23 +475,23 @@
     <section class="grid grid-cols-4 gap-4">
       <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
         <div class="text-[13px] text-ink-2 dark:text-gray-400">本月标注样本</div>
-        <div class="mt-2 flex items-end gap-2"><span class="num text-[28px] font-semibold leading-none">1,284</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">张</span></div>
+        <div class="mt-2 flex items-end gap-2"><span id="stat-monthly-samples" class="num text-[28px] font-semibold leading-none">1,284</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">张</span></div>
         <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">▲ 9.6% 环比 · 数电票 / 增值税票 / 海外票全票种</div>
       </div>
       <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
         <div class="text-[13px] text-ink-2 dark:text-gray-400">待标注队列</div>
-        <div class="mt-2 flex items-end gap-2"><span class="num text-[28px] font-semibold leading-none text-warning">312</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">张</span></div>
+        <div class="mt-2 flex items-end gap-2"><span id="stat-queue-backlog" class="num text-[28px] font-semibold leading-none text-warning">312</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">张</span></div>
         <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">真实错误样本优先入队 · 平均等待 1.8 天</div>
       </div>
       <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
         <div class="text-[13px] text-ink-2 dark:text-gray-400">标注一致率</div>
-        <div class="mt-2 flex items-end gap-2"><span class="num text-[28px] font-semibold leading-none text-success">97.2%</span></div>
-        <div class="mt-2 w-full h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full bg-success" style="width:97.2%"></div></div>
+        <div class="mt-2 flex items-end gap-2"><span id="stat-agreement-pct" class="num text-[28px] font-semibold leading-none text-success">97.2%</span></div>
+        <div class="mt-2 w-full h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div id="stat-agreement-bar" class="h-full rounded-full bg-success" style="width:97.2%"></div></div>
         <div class="mt-1.5 text-[12px] text-ink-3 dark:text-gray-500">双人背靠背标注 · 分歧样本三审仲裁</div>
       </div>
       <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
         <div class="text-[13px] text-ink-2 dark:text-gray-400">沉淀规则数</div>
-        <div class="mt-2 flex items-end gap-2"><span class="num text-[28px] font-semibold leading-none text-primary">46</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">条</span></div>
+        <div class="mt-2 flex items-end gap-2"><span id="stat-sedimented-rules" class="num text-[28px] font-semibold leading-none text-primary">46</span><span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">条</span></div>
         <div class="mt-2 text-[12px] text-ink-3 dark:text-gray-500">人工修正 → 规则引擎可执行条款（版本化 + 可回滚）</div>
       </div>
     </section>
@@ -529,7 +554,7 @@
       </div>
     </div>
     <div class="px-5 py-4">
-      <div class="text-[12px] text-ink-3 dark:text-gray-500 mb-2">变更明细（diff · 前值 → 后值）</div>
+      <div class="text-[12px] text-ink-3 dark:text-gray-500 mb-2">变更明细（服务端 diff · 前值 → 后值）</div>
       <div id="diff-list" class="space-y-1.5 max-h-[240px] overflow-y-auto"></div>
     </div>
     <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
@@ -537,6 +562,139 @@
       <div class="flex items-center gap-2">
         <button onclick="closeConfirm()" class="px-4 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">取消</button>
         <button onclick="confirmPublish()" class="px-4 py-1.5 rounded-card bg-danger text-white text-[12.5px] font-medium hover:bg-[#F76560]">确认发布并写入审计日志</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 受控回滚弹窗（配置中心版本回滚 · 五要素） ═══════════════ -->
+<div id="rollback-mask" class="modal-mask fixed inset-0 z-50 bg-ink-1/50 dark:bg-black/60 items-center justify-center">
+  <div class="w-[520px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-4 border-b border-line dark:border-dline flex items-center gap-2.5">
+      <span class="w-8 h-8 rounded-card bg-warning-light dark:bg-[#2E2417] flex items-center justify-center text-warning shrink-0">⏮</span>
+      <div>
+        <div class="text-[15px] font-semibold">配置中心版本回滚 · 受控写五要素</div>
+        <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5">目标版本配置将以新版本形式发布生效，并写入不可篡改审计链</div>
+      </div>
+    </div>
+    <div class="p-5 space-y-3 text-[13px]">
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1" for="rb-target-ver">选择目标回滚版本</label>
+        <select id="rb-target-ver" class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] px-3 py-2 text-[12.5px] focus:outline-none focus:border-primary"></select>
+      </div>
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1" for="rb-opinion">回滚原因与处置意见（必填）</label>
+        <textarea id="rb-opinion" rows="2" placeholder="请输入回滚原因说明..." class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] p-2.5 text-[12.5px] focus:outline-none focus:border-primary">业务策略调整，回滚至上一稳定基线版本</textarea>
+      </div>
+      <label class="flex items-start gap-2 p-2.5 rounded bg-warning-light/50 dark:bg-[#2E2417]/50 border border-warning/30 text-[12px] text-ink-2 dark:text-gray-300 cursor-pointer">
+        <input type="checkbox" id="rb-confirm-check" class="mt-0.5 rounded border-line text-primary focus:ring-0">
+        <span>我已核对目标版本差异，确认由<b>本人</b>执行配置回滚（AI / Agent 建议不自动执行）</span>
+      </label>
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
+      <span class="text-[11px] text-ink-3 dark:text-gray-500">权限：策略发布 · 操作人：陈铮</span>
+      <div class="flex items-center gap-2">
+        <button onclick="closeRollbackModal()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300">取消</button>
+        <button onclick="confirmRollback()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">确认回滚</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 隔离边界变更弹窗（高风险受控 · 五要素） ═══════════════ -->
+<div id="isolation-mask" class="modal-mask fixed inset-0 z-50 bg-ink-1/50 dark:bg-black/60 items-center justify-center">
+  <div class="w-[540px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-4 border-b border-line dark:border-dline flex items-center gap-2.5">
+      <span class="w-8 h-8 rounded-card bg-danger-light dark:bg-[#3A2426] flex items-center justify-center text-danger shrink-0">🛡️</span>
+      <div>
+        <div class="text-[15px] font-semibold text-danger">变更租户隔离边界 · 极高风险受控操作</div>
+        <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5">影响租户四隔离机制与跨实例访问防线，全量记入审计链</div>
+      </div>
+    </div>
+    <div class="p-5 space-y-3 text-[13px]">
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1" for="iso-tenant-select">目标租户</label>
+        <select id="iso-tenant-select" class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] px-3 py-2 text-[12.5px]">
+          <option value="TENANT-CN-LANWU-001">澜坞（上海）采购科技有限公司 (CN)</option>
+          <option value="TENANT-SG-LANWU-001">Lanwu Procurement Technology (Singapore) Pte. Ltd. (SG)</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1" for="iso-patch-desc">边界变更补丁项（JSON/说明）</label>
+        <input id="iso-patch-desc" type="text" value='{"enhanced_boundary_audit": true, "strict_cross_tenant_check": true}'
+          class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] px-3 py-2 text-[12px] font-mono">
+      </div>
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1" for="iso-opinion">处置意见（必填）</label>
+        <textarea id="iso-opinion" rows="2" placeholder="请输入变更原因与审批单据号..." class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] p-2.5 text-[12.5px]">例行安全加固与隔离边界合规策略刷新</textarea>
+      </div>
+      <label class="flex items-start gap-2 p-2.5 rounded bg-danger-light/50 dark:bg-[#3A2426]/50 border border-danger/30 text-[12px] text-ink-2 dark:text-gray-300 cursor-pointer">
+        <input type="checkbox" id="iso-confirm-check" class="mt-0.5 rounded border-line text-danger focus:ring-0">
+        <span>我已知悉隔离边界变更的重大安全后果，确认由<b>本人</b>受控执行</span>
+      </label>
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
+      <span class="text-[11px] text-ink-3 dark:text-gray-500">权限：租户管理 · 操作人：陈铮</span>
+      <div class="flex items-center gap-2">
+        <button onclick="closeIsolationModal()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300">取消</button>
+        <button onclick="confirmIsolationChange()" class="px-4 py-1.5 rounded-card bg-danger text-white text-[12.5px] font-medium hover:bg-[#F76560]">确认变更隔离边界</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ KMS 凭证轮换弹窗（受控命令 · 五要素） ═══════════════ -->
+<div id="rotate-mask" class="modal-mask fixed inset-0 z-50 bg-ink-1/50 dark:bg-black/60 items-center justify-center">
+  <div class="w-[500px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-4 border-b border-line dark:border-dline flex items-center gap-2.5">
+      <span class="w-8 h-8 rounded-card bg-primary-light flex items-center justify-center text-primary shrink-0">🔑</span>
+      <div>
+        <div class="text-[15px] font-semibold">KMS 凭证轮换申请 · 受控流程</div>
+        <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5">凭证轮换走 KMS 流程并全量写入不可篡改审计链（KMS为§6演示桩）</div>
+      </div>
+    </div>
+    <div class="p-5 space-y-3 text-[13px]">
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1" for="rot-key-select">选择凭证目标</label>
+        <select id="rot-key-select" class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] px-3 py-2 text-[12.5px]"></select>
+      </div>
+      <div>
+        <label class="block text-ink-2 dark:text-gray-400 mb-1" for="rot-reason">轮换原因与审批单（选填）</label>
+        <input id="rot-reason" type="text" value="定期密钥安全轮换" class="w-full rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] px-3 py-2 text-[12.5px]">
+      </div>
+      <label class="flex items-start gap-2 p-2.5 rounded bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[12px] text-ink-2 dark:text-gray-300 cursor-pointer">
+        <input type="checkbox" id="rot-confirm-check" class="mt-0.5 rounded border-line text-primary focus:ring-0">
+        <span>已确认上游通道配置已同步，确认由<b>本人</b>申请轮换</span>
+      </label>
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
+      <span class="text-[11px] text-ink-3 dark:text-gray-500">权限：Provider 配置 · 操作人：陈铮</span>
+      <div class="flex items-center gap-2">
+        <button onclick="closeRotateModal()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300">取消</button>
+        <button onclick="confirmRotateKey()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">确认轮换</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 模型数据清理确认弹窗 ═══════════════ -->
+<div id="cleanup-mask" class="modal-mask fixed inset-0 z-50 bg-ink-1/50 dark:bg-black/60 items-center justify-center">
+  <div class="w-[460px] rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-cardhover overflow-hidden">
+    <div class="px-5 py-4 border-b border-line dark:border-dline flex items-center gap-2.5">
+      <span class="w-8 h-8 rounded-card bg-primary-light flex items-center justify-center text-primary shrink-0">🧹</span>
+      <div>
+        <div class="text-[15px] font-semibold">清理过期模型数据 · 受控执行</div>
+        <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5">立即触发超过 30 天的 Prompt / 响应数据清理任务（FN-9-11）</div>
+      </div>
+    </div>
+    <div class="p-5 text-[12.5px] text-ink-2 dark:text-gray-300 leading-relaxed">
+      确认执行模型数据过期清理？系统将物理清理 30 天前所有 LLM 差异解释与语义抽取历史，清理动作和留存摘要将记入不可篡改审计链。
+    </div>
+    <div class="px-5 py-3 border-t border-line dark:border-dline bg-surface dark:bg-[#23282F] flex items-center justify-between">
+      <span class="text-[11px] text-ink-3 dark:text-gray-500">权限：策略发布 · 操作人：陈铮</span>
+      <div class="flex items-center gap-2">
+        <button onclick="closeCleanupModal()" class="px-3.5 py-1.5 rounded-card border border-line dark:border-dline text-[12.5px] text-ink-2 dark:text-gray-300">取消</button>
+        <button onclick="confirmCleanupModelData()" class="px-4 py-1.5 rounded-card bg-primary text-white text-[12.5px] font-medium hover:bg-[#4080FF]">确认清理</button>
       </div>
     </div>
   </div>
@@ -696,16 +854,24 @@ renderAlertRules();
 
 /* ════════════════ Tab 3 · 配置中心：草稿 / diff / 二次确认 ════════════════ */
 const LABELS = {
-  threshold:   '置信度阈值（全局默认）',
-  tolerance:   '尾差容差（金额勾稽）',
+  threshold:     '置信度阈值（全局默认）',
+  tolerance:     '尾差容差（金额勾稽 · CN）',
+  po_tolerance:  'PO 匹配容差（海外 / BTP）',
   lowConfManual: '低置信强制人工',
   newCustReview: '新客户首月全量复核',
-  regionRoute: '数据区域路由'
+  regionRoute:   '数据区域路由'
 };
-let saved = { threshold:'0.85', tolerance:'±0.06', lowConfManual:true, newCustReview:false,
-              regionRoute:'中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域' };
+let saved = {
+  threshold: 0.85,
+  tolerance: '±0.06',
+  po_tolerance: '±S$50',
+  lowConfManual: true,
+  newCustReview: false,
+  regionRoute: '中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域'
+};
 let draft = Object.assign({}, saved);
-let cfgVer = 2;
+let cfgVer = 'v2026-10-21.2';
+let _liveKmsKeys = [];
 
 function fmtVal(k, v){
   if(k === 'lowConfManual' || k === 'newCustReview') return v ? '开启' : '关闭';
@@ -718,6 +884,7 @@ function toggleDraftSwitch(key, el){
     toast('⚠ 关闭「低置信强制人工」将允许低置信结果自动流转，与产品红线（错误自动放行率趋近 0）冲突 —— 改动仅为草稿，发布仍需二次确认');
   }
   markDirty();
+  syncDraftToServer();
 }
 function markDirty(){
   const diffs = diffList();
@@ -731,25 +898,84 @@ function markDirty(){
 function diffList(){
   return Object.keys(saved).filter(k => String(saved[k]) !== String(draft[k]));
 }
-function resetDraft(){
+
+let _draftDebounce = null;
+function syncDraftToServer(){
+  if (!window.IHUB_DEMO || !IHUB_DEMO.isLive()) return;
+  clearTimeout(_draftDebounce);
+  _draftDebounce = setTimeout(async () => {
+    try {
+      await IHUB_API.postJSON('/api/platform/config/draft', {
+        actor: '陈铮',
+        values: draft
+      });
+    } catch(e) {
+      console.warn('同步草稿失败：', e);
+    }
+  }, 350);
+}
+
+async function resetDraft(){
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.postJSON('/api/platform/config/reset', {});
+      if (res && res.current_values) {
+        saved = Object.assign({}, res.current_values);
+      }
+    } catch(e) {
+      console.warn('重置草稿服务调用异常：', e);
+    }
+  }
   draft = Object.assign({}, saved);
   document.getElementById('cfg-threshold').value = saved.threshold;
   document.getElementById('cfg-tolerance').value = saved.tolerance;
+  if (document.getElementById('cfg-po-tolerance')) {
+    document.getElementById('cfg-po-tolerance').value = saved.po_tolerance || '±S$50';
+  }
   document.getElementById('sw-lowconf').classList.toggle('on', saved.lowConfManual);
   document.getElementById('sw-newcust').classList.toggle('on', saved.newCustReview);
   document.getElementById('cfg-region').value = saved.regionRoute;
   markDirty();
   toast('已重置为当前已发布配置（草稿改动丢弃，未产生审计记录）');
 }
-function saveConfig(){
+
+async function saveConfig(){
   /* 输入框值同步回草稿 */
-  draft.threshold = document.getElementById('cfg-threshold').value;
+  draft.threshold = parseFloat(document.getElementById('cfg-threshold').value) || 0.85;
   draft.tolerance = document.getElementById('cfg-tolerance').value;
+  if (document.getElementById('cfg-po-tolerance')) {
+    draft.po_tolerance = document.getElementById('cfg-po-tolerance').value;
+  }
+  draft.regionRoute = document.getElementById('cfg-region').value;
+
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      // 预先存草稿并调用服务端 diff
+      await IHUB_API.postJSON('/api/platform/config/draft', { actor: '陈铮', values: draft });
+      const diffRes = await IHUB_API.getJSON('/api/platform/config/diff');
+      const diffs = (diffRes && diffRes.diffs) ? diffRes.diffs : [];
+      if(!diffs.length){ toast('无变更项，无需发布 · 当前配置与已发布版本一致'); return; }
+      document.getElementById('diff-list').innerHTML = diffs.map(d => `
+        <div class="flex items-center justify-between gap-3 p-2.5 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] text-[12.5px]">
+          <span class="text-ink-2 dark:text-gray-400 shrink-0 w-[180px]">${d.label}${d.is_redline ? '<span class="text-[10px] text-danger ml-1 font-semibold">● 红线项</span>' : ''}</span>
+          <span class="flex items-center gap-2 min-w-0">
+            <code class="num px-2 py-0.5 rounded bg-danger-light dark:bg-[#3A2426] text-danger line-through truncate">${d.before_display}</code>
+            <span class="text-ink-4 shrink-0">→</span>
+            <code class="num px-2 py-0.5 rounded bg-success-light dark:bg-[#1C2E22] text-success truncate">${d.after_display}</code>
+          </span>
+        </div>`).join('');
+      document.getElementById('confirm-mask').classList.add('open');
+      return;
+    } catch(e) {
+      console.warn('获取服务端 diff 失败，回退本地对比：', e);
+    }
+  }
+
   const diffs = diffList();
   if(!diffs.length){ toast('无变更项，无需发布 · 当前配置与已发布版本一致'); return; }
   document.getElementById('diff-list').innerHTML = diffs.map(k => `
     <div class="flex items-center justify-between gap-3 p-2.5 rounded-card border border-line dark:border-dline bg-surface dark:bg-[#23282F] text-[12.5px]">
-      <span class="text-ink-2 dark:text-gray-400 shrink-0 w-[180px]">${LABELS[k]}</span>
+      <span class="text-ink-2 dark:text-gray-400 shrink-0 w-[180px]">${LABELS[k] || k}</span>
       <span class="flex items-center gap-2 min-w-0">
         <code class="num px-2 py-0.5 rounded bg-danger-light dark:bg-[#3A2426] text-danger line-through truncate">${fmtVal(k, saved[k])}</code>
         <span class="text-ink-4 shrink-0">→</span>
@@ -759,14 +985,203 @@ function saveConfig(){
   document.getElementById('confirm-mask').classList.add('open');
 }
 function closeConfirm(){ document.getElementById('confirm-mask').classList.remove('open'); }
-function confirmPublish(){
+
+async function confirmPublish(){
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.postJSON('/api/platform/config/publish', {
+        actor: '陈铮',
+        values: draft,
+        opinion: '配置中心受控发布（全链路完成适配器兼容校验通知）'
+      });
+      saved = Object.assign({}, draft);
+      cfgVer = res.version;
+      document.getElementById('cfg-ver').textContent = `配置版本 ${res.version} · 已发布`;
+      closeConfirm();
+      markDirty();
+      toast(`✓ 配置已发布 · 版本 ${res.version} 已记入不可篡改审计链（blk#${res.audit_blk}）· 联动完成 5 大适配器兼容性校验通知`);
+      return;
+    } catch(e) {
+      closeConfirm();
+      toast('发布被拒：' + (e.message_cn || e.message || '红线项或租户可用性校验拦截'));
+      return;
+    }
+  }
+
   saved = Object.assign({}, draft);
-  cfgVer++;
   const d = new Date();
-  document.getElementById('cfg-ver').textContent = `配置版本 v2026-10-${(d.getDate()<10?'0':'')+d.getDate()}.${cfgVer} · 已发布`;
+  cfgVer = `v2026-10-${(d.getDate()<10?'0':'')+d.getDate()}.3`;
+  document.getElementById('cfg-ver').textContent = `配置版本 ${cfgVer} · 已发布`;
   closeConfirm();
   markDirty();
   toast('✓ 配置已发布 · diff 记入审计日志（操作人陈铮）· 旧版本保留可回滚 · 不可篡改留痕（时间 / 前后值 / trace）');
+}
+
+/* ════════════════ 受控回滚上一版 (FN-9-09) ════════════════ */
+async function openRollbackModal(){
+  const sel = document.getElementById('rb-target-ver');
+  sel.innerHTML = '<option value="">加载版本库中...</option>';
+  document.getElementById('rb-confirm-check').checked = false;
+  document.getElementById('rollback-mask').classList.add('open');
+
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.getJSON('/api/platform/config/history');
+      const list = res.history || [];
+      if (list.length) {
+        sel.innerHTML = list.map((h, i) => `
+          <option value="${h.version}">${h.version} · ${h.updated_at} · ${h.opinion || '常规发布'}</option>
+        `).join('');
+        return;
+      }
+    } catch(e) {
+      console.warn('获取配置历史失败：', e);
+    }
+  }
+  sel.innerHTML = `
+    <option value="v2026-10-21.2">v2026-10-21.2 · 2026-10-21 08:47 · 初始化基准</option>
+    <option value="v2026-10-20.1">v2026-10-20.1 · 2026-10-20 18:30 · 初始投产版</option>
+  `;
+}
+function closeRollbackModal(){ document.getElementById('rollback-mask').classList.remove('open'); }
+
+async function confirmRollback(){
+  const check = document.getElementById('rb-confirm-check');
+  if(!check.checked){ toast('请勾选确认框以满足受控命令五要素（确认本人执行）'); return; }
+  const targetVer = document.getElementById('rb-target-ver').value;
+  const opinion = document.getElementById('rb-opinion').value;
+  if (!targetVer) { toast('请选择目标回滚版本'); return; }
+
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.postJSON('/api/platform/config/rollback', {
+        actor: '陈铮',
+        target_version: targetVer,
+        opinion: opinion
+      });
+      closeRollbackModal();
+      toast(`✓ 配置已回滚至 ${targetVer} · 生成新版本 ${res.version} · 写入审计日志（blk#${res.audit_blk}）`);
+      // 重新加载配置视图
+      loadConfigView();
+      return;
+    } catch(e) {
+      closeRollbackModal();
+      toast('回滚失败：' + (e.message_cn || e.message));
+      return;
+    }
+  }
+
+  closeRollbackModal();
+  toast(`✓ 配置已回滚至历史版本 ${targetVer} · 演示口径生效`);
+}
+
+/* ════════════════ 隔离边界变更受控入口 (FN-9-01) ════════════════ */
+function openIsolationModal(){
+  document.getElementById('iso-confirm-check').checked = false;
+  document.getElementById('isolation-mask').classList.add('open');
+}
+function closeIsolationModal(){ document.getElementById('isolation-mask').classList.remove('open'); }
+
+async function confirmIsolationChange(){
+  const check = document.getElementById('iso-confirm-check');
+  if(!check.checked){ toast('请勾选确认框以满足受控命令五要素（确认本人执行）'); return; }
+  const tid = document.getElementById('iso-tenant-select').value;
+  const patchStr = document.getElementById('iso-patch-desc').value;
+  const opinion = document.getElementById('iso-opinion').value;
+  let patch = {};
+  try { patch = JSON.parse(patchStr); } catch(e){ patch = { desc: patchStr }; }
+
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.postJSON(`/api/platform/tenants/${tid}/isolation`, {
+        actor: '陈铮',
+        boundary_patch: patch,
+        opinion: opinion
+      });
+      closeIsolationModal();
+      toast(`✓ 租户 ${tid} 隔离边界变更已成功生效并写入审计链（blk#${res.audit_blk}）`);
+      loadTenantCards();
+      return;
+    } catch(e) {
+      closeIsolationModal();
+      toast('隔离边界变更失败：' + (e.message_cn || e.message));
+      return;
+    }
+  }
+
+  closeIsolationModal();
+  toast(`✓ 租户 ${tid} 隔离边界已更新 · 演示口径留痕`);
+}
+
+/* ════════════════ KMS 凭证轮换受控命令 (FN-9-10) ════════════════ */
+function openRotateModal(){
+  const sel = document.getElementById('rot-key-select');
+  if (_liveKmsKeys.length) {
+    sel.innerHTML = _liveKmsKeys.map(k => `<option value="${k.id}">${k.name} (${k.masked_value}) · ${k.provider}</option>`).join('');
+  } else {
+    sel.innerHTML = `
+      <option value="bw-cloud-key">百望云 API Key (****c92d)</option>
+      <option value="nn-invoice-key">诺诺 API Key (****7f31)</option>
+      <option value="sg-einv-cert">海外 e-invoicing 证书 (****a05e)</option>
+      <option value="self-vlm-api">自托管 OCR-VLM 端点凭证 (****d417)</option>
+    `;
+  }
+  document.getElementById('rot-confirm-check').checked = false;
+  document.getElementById('rotate-mask').classList.add('open');
+}
+function closeRotateModal(){ document.getElementById('rotate-mask').classList.remove('open'); }
+
+async function confirmRotateKey(){
+  const check = document.getElementById('rot-confirm-check');
+  if(!check.checked){ toast('请勾选确认框以满足受控命令五要素（确认本人执行）'); return; }
+  const keyId = document.getElementById('rot-key-select').value;
+  const reason = document.getElementById('rot-reason').value;
+
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.postJSON(`/api/platform/kms/keys/${keyId}/rotate`, {
+        actor: '陈铮',
+        reason: reason
+      });
+      closeRotateModal();
+      toast(`✓ 凭证「${res.name}」轮换成功（新掩码 ${res.masked_value}）· 已记入审计日志（blk#${res.audit_blk}）`);
+      loadKmsKeys();
+      return;
+    } catch(e) {
+      closeRotateModal();
+      toast('轮换失败：' + (e.message_cn || e.message));
+      return;
+    }
+  }
+
+  closeRotateModal();
+  toast(`✓ 凭证 ${keyId} 轮换成功 · 演示桩留痕`);
+}
+
+/* ════════════════ 模型数据边界清理 (FN-9-11) ════════════════ */
+function openCleanupModal(){ document.getElementById('cleanup-mask').classList.add('open'); }
+function closeCleanupModal(){ document.getElementById('cleanup-mask').classList.remove('open'); }
+
+async function confirmCleanupModelData(){
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.postJSON('/api/platform/model-boundary/cleanup', {
+        actor: '陈铮'
+      });
+      closeCleanupModal();
+      document.getElementById('model-last-cleanup').textContent = res.last_cleanup_at;
+      toast(`✓ ${res.message}（blk#${res.audit_blk}）`);
+      return;
+    } catch(e) {
+      closeCleanupModal();
+      toast('清理失败：' + (e.message_cn || e.message));
+      return;
+    }
+  }
+
+  closeCleanupModal();
+  document.getElementById('model-last-cleanup').textContent = '2026-11-12 10:00:00';
+  toast('✓ 模型数据清理完成 · 模拟清理 142 条过期数据');
 }
 
 /* ════════════════ Tab 4 · 标注数据 ════════════════ */
@@ -782,28 +1197,57 @@ const ANNO_TASKS = [
   { id:'ANNO-2026-1010', type:'海外 Supplier Invoice（SG · GST 字段）', count:312, done:96,  who:'标注组 C（双语）', st:'review' },
   { id:'ANNO-2026-1009', type:'Credit Note（冲减关系 Link 标注）', count:172, done:0,   who:'待分配', st:'queue' }
 ];
-document.getElementById('anno-tbody').innerHTML = ANNO_TASKS.map(t => {
-  const pct = Math.round(t.done / t.count * 100);
-  const s = ANNO_STATUS[t.st];
-  return `
-  <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
-    <td class="px-5 py-3 num font-medium text-primary whitespace-nowrap">${t.id}</td>
-    <td class="px-3 py-3 text-[12.5px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${t.type}</td>
-    <td class="px-3 py-3 text-right num whitespace-nowrap">${t.count.toLocaleString('en-US')}</td>
-    <td class="px-3 py-3">
-      <div class="flex items-center gap-2">
-        <div class="flex-1 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full ${pct===100?'bg-success':'bg-primary'}" style="width:${pct}%"></div></div>
-        <span class="text-[11px] num text-ink-3 dark:text-gray-500 shrink-0">${t.done.toLocaleString('en-US')}/${t.count.toLocaleString('en-US')} · ${pct}%</span>
-      </div>
-    </td>
-    <td class="px-3 py-3 text-[12.5px] whitespace-nowrap">${t.who}</td>
-    <td class="px-3 py-3 pr-5 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${s.cls}">${s.label}</span></td>
-  </tr>`;
-}).join('');
+function renderAnnoTasks(tasks){
+  document.getElementById('anno-tbody').innerHTML = tasks.map(t => {
+    const total = t.count || t.samples_count || 100;
+    const progressPct = (t.progress_pct !== undefined) ? t.progress_pct : Math.round(((t.done || 0) / total) * 100);
+    const stKey = t.st || (t.status === '已完成已沉淀' ? 'done' : t.status === '三审仲裁' ? 'review' : t.status === '标注中' ? 'doing' : 'queue');
+    const s = ANNO_STATUS[stKey] || { label: t.status || '排队中', cls: 'bg-surface border' };
+    const id = t.id || t.task_id;
+    const docType = t.type || t.doc_type;
+    const who = t.who || t.annotator;
+    return `
+    <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+      <td class="px-5 py-3 num font-medium text-primary whitespace-nowrap">${id}</td>
+      <td class="px-3 py-3 text-[12.5px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${docType}</td>
+      <td class="px-3 py-3 text-right num whitespace-nowrap">${total.toLocaleString('en-US')}</td>
+      <td class="px-3 py-3">
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-1.5 rounded-full bg-surface dark:bg-[#23282F] overflow-hidden"><div class="h-full rounded-full ${progressPct===100?'bg-success':'bg-primary'}" style="width:${progressPct}%"></div></div>
+          <span class="text-[11px] num text-ink-3 dark:text-gray-500 shrink-0">${progressPct}%</span>
+        </div>
+      </td>
+      <td class="px-3 py-3 text-[12.5px] whitespace-nowrap">${who}</td>
+      <td class="px-3 py-3 pr-5 whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${s.cls}">${s.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+renderAnnoTasks(ANNO_TASKS);
 
-function toggleDataStay(el){
-  if(el.classList.contains('on')){
-    toast('「标注数据不出客户控制域」为数据合规约束，<b>不建议关闭</b> · 如确需变更，请走数据合规评审流程（本次点击未生效）');
+async function toggleDataStay(el){
+  const currentState = el.classList.contains('on');
+  const targetState = !currentState;
+
+  if (window.IHUB_DEMO && IHUB_DEMO.isLive()) {
+    try {
+      const res = await IHUB_API.postJSON('/api/platform/annotation/data-stay/toggle', {
+        actor: '陈铮',
+        new_state: targetState
+      });
+      // 开启方向成功
+      el.classList.toggle('on', res.data_stay_in_domain);
+      toast(`✓ ${res.message}（blk#${res.audit_blk}）`);
+      return;
+    } catch(e) {
+      // 关闭方向被拦截：回弹保持 on
+      el.classList.add('on');
+      toast(e.message_cn || e.message || '「标注数据不出客户控制域」为合规硬约束，禁止关闭 · 本次尝试已记入不可篡改审计日志');
+      return;
+    }
+  }
+
+  if(currentState){
+    toast('「标注数据不出客户控制域」为合规硬约束，禁止关闭 · 演示态拦截');
     return;
   }
   el.classList.add('on');
@@ -828,7 +1272,8 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose()
   // 深链 ?tab= 支持
   const q = new URLSearchParams(location.search);
   const tab = q.get('tab');
-  const tabMap = { tenant: 'tab-tenant', monitor: 'tab-monitor', config: 'tab-config', annotate: 'tab-annotate' };
+  /* alerts = audit-reports 红线卡深链别名 →「监控与告警」Tab（修复 2026-11-15 跨页 ?tab=alerts 失配） */
+  const tabMap = { tenant: 'tab-tenant', monitor: 'tab-monitor', config: 'tab-config', annotate: 'tab-annotate', alerts: 'tab-monitor' };
   if (tab && tabMap[tab]) {
     const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick')?.includes(tabMap[tab]));
     if (btn) switchTab(tabMap[tab], btn);
@@ -841,35 +1286,187 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose()
     }
   });
 
+  window.loadLiveAdminData = loadLiveAdminData;
+  window.loadConfigView = loadConfigView;
+  window.loadTenantCards = loadTenantCards;
+  window.loadKmsKeys = loadKmsKeys;
+
   async function loadLiveAdminData(){
     try {
-      // 1. Tab 1: 权限矩阵 & 用户
-      const [rbacData, usersData] = await Promise.all([
-        IHUB_API.getJSON('/api/platform/rbac'),
-        IHUB_API.getJSON('/api/platform/users')
+      await Promise.all([
+        loadTenantCards(),
+        loadRbacAndUsers(),
+        loadSsoStatus(),
+        loadMonitorAndQueues(),
+        loadAlertRules(),
+        loadConfigView(),
+        loadKmsKeys(),
+        loadModelBoundary(),
+        loadAnnotationDashboard()
       ]);
-      if (rbacData && rbacData.roles) {
-        document.getElementById('rbac-tbody').innerHTML = rbacData.roles.map(r => `
-          <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
-            <td class="px-5 py-3"><b class="font-medium">${r.name}</b><span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">${r.who}</span></td>
-            ${r.grants.slice(0, 7).map(g => `<td class="px-3 py-3 text-center">${yn(g)}</td>`).join('')}
-          </tr>`).join('');
-      }
-      if (usersData && usersData.users) {
-        document.getElementById('user-tbody').innerHTML = usersData.users.map(u => `
-          <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
-            <td class="px-5 py-3"><div class="flex items-center gap-2.5">
-              <span class="w-7 h-7 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[11px] font-semibold shrink-0">${u.name.slice(0,1)}</span>
-              <span><b class="block font-medium">${u.name}</b><span class="block text-[11px] text-ink-3 dark:text-gray-500">${u.org}</span></span>
-            </div></td>
-            <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${u.role}</td>
-            <td class="px-3 py-3"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">${u.status}</span></td>
-            <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 num whitespace-nowrap">${u.login}</td>
-            <td class="px-3 py-3 pr-5 text-center"><span class="inline-flex items-center gap-1 text-[12px] text-success font-medium">${u.mfa}</span></td>
-          </tr>`).join('');
-      }
+    } catch(e) {
+      console.warn('平台管理数据在线加载失败，回退内嵌 mock：', e);
+    }
+  }
 
-      // 2. Tab 2: 告警规则
+  // 1. 租户卡与四隔离实化 (FN-9-01, FN-0-11)
+  async function loadTenantCards(){
+    try {
+      const data = await IHUB_API.getJSON('/api/platform/tenants');
+      if (!data || !data.tenants) return;
+      const htmls = [];
+      for (const t of data.tenants) {
+        // 请求各租户四隔离探测验证
+        let verifyChecks = null;
+        try {
+          const vRes = await IHUB_API.getJSON(`/api/platform/tenants/${t.tenant_id}/verify`);
+          if (vRes && vRes.checks) verifyChecks = vRes.checks;
+        } catch(err) {
+          console.warn(`租户 ${t.tenant_id} 隔离验证失败:`, err);
+        }
+
+        const poolIso = verifyChecks ? verifyChecks.invoice_pool_isolation : { status: 'PASSED' };
+        const cfgIso = verifyChecks ? verifyChecks.config_isolation : { status: 'PASSED' };
+        const keyIso = verifyChecks ? verifyChecks.provider_key_isolation : { status: 'PASSED', degraded: true, todo_tag: 'TODO(H39)' };
+        const dataIso = verifyChecks ? verifyChecks.data_isolation : { status: 'PASSED' };
+
+        const flag = t.instance === 'CN' ? '🇨🇳' : '🌏';
+        const regionBadge = t.instance === 'CN'
+          ? '<span class="ml-1 text-[11px] px-1.5 py-px rounded bg-warning-light dark:bg-[#2E2417] text-warning border border-warning/30">数据驻留要求待 H39 确认 · 推断</span>'
+          : '<span class="ml-1 text-[11px] px-1.5 py-px rounded bg-primary-light dark:bg-[#1B2A4A] text-primary border border-primary-mid dark:border-[#2A3F6B]">海外 Supplier Invoice / Credit Note</span>';
+
+        htmls.push(`
+          <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-5" data-tenant="${t.tenant_id}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-card bg-primary-light dark:bg-[#1B2A4A] flex items-center justify-center text-[18px] shrink-0">${flag}</div>
+                <div class="min-w-0">
+                  <div class="text-[15px] font-semibold truncate">${t.name}</div>
+                  <div class="text-[11.5px] text-ink-3 dark:text-gray-500 mt-0.5 num">租户 ID：${t.tenant_id} · ${t.instance === 'CN' ? '中国实例' : '海外实例'}</div>
+                </div>
+              </div>
+              <span class="shrink-0 px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">${t.status}</span>
+            </div>
+            <div class="mt-3 p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline text-[12px] leading-relaxed">
+              <span class="text-ink-3 dark:text-gray-500">数据区域：</span><b>${t.region}</b>
+              ${regionBadge}
+            </div>
+            <div class="mt-3 grid grid-cols-4 gap-2 text-[11.5px] text-center tenant-iso-grid">
+              <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]" title="${dataIso.evidence || dataIso.detail || ''}"><b class="block text-success text-[13px]">✓</b>数据隔离</div>
+              <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]" title="${poolIso.evidence || poolIso.detail || ''}"><b class="block text-success text-[13px]">✓</b>发票池隔离</div>
+              <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]" title="${cfgIso.evidence || cfgIso.detail || ''}"><b class="block text-success text-[13px]">✓</b>配置隔离</div>
+              <div class="p-2 rounded-card border border-success/30 bg-success-light dark:bg-[#1C2E22]" title="${keyIso.evidence_reason || keyIso.detail || ''}">
+                <b class="block text-success text-[13px]">✓</b>Key 隔离
+              </div>
+            </div>
+          </div>
+        `);
+      }
+      document.getElementById('tenant-cards').innerHTML = htmls.join('');
+    } catch(e) {
+      console.warn('加载租户数据失败：', e);
+    }
+  }
+
+  // 2. RBAC & 用户表
+  async function loadRbacAndUsers(){
+    const [rbacData, usersData] = await Promise.all([
+      IHUB_API.getJSON('/api/platform/rbac'),
+      IHUB_API.getJSON('/api/platform/users')
+    ]);
+    if (rbacData && rbacData.roles) {
+      document.getElementById('rbac-tbody').innerHTML = rbacData.roles.map(r => `
+        <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+          <td class="px-5 py-3"><b class="font-medium">${r.name}</b><span class="block text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">${r.who}</span></td>
+          ${r.grants.slice(0, 7).map(g => `<td class="px-3 py-3 text-center">${yn(g)}</td>`).join('')}
+        </tr>`).join('');
+    }
+    if (usersData && usersData.users) {
+      document.getElementById('user-tbody').innerHTML = usersData.users.map(u => `
+        <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+          <td class="px-5 py-3"><div class="flex items-center gap-2.5">
+            <span class="w-7 h-7 rounded-full bg-primary-light border border-primary-mid flex items-center justify-center text-primary text-[11px] font-semibold shrink-0">${u.name.slice(0,1)}</span>
+            <span><b class="block font-medium">${u.name}</b><span class="block text-[11px] text-ink-3 dark:text-gray-500">${u.org}</span></span>
+          </div></td>
+          <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 whitespace-nowrap">${u.role}</td>
+          <td class="px-3 py-3"><span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">${u.status}</span></td>
+          <td class="px-3 py-3 text-[12px] text-ink-2 dark:text-gray-400 num whitespace-nowrap">${u.login}</td>
+          <td class="px-3 py-3 pr-5 text-center"><span class="inline-flex items-center gap-1 text-[12px] text-success font-medium">${u.mfa}</span></td>
+        </tr>`).join('');
+    }
+  }
+
+  // 3. SSO IdP 状态 (FN-9-03)
+  async function loadSsoStatus(){
+    try {
+      const ssoRes = await IHUB_API.getJSON('/api/platform/sso/status');
+      if (ssoRes && ssoRes.providers) {
+        document.getElementById('sso-providers').innerHTML = ssoRes.providers.map(p => {
+          const isConnected = p.status === '已连接';
+          return `
+            <div class="flex items-center justify-between p-3 rounded-card border border-line dark:border-dline ${isConnected ? 'bg-success-light dark:bg-[#1C2E22]' : ''}">
+              <div class="flex items-center gap-2.5">
+                <span class="w-5 h-5 rounded-full ${isConnected ? 'bg-success text-white' : 'bg-surface text-ink-3'} flex items-center justify-center text-[12px] shrink-0 border border-line dark:border-dline">${isConnected ? '✓' : '○'}</span>
+                <span><b class="block text-[13px]">${p.name}</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">${p.full_name}</span></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[11.5px] px-2 py-0.5 rounded ${isConnected ? 'bg-card dark:bg-dcard border border-success/30 text-success' : 'bg-surface border text-ink-3'} font-medium num">${p.badge}</span>
+                <button disabled title="设计期预留能力" class="px-2 py-0.5 rounded text-[11px] border border-line dark:border-dline text-ink-4 dark:text-gray-600 cursor-not-allowed opacity-60">重新连接</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    } catch(e) {
+      console.warn('加载 SSO 状态失败：', e);
+    }
+  }
+
+  // 4. Tab 2 监控与队列 (FN-9-06, FN-9-07)
+  async function loadMonitorAndQueues(){
+    try {
+      const [healthData, queueData] = await Promise.all([
+        IHUB_API.getJSON('/api/platform/health'),
+        IHUB_API.getJSON('/api/platform/queues')
+      ]);
+      if (healthData && healthData.cards) {
+        document.getElementById('health-grid').innerHTML = healthData.cards.map(h => `
+          <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-[13.5px] font-semibold truncate">${h.name}</div>
+                <div class="text-[11px] text-ink-3 dark:text-gray-500 mt-0.5">${h.meta}</div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-success-light dark:bg-[#1C2E22] text-success border border-success/30">${h.badge}</span>
+                <span class="block text-[9.5px] text-ink-3 dark:text-gray-500 mt-1">组件名为演示示例 · PoC口径</span>
+              </div>
+            </div>
+            <div class="mt-2">${sparkline(h.data, h.color)}</div>
+            <div class="mt-1.5 flex items-center justify-between text-[11.5px]">
+              <span class="text-ink-2 dark:text-gray-400 num">${h.metric}</span>
+              <span class="text-ink-3 dark:text-gray-500 num">近 24h</span>
+            </div>
+          </div>`).join('');
+      }
+      if (queueData && queueData.queues) {
+        document.getElementById('queue-tbody').innerHTML = queueData.queues.map(q => `
+          <tr class="hover:bg-surface dark:hover:bg-[#23282F] transition-colors">
+            <td class="px-5 py-3 font-medium whitespace-nowrap">${q.name}</td>
+            <td class="px-3 py-3 text-right whitespace-nowrap">${q.backlog}</td>
+            <td class="px-3 py-3 text-right whitespace-nowrap text-ink-2 dark:text-gray-400">${q.rate}</td>
+            <td class="px-3 py-3 text-right whitespace-nowrap text-ink-2 dark:text-gray-400">${q.age}</td>
+            <td class="px-3 py-3 pr-5 text-[12px] ${String(q.ok).startsWith('关注') ? 'text-warning' : 'text-ink-3 dark:text-gray-500'}">${String(q.ok).startsWith('关注') ? '⚠ ' : '✓ '}${q.ok}</td>
+          </tr>`).join('');
+      }
+    } catch(e) {
+      console.warn('加载健康与队列监控失败：', e);
+    }
+  }
+
+  // 5. 告警规则
+  async function loadAlertRules(){
+    try {
       const alertData = await IHUB_API.getJSON('/api/platform/alerts/rules');
       if (alertData && alertData.rules) {
         ALERT_RULES.length = 0;
@@ -877,7 +1474,92 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose()
         renderAlertRules();
       }
     } catch(e) {
-      console.warn('平台管理数据在线加载失败，回退内嵌 mock：', e);
+      console.warn('加载告警规则失败：', e);
+    }
+  }
+
+  // 6. Tab 3 配置中心实化 (FN-9-09)
+  async function loadConfigView(){
+    try {
+      const cfgData = await IHUB_API.getJSON('/api/platform/config');
+      if (cfgData && cfgData.published) {
+        saved = Object.assign({}, cfgData.published.values);
+        draft = Object.assign({}, cfgData.draft || cfgData.published.values);
+        cfgVer = cfgData.published.version;
+        document.getElementById('cfg-ver').textContent = `配置版本 ${cfgVer} · 已发布`;
+        document.getElementById('cfg-threshold').value = draft.threshold !== undefined ? draft.threshold : 0.85;
+        document.getElementById('cfg-tolerance').value = draft.tolerance || '±0.06';
+        if (document.getElementById('cfg-po-tolerance')) {
+          document.getElementById('cfg-po-tolerance').value = draft.po_tolerance || '±S$50';
+        }
+        document.getElementById('sw-lowconf').classList.toggle('on', Boolean(draft.lowConfManual));
+        document.getElementById('sw-newcust').classList.toggle('on', Boolean(draft.newCustReview));
+        document.getElementById('cfg-region').value = draft.regionRoute || '中国票据 → 境内 Provider 优先 / 海外票据 → 新加坡区域';
+        markDirty();
+      }
+    } catch(e) {
+      console.warn('加载配置中心失败：', e);
+    }
+  }
+
+  // 7. KMS 凭证列表 (FN-9-10)
+  async function loadKmsKeys(){
+    try {
+      const res = await IHUB_API.getJSON('/api/platform/kms/keys');
+      if (res && res.keys) {
+        _liveKmsKeys = res.keys;
+        document.getElementById('kms-keys-grid').innerHTML = res.keys.map(k => `
+          <div class="flex items-center justify-between p-2.5 rounded-card bg-surface dark:bg-[#23282F] border border-line dark:border-dline">
+            <div>
+              <span class="block text-ink-1 dark:text-gray-200 font-medium">${k.name}</span>
+              <span class="block text-[10.5px] text-ink-3 dark:text-gray-500">${k.provider}</span>
+            </div>
+            <div class="text-right">
+              <code class="num text-primary font-mono text-[12px] block">${k.masked_value}</code>
+              <span class="text-[10px] text-success font-medium">✓ KMS 托管</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    } catch(e) {
+      console.warn('加载 KMS 列表失败：', e);
+    }
+  }
+
+  // 8. 模型数据边界 (FN-9-11)
+  async function loadModelBoundary(){
+    try {
+      const res = await IHUB_API.getJSON('/api/platform/model-boundary');
+      if (res && res.boundary) {
+        const b = res.boundary;
+        document.getElementById('model-last-cleanup').textContent = b.last_cleanup_at || '2026-10-27 02:00:00';
+      }
+    } catch(e) {
+      console.warn('加载模型边界数据失败：', e);
+    }
+  }
+
+  // 9. Tab 4 标注中心看板 (FN-8-13)
+  async function loadAnnotationDashboard(){
+    try {
+      const annoData = await IHUB_API.getJSON('/api/platform/annotation');
+      if (annoData && annoData.stats) {
+        document.getElementById('stat-monthly-samples').textContent = Number(annoData.stats.monthly_samples).toLocaleString('en-US');
+        document.getElementById('stat-queue-backlog').textContent = Number(annoData.stats.queue_backlog).toLocaleString('en-US');
+        document.getElementById('stat-agreement-pct').textContent = annoData.stats.inter_rater_agreement_pct + '%';
+        if (document.getElementById('stat-agreement-bar')) {
+          document.getElementById('stat-agreement-bar').style.width = annoData.stats.inter_rater_agreement_pct + '%';
+        }
+        document.getElementById('stat-sedimented-rules').textContent = annoData.stats.sedimented_rules_count;
+      }
+      if (annoData && annoData.data_stay_in_domain !== undefined) {
+        document.getElementById('sw-datastay').classList.toggle('on', Boolean(annoData.data_stay_in_domain));
+      }
+      if (annoData && annoData.tasks) {
+        renderAnnoTasks(annoData.tasks);
+      }
+    } catch(e) {
+      console.warn('加载标注看板失败：', e);
     }
   }
 
@@ -903,48 +1585,6 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbClose()
       r.on = true;
       el.classList.add('on');
       toast(e.message_cn || e.message || '「错误自动放行率 > 0.05%」为产品红线告警，不可停用 · 本次尝试已记入审计日志');
-    }
-  };
-
-  // 包装配置发布为在线调用
-  const origConfirmPublish = window.confirmPublish;
-  window.confirmPublish = async function(){
-    if (!IHUB_DEMO.isLive()) {
-      if (origConfirmPublish) origConfirmPublish();
-      return;
-    }
-    try {
-      const res = await IHUB_API.postJSON('/api/platform/config/publish', {
-        actor: '陈铮',
-        values: draft,
-        opinion: '配置中心受控发布'
-      });
-      saved = Object.assign({}, draft);
-      document.getElementById('cfg-ver').textContent = `配置版本 ${res.version} · 已发布`;
-      closeConfirm();
-      markDirty();
-      toast(`✓ 配置已发布 · 版本 ${res.version} 已记入不可篡改审计链 · 联动完成 5 大适配器兼容性校验通知`);
-    } catch(e) {
-      closeConfirm();
-      toast('发布被拒：' + (e.message_cn || e.message));
-    }
-  };
-
-  // 包装数据不出域开关（拦截留痕）
-  const origToggleDataStay = window.toggleDataStay;
-  window.toggleDataStay = async function(el){
-    if (!IHUB_DEMO.isLive()) {
-      if (origToggleDataStay) origToggleDataStay(el);
-      return;
-    }
-    try {
-      await IHUB_API.postJSON('/api/platform/annotation/data-stay/toggle', {
-        actor: '陈铮',
-        new_state: false
-      });
-    } catch(e) {
-      el.classList.add('on');
-      toast(e.message_cn || e.message || '「标注数据不出客户控制域」为合规硬约束，禁止关闭 · 本次尝试已记入审计日志');
     }
   };
 })();

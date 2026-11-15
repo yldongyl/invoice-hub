@@ -14,6 +14,8 @@ module.exports = {
     'translate-y-2',
     'pointer-events-none',
     'row-sel',
+    'tag-blue',
+    'tag-orange',
     {
       pattern: /(bg|text|border|hover:bg|hover:text|hover:border|dark:bg|dark:text|dark:border)-(primary|success|warning|danger|purple)(-light|-mid)?/,
     },

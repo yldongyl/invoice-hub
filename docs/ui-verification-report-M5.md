@@ -106,7 +106,7 @@
 | REST API 核心接口面 | PASS | 包含 `/v1/invoices:recognize`、`/v1/cases/{caseId}`、`/v1/cases/{caseId}/evidence` 等核心接口契约与请求响应样例，与 OpenAPI 100% 同步 |
 | Webhook 反向通知与验签 | PASS | 涵盖 4 大回调事件；详细说明 `X-Signature: sha256=<hex>` HMAC 验签与 `X-Event-Id` 幂等去重机制 |
 | MCP 6 工具全清单表 | PASS | 表格规范展示 4 只读工具（蓝标）与 2 受控写工具（橙红标），明确 `confirm_token` 携带操作人身份与二次确认凭据要求，与 `mcp-tools.json` 完全一致 |
-| Provider SPI 与归一化输出 | PASS | 最小实现契约 3 方法（health_check/recognize_sync/batch_parse）、归一化 JSON 格式定义及 YAML 路由配置规范齐备 |
+| Provider SPI 与归一化输出 | PASS | 最小实现契约 3 方法（capabilities/recognize/verify）、归一化 JSON 格式定义及 YAML 路由配置规范齐备 |
 | 目标系统 Adapter 规范 | PASS | 提供 cXML InvoiceDetailRequest 报文骨架样例，明确标注 H24 待确认字段与适配器独立开发流程 |
 
 ### 3.5 演示宣讲首页（demo-landing.html · 静态总览）｜截图 10
@@ -136,6 +136,23 @@
 | **matching-mapping.html** | 三 Tab 全链路流转 | PASS | Tab 1 差异队列 5 行；Tab 2 税码表 8 行与 LLM 推荐沉淀；Tab 3 冲减候选 2 组（92% 匹配度）四项证据绿勾对齐 |
 | **provider-orchestration.html** | 6 厂商、SLA 告警与连通测试 | PASS | 自有 OCR SLA 超阈值橙色告警；点击测试连通成功弹出握手时延 toast 并不报错，UI-M4-F01 保持闭环 |
 | **adapter-management.html** | 6 卡片网格与沙箱测试建档 | PASS | 3×2 网格正常；沙箱测试建档五步动画推进，成功生成真实回执 `AID-2026-F3E23` 并不污染生产 |
+| **outbound-filing.html** | 出站台账、4 类单据枚举与受控重推 | PASS | KPI 五卡与批次明细接线 live API（`GET /v1/outbound/batches`）；严格呈现 Ariba 4 类单据枚举；退避冷静期置灰；受控重推五要素弹窗完整闭环 |
+
+---
+
+### 3.13 出站建档与回写（outbound-filing.html · FN-7-05/06 实装核验）
+承载：FN-7-04~06、FN-7-08 多采购平台出站台账、Ariba 4 类单据支持与失败受控重推。
+
+| 区块 / 功能点 | 判定 | 说明与实机核验证据 |
+|---|---|---|
+| KPI 五卡（真实 API 聚合） | PASS | live 态数据源来自 `GET /v1/outbound/batches` 聚合（待出站、推送中、建档成功、失败待人工、平均回写时延）；时延无实测时明确输出 null 并标注「演示口径」，严禁编造虚假数值 |
+| 批次列表与服务端筛选 | PASS | 目标平台（Ariba/Oracle/Coupa/自研）与状态（已完成/部分失败/待人工处理）下拉联动服务端参数查询，过滤结果实时刷新 |
+| Ariba 4 类单据枚举呈现 | PASS | 批次明细展开完整呈现 `Invoice(PO)`、`Invoice(Contract)`、`Invoice(Non-PO)`、`Invoice(Credit Memo)` 四类标准单据徽章，红字贷项凭证严格携带 MasterInvoiceNumber |
+| 状态语义对齐（对账与付款分离） | PASS | 成功终态展示为「建档成功/对账完成（生成支付凭证传会计系统）」，严禁虚假「已付款」口径；底部明确标注 Ariba 仅生成凭证传后端 ERP |
+| 失败记录退避调度（FN-7-05） | PASS | 失败单据落库支持退避序列（30s/2min/10min）计算；退避期内「受控重推」按钮置灰并悬浮提示下次重试时间；退避期后开放受控重推 |
+| 受控重推五要素弹窗闭环 | PASS | 仅限平台运营（刘工）与管理员（陈铮）发起，复核员点击拦截 403；弹窗提供风险提示、二次确认勾选框、处置意见输入，确认后重跑 execute_filing 并双写时间线与审计哈希链 |
+| Adapter 状态联动（FN-7-08） | PASS | 消费 `LIVE_ADAPTERS`：Coupa（适配中 ◐）与 S/4HANA（规划中 ○）沙箱预演按钮置灰并悬浮提示「Adapter 未开放」，禁止无效触发；Ariba/Oracle 等已对接平台正常可用 |
+| demo-mode 独立演示态回退 | PASS | 离线或后端停机时，平滑降级至 `OUTBOUND_BATCHES` 本地同源演示数据，五卡与批次完整可演示 |
 
 ---
 

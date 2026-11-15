@@ -16,6 +16,7 @@ from backend.tests.test_scenarios_m4 import (  # noqa: F401
     test_s_m4_03_0387_tax_variance_release_and_filing,
     test_s_m4_04_0384_link_validation_and_pre_filing_interception,
     test_s_m4_05_policy_publish_draft_update_and_rollback,
+    test_s_m4_06_outbound_filing_lifecycle_and_controlled_repush,
 )
 
 pytestmark = pytest.mark.scenario

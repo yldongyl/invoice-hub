@@ -305,3 +305,62 @@ def test_s_m3_05_five_elements_missing_all_rejected(api_client, tmp_dirs):
         expect(c5["status"] == "NEEDS_REVIEW", S, "回滚后案件状态不变", "NEEDS_REVIEW", c5["status"], "FN-0-08")
     finally:
         gcm.append_block, smm.append_block = orig_gc, orig_sm
+
+
+def test_s_m3_06_manual_verify_timeout_case_persisted(api_client, tmp_dirs):
+    """S-M3-06 (CON-13 / FN-8-15): 查验超时 NOT_VERIFIED 案件人工查验登记全链断言。
+    链路：查验超时件 -> 受控 risk-challenge -> manual_verify 提交 -> DB checks 真实持久化 -> 不可篡改审计链可查。
+    """
+    S = "S-M3-06"
+    cid = "INV-CN-2026-0387"
+
+    # 1. 验证前状态：authenticity 为 NOT_VERIFIED（查验超时）
+    c_before = get_case(api_client, cid)
+    expect(c_before["checks"]["authenticity"]["result"] == "NOT_VERIFIED", S,
+           "查验前为超时未验证态", "NOT_VERIFIED", c_before["checks"]["authenticity"]["result"], "FN-5-02/8-15")
+
+    # 2. 签署受控写风险提示（要素②③）
+    ch = api_client.post(f"/v1/cases/{cid}/risk-challenge",
+                         json={"actor": "王莉", "instance": "CN", "action": "manual_verify"})
+    expect(ch.status_code == 200, S, "人工查验风险提示签发", 200, ch.status_code, "FN-0-08")
+    token = ch.json()["token"]
+
+    # 3. 提交人工查验登记（五要素齐备：复核员权限、凭据、本人勾选、回执与备注、双写）
+    receipt_no = "manual-rcpt-e2e-20261111"
+    res = api_client.post(f"/v1/cases/{cid}/actions/manual_verify", json={
+        "actor": "王莉",
+        "instance": "CN",
+        "token": token,
+        "self_confirmed": True,
+        "channel": "国家税务总局全国增值税发票查验平台",
+        "result": "PASSED",
+        "receipt": receipt_no,
+        "note": "经税局官方查验平台核对，发票代开查验信息真实无误，底册一致"
+    })
+    expect(res.status_code == 200, S, "人工查验登记成功", 200, res.status_code, "FN-8-15/CON-13")
+    data = res.json()
+    expect(data["manual_verified"] is True, S, "manual_verified 标记", True, data.get("manual_verified"), "CON-13")
+
+    # 4. DB checks 真实持久化断言（重新发起 GET 检验）
+    c_after = get_case(api_client, cid)
+    auth_check = c_after["checks"]["authenticity"]
+    expect(auth_check["result"] == "PASSED", S,
+           "DB checks 真实变更为 PASSED", "PASSED", auth_check["result"], "FN-0-07")
+    expect("method=manual" in auth_check["note"], S,
+           "method=manual 标记落库", "method=manual in note", auth_check["note"], "CON-13")
+    expect(receipt_no in auth_check["note"], S,
+           "回执流水号落库", receipt_no, auth_check["note"], "FN-8-15")
+
+    # 5. 时间线追加断言
+    tl = api_client.get(f"/v1/cases/{cid}/timeline?instance=CN").json()["items"]
+    mv_tl = [e for e in tl if e.get("act") == "SM2_VERIFY" and e.get("a") == "human"]
+    expect(len(mv_tl) >= 1, S, "时间线追加 SM2_VERIFY(human) 事件", ">=1", len(mv_tl), "FN-0-10")
+    expect(receipt_no in mv_tl[-1]["x"], S, "时间线详情含回执号", receipt_no, mv_tl[-1]["x"], "FN-0-10")
+
+    # 6. 不可篡改审计链断言（哈希链校验）
+    from app.services import audit_chain as ac
+    from app.services.persistence import get_session
+    with get_session() as s:
+        v_res = ac.verify_chain(s)
+        expect(v_res["ok"] is True, S, "审计哈希链校验完整性通过", True, v_res["ok"], "FN-0-10")
+

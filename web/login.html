@@ -100,7 +100,6 @@
 <!-- ═══════════════ 右侧：登录卡（一屏收纳） ═══════════════ -->
 <section class="flex-1 min-w-0 flex items-center justify-center relative px-6 py-4">
   <div class="absolute top-4 right-6 flex items-center gap-2">
-    <a href="demo-landing.html" class="text-[12px] text-ink-3 dark:text-gray-500 hover:text-primary px-2 py-1"></a>
     <button onclick="document.documentElement.classList.toggle('dark')" title="深色模式" class="w-8 h-8 rounded-card border border-line dark:border-dline flex items-center justify-center text-ink-2 dark:text-gray-300 hover:border-primary hover:text-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
     </button>
@@ -163,7 +162,7 @@
             <input id="in-mfa" maxlength="6" inputmode="numeric" class="flex-1 rounded-card border border-line dark:border-dline bg-card dark:bg-[#23282F] px-3 py-2 text-[12.5px] focus:outline-none focus:border-primary" placeholder="6 位验证码">
             <button type="button" onclick="requestMfa()" class="px-3 rounded-card border border-primary text-primary text-[12px] font-medium hover:bg-primary-light">获取验证码</button>
           </div>
-          <div id="err-mfa" class="hidden text-[10.5px] text-danger mt-0.5">复核员/管理员必须输入 6 位 MFA 验证码</div>
+          <div id="err-mfa" class="hidden text-[10.5px] text-danger mt-0.5">全员强制 MFA 校验 · 请输入 6 位有效动态验证码</div>
         </div>
         <div class="flex items-center justify-between text-[11.5px]">
           <label class="flex items-center gap-1.5 text-ink-2 dark:text-gray-400 cursor-pointer"><input type="checkbox" checked class="accent-[#165DFF]">记住此设备（受信任 30 天）</label>
@@ -181,99 +180,251 @@
 
 <script>
 let tenant = 'cn', locked = false, busy = false, mfaChallenge = null;
-const TENANTS = {
-  cn:{ id:'TENANT-CN-LANWU-001', user:'王莉', name:'澜坞（上海）· 中国实例' },
-  os:{ id:'TENANT-SG-LANWU-001', user:'张审计', name:'Lanwu Singapore · 海外实例' }
+let TENANTS = {
+  cn: {
+    id: 'TENANT-CN-LANWU-001',
+    code: 'cn',
+    user: '王莉',
+    name: '澜坞（上海）· 中国实例',
+    button_label: '中国实例',
+    sso_idp: 'sap_ias',
+    sso_name: 'SAP IAS · SAML 2.0',
+    note: '数据区域：中国境内存储 · 数据驻留细则待 H39 确认（推断）· 租户四隔离（数据/配置/Provider Key/发票池）'
+  },
+  os: {
+    id: 'TENANT-SG-LANWU-001',
+    code: 'os',
+    user: '张审计',
+    name: 'Lanwu Singapore · 海外实例',
+    button_label: '🌏海外实例',
+    sso_idp: 'btp_xsuaa',
+    sso_name: 'BTP xsuaa · OIDC',
+    note: '数据区域：新加坡（Singapore Region）· 海外实例（某海外真实场景链路已验证）· 租户四隔离（数据/配置/Provider Key/发票池）'
+  }
 };
-function setSeg(k){
-  const cn=document.getElementById('t-cn'), os=document.getElementById('t-os');
-  const active='seg-active flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium transition-colors';
-  const idle='flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium text-ink-2 dark:text-gray-400 transition-colors';
-  cn.className = k==='cn'?active:idle; os.className = k==='os'?active:idle;
+
+function renderTenantSeg() {
+  const seg = document.getElementById('tenant-seg');
+  if (!seg) return;
+  const codes = Object.keys(TENANTS);
+  seg.innerHTML = codes.map(k => {
+    const t = TENANTS[k];
+    const isAct = k === tenant;
+    const cls = isAct
+      ? 'seg-active flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium transition-colors'
+      : 'flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium text-ink-2 dark:text-gray-400 transition-colors';
+    const label = t.button_label || (k === 'cn' ? '中国实例' : '🌏海外实例');
+    return `<button id="t-${k}" onclick="pickTenant('${k}')" class="${cls}">${label}</button>`;
+  }).join('');
 }
-function pickTenant(k){
-  if(locked){ toast('租户已由 SSO 断言推导，如需切换请刷新页面后改用账号密码登录'); return; }
+
+function setSeg(k) {
+  const t = TENANTS[k];
+  if (!t) return;
+  Object.keys(TENANTS).forEach(key => {
+    const btn = document.getElementById(`t-${key}`);
+    if (btn) {
+      btn.className = key === k
+        ? 'seg-active flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium transition-colors'
+        : 'flex-1 px-2 py-1.5 rounded-[6px] text-[12px] font-medium text-ink-2 dark:text-gray-400 transition-colors';
+    }
+  });
+  const noteEl = document.getElementById('tenant-note');
+  if (noteEl) noteEl.textContent = t.note || '';
+}
+
+function pickTenant(k) {
+  if (locked) { toast('租户已由 SSO 断言推导，如需切换请刷新页面后改用账号密码登录'); return; }
   tenant = k; setSeg(k);
 }
-function saveSession(data){
+
+async function loadTenants() {
+  try {
+    const res = await fetch('/api/platform/tenants', {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data && Array.isArray(data.tenants) && data.tenants.length > 0) {
+      const newTenants = {};
+      data.tenants.forEach(t => {
+        const code = t.code || (t.instance === 'CN' ? 'cn' : 'os');
+        const defaultLabel = code === 'cn' ? '中国实例' : '🌏海外实例';
+        newTenants[code] = {
+          id: t.tenant_id,
+          code: code,
+          user: t.default_user || (code === 'cn' ? '王莉' : '张审计'),
+          name: t.short_name || t.name,
+          button_label: t.short_button_label || defaultLabel,
+          sso_idp: t.sso_idp || (code === 'cn' ? 'sap_ias' : 'btp_xsuaa'),
+          sso_name: t.sso_name || (code === 'cn' ? 'SAP IAS · SAML 2.0' : 'BTP xsuaa · OIDC'),
+          note: t.four_isolations_note || (t.region_note ? `数据区域：${t.region} · ${t.region_note} · 租户四隔离（数据/配置/Provider Key/发票池）` : '')
+        };
+      });
+      TENANTS = newTenants;
+      renderTenantSeg();
+    }
+  } catch (err) {
+    console.warn('获取租户列表失败，使用内嵌租户配置回退：', err);
+  }
+  setSeg(tenant);
+}
+
+function saveSession(data) {
   sessionStorage.setItem('ihub.auth', JSON.stringify(data));
 }
-function targetAfterLogin(){
+
+function targetAfterLogin() {
   const q = new URLSearchParams(location.search);
   const next = q.get('next');
   return next && !next.startsWith('login.html') ? next : 'dashboard-overview.html';
 }
-function setBusy(on){
-  const btn=document.getElementById('btn-login');
-  busy=on; btn.textContent=on?'认证中…':'登 录'; btn.classList.toggle('opacity-70', on);
+
+function setBusy(on) {
+  const btn = document.getElementById('btn-login');
+  busy = on;
+  btn.textContent = on ? '认证中…' : '登 录';
+  btn.classList.toggle('opacity-70', on);
 }
-function authError(e){
-  return e.message_cn || e.message || '认证失败，请重试';
+
+function authError(e) {
+  const msg = e && (e.message_cn || e.message);
+  if (!msg || msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('fetch')) {
+    return '需启动后台服务：python scripts/hub.py run';
+  }
+  return msg || '认证失败，请重试';
 }
-async function requestMfa(){
-  const u=document.getElementById('in-user').value.trim();
-  if(!u){ document.getElementById('err-user').classList.remove('hidden'); return; }
-  try{
+
+async function requestMfa() {
+  const u = document.getElementById('in-user').value.trim();
+  if (!u) { document.getElementById('err-user').classList.remove('hidden'); return; }
+  const curTenant = TENANTS[tenant] || TENANTS['cn'];
+  try {
     const res = await fetch('/api/platform/auth/mfa/challenge', {
-      method:'POST', headers:{'Content-Type':'application/json', Accept:'application/json'},
-      body: JSON.stringify({ username:u, tenant_id:TENANTS[tenant].id })
-    }).then(async r=>{ const j=await r.json(); if(!r.ok) throw new Error(j.detail?.message || j.detail || '获取验证码失败'); return j; });
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ username: u, tenant_id: curTenant.id })
+    }).then(async r => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail?.message || j.detail || `HTTP ${r.status}`);
+      return j;
+    });
     mfaChallenge = res;
     document.getElementById('in-mfa').value = res.dev_code || '';
     toast('MFA 验证码已发送至认证器' + (res.dev_code ? '（演示码：' + res.dev_code + '）' : ''));
-  }catch(e){ toast('获取 MFA 失败：' + authError(e)); }
+  } catch (e) {
+    toast('获取 MFA 失败：' + authError(e));
+  }
 }
-async function ssoLogin(){
+
+async function ssoLogin() {
   /* SSO：根据当前选择的租户自动选择企业 IdP（CN→SAP IAS，OS→BTP xsuaa）。 */
-  if(busy){ toast('认证进行中…'); return; }
-  const derived = tenant;
-  const name = derived === 'cn' ? 'SAP IAS · SAML 2.0' : 'BTP xsuaa · OIDC';
+  if (busy) { toast('认证进行中…'); return; }
+  const curTenant = TENANTS[tenant] || TENANTS['cn'];
+  const derived = curTenant.code || tenant;
+  const name = curTenant.sso_name || (derived === 'cn' ? 'SAP IAS · SAML 2.0' : 'BTP xsuaa · OIDC');
   locked = true;
   setSeg(derived);
   document.getElementById('tenant-seg').classList.add('tenant-lock');
   const b = document.getElementById('tenant-banner');
-  b.innerHTML = `✓ 已从 SSO 推导租户：<b>${TENANTS[derived].name}</b>`;
+  b.innerHTML = `✓ 已从 SSO 推导租户：<b>${curTenant.name}</b>`;
   b.classList.remove('hidden');
   setBusy(true);
-  try{
+  try {
     const data = await fetch('/api/platform/sso/login', {
-      method:'POST', headers:{'Content-Type':'application/json', Accept:'application/json'},
-      body: JSON.stringify({ idp_id: derived==='cn'?'sap_ias':'btp_xsuaa', assertion:{ username:TENANTS[derived].user, tenant_id:TENANTS[derived].id } })
-    }).then(async r=>{ const j=await r.json(); if(!r.ok) throw new Error(j.detail?.message || j.detail || 'SSO 认证失败'); return j; });
-    saveSession(data); enterSuccess('企业 SSO（'+name+'）', data);
-  }catch(e){ setBusy(false); toast('SSO 登录失败：' + authError(e)); }
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        idp_id: curTenant.sso_idp || (derived === 'cn' ? 'sap_ias' : 'btp_xsuaa'),
+        assertion: { username: curTenant.user, tenant_id: curTenant.id }
+      })
+    }).then(async r => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail?.message || j.detail || 'SSO 认证失败');
+      return j;
+    });
+    saveSession(data);
+    enterSuccess('企业 SSO（' + name + '）', data);
+  } catch (e) {
+    setBusy(false);
+    toast('SSO 登录失败：' + authError(e));
+  }
 }
-function enterSuccess(way, data){
-  toast(`✓ ${way} 认证成功 · 租户：${TENANTS[tenant].name} · ${data.user.name} · ${data.user.role} · MFA ${data.mfa_verified?'已通过':'免验证'} · 登录事件已记入审计日志`);
-  setTimeout(()=>location.href=targetAfterLogin(), 900);
+
+function enterSuccess(way, data) {
+  toast(`✓ ${way} 认证成功 · 租户：${TENANTS[tenant].name} · ${data.user.name} · ${data.user.role} · MFA ${data.mfa_verified ? '已通过' : '免验证'} · 登录事件已记入审计日志`);
+  setTimeout(() => location.href = targetAfterLogin(), 900);
 }
-async function pwdLogin(e){
+
+async function pwdLogin(e) {
   e.preventDefault();
-  if(locked){ toast('当前为 SSO 推导会话 · 账密登录请刷新页面后重试'); return false; }
-  if(busy){ return false; }   // 防重复提交（原由 disabled 实现，F02 修复后以标志门控）
-  const u=document.getElementById('in-user').value.trim(), p=document.getElementById('in-pwd').value.trim(), m=document.getElementById('in-mfa').value.trim();
-  let ok=true;
-  document.getElementById('err-user').classList.toggle('hidden', !!u); if(!u) ok=false;
-  document.getElementById('err-pwd').classList.toggle('hidden', !!p); if(!p) ok=false;
-  document.getElementById('err-mfa').classList.toggle('hidden', /^\d{6}$/.test(m)); if(!/^\d{6}$/.test(m)) ok=false;
-  if(!ok) return false;
+  if (locked) { toast('当前为 SSO 推导会话 · 账密登录请刷新页面后重试'); return false; }
+  if (busy) { return false; } // 防重复提交（原由 disabled 实现，F02 修复后以标志门控）
+  const u = document.getElementById('in-user').value.trim(),
+        p = document.getElementById('in-pwd').value.trim(),
+        m = document.getElementById('in-mfa').value.trim();
+  const rememberCheckbox = document.querySelector('input[type="checkbox"]');
+  const rememberChecked = rememberCheckbox ? rememberCheckbox.checked : false;
+  const savedDeviceToken = localStorage.getItem('ihub.device_token') || null;
+
+  let ok = true;
+  document.getElementById('err-user').classList.toggle('hidden', !!u); if (!u) ok = false;
+  document.getElementById('err-pwd').classList.toggle('hidden', !!p); if (!p) ok = false;
+
+  // 全员强制 MFA 校验（FN-9-05 验收口径）：若本地有受信任 device_token 且未填 mfa，允许尝试免验证码直连
+  const hasValidMfa = /^\d{6}$/.test(m);
+  const mfaOk = hasValidMfa || (savedDeviceToken && !m);
+  document.getElementById('err-mfa').classList.toggle('hidden', mfaOk);
+  if (!mfaOk) ok = false;
+  if (!ok) return false;
+
   setBusy(true);
-  try{
+  const curTenant = TENANTS[tenant] || TENANTS['cn'];
+  try {
     const data = await fetch('/api/platform/auth/login', {
-      method:'POST', headers:{'Content-Type':'application/json', Accept:'application/json'},
-      body: JSON.stringify({ username:u, password:p, tenant_id:TENANTS[tenant].id, mfa_challenge_id:mfaChallenge && mfaChallenge.challenge_id, mfa_code:m, remember_device:document.querySelector('input[type="checkbox"]').checked })
-    }).then(async r=>{ const j=await r.json(); if(!r.ok) throw new Error(j.detail?.message || j.detail || '登录失败'); return j; });
-    saveSession(data); enterSuccess('账号密码 · 手选租户「'+TENANTS[tenant].name+'」', data);
-  }catch(e){ setBusy(false); toast('登录失败：' + authError(e)); }
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        username: u,
+        password: p,
+        tenant_id: curTenant.id,
+        mfa_challenge_id: mfaChallenge && mfaChallenge.challenge_id,
+        mfa_code: hasValidMfa ? m : null,
+        remember_device: rememberChecked,
+        device_token: savedDeviceToken
+      })
+    }).then(async r => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail?.message || j.detail || '登录失败');
+      return j;
+    });
+
+    // 记住设备持久化 (FN-9-04)
+    if (rememberChecked && data.device_token) {
+      localStorage.setItem('ihub.device_token', data.device_token);
+    } else if (!rememberChecked) {
+      localStorage.removeItem('ihub.device_token');
+    }
+
+    saveSession(data);
+    enterSuccess('账号密码 · 手选租户「' + curTenant.name + '」', data);
+  } catch (e) {
+    setBusy(false);
+    toast('登录失败：' + authError(e));
+  }
   return false;
 }
-function toast(msg){
-  const t=document.getElementById('toast'); t.innerHTML=msg;
-  t.classList.remove('opacity-0','translate-y-2','pointer-events-none');
-  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('opacity-0','translate-y-2','pointer-events-none'), 3600);
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.innerHTML = msg;
+  t.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none'), 3600);
 }
-try{ if(sessionStorage.getItem('ihub.auth')) location.href = targetAfterLogin(); }catch(_){ }
-setSeg('cn');
+
+try { if (sessionStorage.getItem('ihub.auth')) location.href = targetAfterLogin(); } catch (_) { }
+loadTenants();
 </script>
 </body>
 </html>

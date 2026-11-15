@@ -472,16 +472,19 @@ def assert_pre_filing_link_valid(session, case: m.Case) -> None:
         )
     )
     is_confirmed = False
+    origin_ref = None
     if link is not None and (link.link_raw or {}).get("confirmed") is True:
         is_confirmed = True
+        origin_ref = link.ref or (link.link_raw or {}).get("ref") or (link.link_raw or {}).get("original_invoice_no")
     elif case.links_raw and (case.links_raw.get("credit_note") or {}).get("confirmed") is True:
         is_confirmed = True
+        origin_ref = (case.links_raw.get("credit_note") or {}).get("ref") or (case.links_raw.get("credit_note") or {}).get("original_invoice_no")
 
-    if not is_confirmed:
+    if not is_confirmed or not (origin_ref or "").strip():
         raise CommandError(
             "E_LINK_UNCONFIRMED",
-            f"建档拦截：{case.case_id}（{itype}）尚未建立/确认冲减 Link！"
-            f"未关联红字票存在重大重复付款风险，建档已被强制拦截（FN-0-04 / FN-6-10）",
+            f"建档拦截：{case.case_id}（{itype}）尚未建立/确认冲减 Link 或未关联有效原蓝字发票号码（original_invoice_no）！"
+            f"未关联原蓝票的孤立红字票存在重大重复付款与合规风险，建档已被强制拦截（FN-0-04 / FN-6-10 / 20261102 S4 #63）",
             http=409,
-            details={"case_id": case.case_id, "invoice_type": itype, "link_type": "冲减"},
+            details={"case_id": case.case_id, "invoice_type": itype, "link_type": "冲减", "original_invoice_no": origin_ref},
         )

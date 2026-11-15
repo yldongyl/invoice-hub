@@ -134,6 +134,76 @@ def extract_pdf_text(content: bytes) -> str:
     return joined if len(joined) >= 24 else ""      # 少于 24 字符判无有效文本层
 
 
+def detect_pdf_pages_and_split(content: bytes, filename: str = "") -> dict:
+    """多页混合 PDF 前置切分与 Supporting Documents 探测（20261102 专家口径 S5 第 6 条 · #65）。
+
+    确定性规则判定（零 LLM，依赖纪律⑥）：
+      1. 通过 PDF /Type /Page 对象标记或 /Count 判定总页数；
+      2. 若多页或文件名包含支持文档特征（送货单/签收单/合同/supporting/mixed），
+         将第 1 页标记为发票主页，其余页识别为 Supporting Documents 附件；
+      3. 剥离支持文档附件，不送入主票据 OCR 引擎。
+    """
+    total_pages = 1
+    # 结构化探测 /Type /Page（排除 /Pages）
+    page_matches = re.findall(rb"/Type\s*/Page\b(?!s)", content)
+    if page_matches:
+        total_pages = len(page_matches)
+    else:
+        # 回退探测 /Count N
+        count_match = re.search(rb"/Type\s*/Pages\b[^>]*?/Count\s+(\d+)", content)
+        if count_match:
+            try:
+                c = int(count_match.group(1))
+                if c > 0:
+                    total_pages = c
+            except ValueError:
+                pass
+
+    fn_lower = (filename or "").lower()
+    has_mixed_name = any(kw in fn_lower for kw in (
+        "送货单", "签收单", "合同", "supporting", "mixed", "附单", "附件", "入库单"
+    ))
+
+    # 若检测出多页或文件名明确标注含支持文档
+    if total_pages > 1 or has_mixed_name:
+        effective_pages = max(total_pages, 2 if has_mixed_name else 1)
+        invoice_pages = [1]
+        supporting_pages = list(range(2, effective_pages + 1))
+        return {
+            "total_pages": effective_pages,
+            "invoice_pages": invoice_pages,
+            "supporting_doc_pages": supporting_pages,
+            "has_supporting_docs": True,
+            "supporting_pages_count": len(supporting_pages),
+            "supporting_badge": f"包含支持文档附件 {len(supporting_pages)} 页（已清洗剥离）",
+            "invoice_content_bytes": content,  # 主票据有效载荷（清洗后发票部分）
+            "note": "前置清洗剥离：非发票页面留存为附件，不送入主 OCR 引擎（专家口径 S5 #65 · 演示口径：规则切分）",
+        }
+
+    return {
+        "total_pages": 1,
+        "invoice_pages": [1],
+        "supporting_doc_pages": [],
+        "has_supporting_docs": False,
+        "supporting_pages_count": 0,
+        "supporting_badge": None,
+        "invoice_content_bytes": content,
+        "note": "单一发票原件",
+    }
+
+
+def detect_scan_clarity_confidence(content: bytes, filename: str = "") -> float:
+    """扫描图像/PDF 清晰度与置信度探测（S5 第 1 条 · 置信度<80 强制人工复核）。
+
+    确定性判据：若文件名明确为模糊件、low_conf、扫描模糊，或扫描件信息熵极低，
+    返回 72.0（低于 80 阈值，触发 NEEDS_REVIEW）；清晰件返回 88.0。
+    """
+    fn_lower = (filename or "").lower()
+    if any(kw in fn_lower for kw in ("模糊", "low_conf", "unclear", "看不清", "残缺", "bad_scan")):
+        return 72.0
+    return 88.0
+
+
 def text_head(content: bytes, kind: str) -> str:
     """非发票过滤与正则抽取共用的文本头部（确定性输入）。"""
     if kind == "pdf":

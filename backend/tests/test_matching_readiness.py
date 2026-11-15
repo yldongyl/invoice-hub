@@ -163,3 +163,168 @@ def test_matching_queue_and_card_api(api_client):
     assert r_tax.status_code == 200
     assert r_tax.json()["version"] == "v1.4"
     assert r_tax.json()["total"] >= 10
+
+
+def test_allowed_actions_state_edge_alignment(api_client):
+    """断言状态机动作边对齐：消灭 live 态 409（任务 3 · FN-6-11、FN-0-02）。"""
+    # 0387 案 (NEEDS_REVIEW)：允许放行(release)与补PO行(hold)，禁止退回(return)
+    r_0387 = api_client.get("/v1/matching/queue/INV-CN-2026-0387")
+    assert r_0387.status_code == 200
+    acts_0387 = r_0387.json()["allowed_actions"]
+    assert acts_0387["q1_release"]["allowed"] is True
+    assert acts_0387["q1_po"]["allowed"] is True
+    assert acts_0387["q1_return"]["allowed"] is False
+    assert "INVESTIGATING" in acts_0387["q1_return"]["reason"]
+
+    # 0125 案 (INVESTIGATING)：允许放行(release)与退回(return)，禁止再次补PO行(hold)
+    r_0125 = api_client.get("/v1/matching/queue/INV-SG-2026-0125")
+    assert r_0125.status_code == 200
+    acts_0125 = r_0125.json()["allowed_actions"]
+    assert acts_0125["q1_release"]["allowed"] is True
+    assert acts_0125["q1_po"]["allowed"] is False
+    assert "INVESTIGATING" in acts_0125["q1_po"]["reason"]
+    assert acts_0125["q1_return"]["allowed"] is True
+
+
+def test_seed_card_overrides_case_0123_consistency():
+    """断言 0123 案种子卡双源对齐无漂移（任务 4 · seeds/ 为单一事实源）。"""
+    import json
+    from pathlib import Path
+
+    seeds_file = Path(__file__).resolve().parents[2] / "seeds" / "mapping_rules.json"
+    seeds_data = json.loads(seeds_file.read_text(encoding="utf-8"))
+    c0123_candidate = None
+    for item in seeds_data["link_candidates"]["items"]:
+        if item["inv"] == "INV-SG-2026-0123":
+            c0123_candidate = item
+            break
+    assert c0123_candidate is not None
+
+    # 比对 _CARD_OVERRIDES["INV-SG-2026-0123"]
+    override = matching_service._CARD_OVERRIDES["INV-SG-2026-0123"]
+    assert override["amount"] == c0123_candidate["amount"]
+    # 候选原票金额 US$49,000.00
+    orig_comp = [c for c in override["detail"]["comp"] if "候选原票" in c["k"]][0]
+    assert orig_comp["v"] == c0123_candidate["origin"]["amount"]
+    assert c0123_candidate["origin"]["caseId"] in orig_comp["k"]
+    # 税码 SG-SR
+    assert override["detail"]["taxmap"][0]["to"] == "SG-SR"
+    # 部分冲减模式
+    assert "部分冲减" in override["detail"]["tol"]
+
+
+def test_uom_quantity_check_rules():
+    """断言商品数量计量单位 UOM 对照与换算规则（任务 6 · 20261102 专家口径 S5 第 5 条 · #64）。"""
+    # 1. 单位一致数量一致
+    res1 = rules.uom_quantity_check({
+        "invoice_qty": 500.0, "invoice_uom": "件",
+        "po_qty": 500.0, "po_uom": "件",
+        "tolerance": 0.0,
+    })
+    assert res1["result"] == "PASSED"
+    assert res1["status"] == "MATCHED"
+
+    # 2. 单位不一致且换算成功（箱 vs EA，1箱=10EA）
+    res2 = rules.uom_quantity_check({
+        "invoice_qty": 10.0, "invoice_uom": "箱",
+        "po_qty": 100.0, "po_uom": "EA",
+        "tolerance": 0.0,
+    })
+    assert res2["result"] == "PASSED"
+    assert res2["status"] == "CONVERTED_MATCH"
+    assert res2["converted_qty"] == 100.0
+
+    # 3. 单位不一致换算后超容差（箱 vs EA，10箱=100EA vs 90EA）
+    res3 = rules.uom_quantity_check({
+        "invoice_qty": 10.0, "invoice_uom": "箱",
+        "po_qty": 90.0, "po_uom": "EA",
+        "tolerance": 0.0,
+    })
+    assert res3["result"] == "AMOUNT_VARIANCE"
+    assert res3["status"] == "UOM_VARIANCE"
+
+    # 4. 缺失换算比率
+    res4 = rules.uom_quantity_check({
+        "invoice_qty": 10.0, "invoice_uom": "平方米",
+        "po_qty": 100.0, "po_uom": "EA",
+        "tolerance": 0.0,
+    })
+    assert res4["result"] == "NOT_VERIFIED"
+    assert res4["status"] == "UOM_VARIANCE"
+
+
+def test_aggregate_po_lines_match_and_ambiguity():
+    """断言多明细合计开票与概括描述消歧（任务 7 · 20261102 专家口径 S5 第 2/3 条 · #66/#67）。"""
+    # 1. 正常多行聚合（两行 PO 合计 ¥100,000 与发票 ¥100,000 匹配）
+    res1 = rules.aggregate_po_lines_match({
+        "invoice_amount": 100000.0,
+        "po_lines": [
+            {"item_no": "0010", "description": "模块A", "amount": 60000.0},
+            {"item_no": "0020", "description": "模块B", "amount": 40000.0},
+        ],
+        "tolerance": 0.06,
+    })
+    assert res1["result"] == "PASSED"
+    assert res1["within_tolerance"] is True
+    assert res1["has_ambiguity"] is False
+
+    # 2. 存在重复模糊概括描述（消歧预警）
+    res2 = rules.aggregate_po_lines_match({
+        "invoice_amount": 100000.0,
+        "po_lines": [
+            {"item_no": "0010", "description": "技术服务费", "amount": 60000.0},
+            {"item_no": "0020", "description": "技术服务费", "amount": 40000.0},
+        ],
+        "tolerance": 0.06,
+    })
+    assert res2["within_tolerance"] is True
+    assert res2["has_ambiguity"] is True
+    assert "歧义待消歧" in res2["ambiguous_reason"]
+
+
+def test_cost_center_match_rule():
+    """断言主数据成本中心比对（任务 8 · 20261102 专家口径 S4 场景 1 · #61）。"""
+    # 一致
+    c1 = rules.cost_center_match({
+        "invoice_cost_center": "CC-2080-HQ", "po_cost_center": "CC-2080-HQ"
+    })
+    assert c1["matched"] is True
+    assert c1["result"] == "PASSED"
+
+    # 前缀匹配一致
+    c2 = rules.cost_center_match({
+        "invoice_cost_center": "CC-1020 IT-Ops", "po_cost_center": "CC-1020"
+    })
+    assert c2["matched"] is True
+
+    # 不一致
+    c3 = rules.cost_center_match({
+        "invoice_cost_center": "CC-2080-HQ", "po_cost_center": "CC-1010-ENG"
+    })
+    assert c3["matched"] is False
+    assert c3["result"] == "AMOUNT_VARIANCE"
+
+
+def test_assert_pre_filing_link_valid_credit_memo():
+    """断言红字发票未关联有效原蓝票号时建档强制拦截（任务 8 · 20261102 S4 #63）。"""
+    from app.domain import models as m
+    from app.services.mapping_governance import assert_pre_filing_link_valid
+    from app.services.errors import CommandError
+
+    # 模拟未关联有效原票号的红字案件
+    class DummySession:
+        def scalar(self, stmt):
+            return None
+
+    dummy_case_unconfirmed = m.Case(
+        case_id="INV-CN-2026-9999",
+        invoice_type="增值税红字专用发票",
+        facts_raw={"invoiceAmount": -5000.0},
+        links_raw={"credit_note": {"confirmed": False, "ref": ""}},
+    )
+
+    with pytest.raises(CommandError) as exc_info:
+        assert_pre_filing_link_valid(DummySession(), dummy_case_unconfirmed)
+    assert exc_info.value.code == "E_LINK_UNCONFIRMED"
+    assert "建档拦截" in exc_info.value.message
+    assert "original_invoice_no" in exc_info.value.message

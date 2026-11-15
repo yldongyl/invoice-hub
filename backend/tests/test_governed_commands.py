@@ -345,3 +345,128 @@ def test_batch_cross_instance_rejected(fresh_session):
         gc.execute(fresh_session, actor="王莉", action="batch_release", instance="CN",
                    case_ids=ids, token=tok, self_confirmed=True)
     assert ei.value.code == E_TENANT_MISMATCH
+
+
+# ── 人工查验登记（FN-8-15 / CON-13 五要素与落库断言） ─────────────────────────
+
+def test_manual_verify_element1_permission_denied(fresh_session):
+    """人工查验五要素①：运营角色无「受控 Action 放行/退回」权限位 → 拒绝。"""
+    tok = _challenge(fresh_session, "刘工", "manual_verify", "INV-CN-2026-0387")
+    with pytest.raises(CommandError) as ei:
+        gc.execute(fresh_session, actor="刘工", action="manual_verify", instance="CN",
+                   case_id="INV-CN-2026-0387", token=tok, self_confirmed=True,
+                   channel="税务平台", result="PASSED", receipt="rcpt-001", note="核验有效")
+    assert ei.value.code == E_PERM_DENIED
+
+
+def test_manual_verify_element2_risk_not_shown(fresh_session):
+    """人工查验五要素②：缺少确认凭据（未做风险提示）→ 拒绝。"""
+    with pytest.raises(CommandError) as ei:
+        gc.execute(fresh_session, actor="王莉", action="manual_verify", instance="CN",
+                   case_id="INV-CN-2026-0387", token=None, self_confirmed=True,
+                   channel="税务平台", result="PASSED", receipt="rcpt-001", note="核验有效")
+    assert ei.value.code == E_RISK_NOT_SHOWN
+
+
+def test_manual_verify_element3_self_confirm_required(fresh_session):
+    """人工查验五要素③：凭据有效但未勾选本人执行 → 拒绝。"""
+    tok = _challenge(fresh_session, "王莉", "manual_verify", "INV-CN-2026-0387")
+    with pytest.raises(CommandError) as ei:
+        gc.execute(fresh_session, actor="王莉", action="manual_verify", instance="CN",
+                   case_id="INV-CN-2026-0387", token=tok, self_confirmed=False,
+                   channel="税务平台", result="PASSED", receipt="rcpt-001", note="核验有效")
+    assert ei.value.code == E_SELF_CONFIRM_REQUIRED
+
+
+def test_manual_verify_element4_params_required(fresh_session):
+    """人工查验入参校验：查验渠道/结论/回执号/说明均必填，缺一即拒。"""
+    tok = _challenge(fresh_session, "王莉", "manual_verify", "INV-CN-2026-0387")
+    with pytest.raises(CommandError) as ei:
+        gc.execute(fresh_session, actor="王莉", action="manual_verify", instance="CN",
+                   case_id="INV-CN-2026-0387", token=tok, self_confirmed=True,
+                   channel="税务平台", result="PASSED", receipt="rcpt-001", note="   ")
+    assert ei.value.code == E_EDIT_PARAM_REQUIRED
+
+
+def test_manual_verify_success_and_db_persisted(fresh_session):
+    """人工查验成功路径：更新 checks 结果 (method=manual) + 审计双写 + DB checks 落库持久化。"""
+    cid = "INV-CN-2026-0387"
+    case_before = fresh_session.get(m.Case, cid)
+    assert case_before.checks_raw["authenticity"]["result"] == "NOT_VERIFIED"
+
+    tok = _challenge(fresh_session, "王莉", "manual_verify", cid)
+    out = gc.execute(fresh_session, actor="王莉", action="manual_verify", instance="CN",
+                     case_id=cid, token=tok, self_confirmed=True,
+                     channel="国家税务总局全国增值税发票查验平台",
+                     result="PASSED", receipt="manual-rcpt-20261111-001",
+                     note="税局查验平台截图已归档，核验发票真实有效")
+
+    assert out["manual_verified"] is True
+    assert out["authenticity"] == "PASSED"
+    assert out["receipt"] == "manual-rcpt-20261111-001"
+
+    # 断言 DB 案件 checks_raw 真实持久化
+    case_after = fresh_session.get(m.Case, cid)
+    auth_check = case_after.checks_raw["authenticity"]
+    assert auth_check["result"] == "PASSED"
+    assert "method=manual" in auth_check["note"]
+    assert "manual-rcpt-20261111-001" in auth_check["note"]
+
+    # 断言 check_results 表真实持久化
+    cr = fresh_session.scalars(select(m.CheckResult).where(
+        m.CheckResult.case_id == cid, m.CheckResult.item == "authenticity")).first()
+    assert cr.result == "PASSED"
+    assert "method=manual" in cr.note
+
+    # 断言时间线事件
+    tl = fresh_session.scalars(select(m.TimelineEvent).where(
+        m.TimelineEvent.case_id == cid).order_by(m.TimelineEvent.seq)).all()
+    latest_tl = tl[-1]
+    assert latest_tl.actor == "human"
+    assert latest_tl.act == "SM2_VERIFY"
+    assert "method=manual" in latest_tl.event_raw["d"]
+
+    # 断言不可篡改审计链
+    verify_res = ac.verify_chain(fresh_session)
+    assert verify_res["ok"] is True
+
+
+def test_manual_verify_failed_triggers_blocked_redline(fresh_session):
+    """人工查验结论为 FAILED：命中红线，状态机触发边流转至 BLOCKED。"""
+    cid = "INV-CN-2026-0387"
+    assert _status(fresh_session, cid) == "NEEDS_REVIEW"
+
+    tok = _challenge(fresh_session, "王莉", "manual_verify", cid)
+    out = gc.execute(fresh_session, actor="王莉", action="manual_verify", instance="CN",
+                     case_id=cid, token=tok, self_confirmed=True,
+                     channel="税局查验平台", result="FAILED",
+                     receipt="manual-rcpt-fake-999", note="发票查无此票，疑似虚开假票")
+
+    assert out["status"] == "BLOCKED"
+    assert out["status_changed"] is True
+    assert _status(fresh_session, cid) == "BLOCKED"
+
+
+# ── 修正样本回流标注队列（FN-8-13） ─────────────────────────
+
+def test_edit_field_reflux_sample_to_annotation_queue(fresh_session):
+    """人工修正字段成功后，自动向 annotation_service 标注队列回流错误样本（FN-8-13）。"""
+    from app.services import annotation_service
+    q_len_before = len(annotation_service._REFLUX_QUEUE)
+
+    cid = "INV-CN-2026-0387"
+    field = "header.invoice_no"
+    tok = _challenge(fresh_session, "王莉", "edit_field", cid)
+    out = gc.execute(fresh_session, actor="王莉", action="edit_field", instance="CN",
+                     case_id=cid, token=tok, self_confirmed=True,
+                     field=field, new_value="24112000000999", reason="末位识别错误手工修正")
+
+    assert out["edited"] is True
+    assert len(annotation_service._REFLUX_QUEUE) == q_len_before + 1
+    matched = [s for s in annotation_service._REFLUX_QUEUE if s["case_id"] == cid and s["error_type"] == "FIELD_EDITED"]
+    assert len(matched) >= 1
+    newest = matched[-1]
+    assert newest["case_id"] == cid
+    assert newest["error_type"] == "FIELD_EDITED"
+    assert newest["priority"] == 1
+    assert "24112000000999" in newest["detail"]

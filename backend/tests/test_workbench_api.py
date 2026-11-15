@@ -43,6 +43,12 @@ def test_queue_stats(api_client):
     assert q["needs_review"] == 3 and q["blocked"] == 2          # 0387/0384/0381 · 0385/0379
     assert q["pending_review"] == q["needs_review"] + q["investigating"]
     assert q["claim_high_risk_minutes"] == 30                    # 高风险 30 分钟认领 SLA
+    assert q["claimed_by_me"] == 0                               # 未传 actor 时兜底为 0
+    # 传入 actor=王莉 时真实计算其活跃认领数（FN-8-02）
+    q_actor = api_client.get("/v1/workbench/queue?instance=CN&actor=王莉").json()
+    assert q_actor["claimed_by_me"] >= 1
+    assert q_actor["actor"] == "王莉"
+
     os_q = api_client.get("/v1/workbench/queue?instance=OS").json()
     assert os_q["queue"] == "新加坡共享中心"
 

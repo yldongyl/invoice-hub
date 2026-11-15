@@ -13,10 +13,12 @@
   - 写路径（actions/risk-challenge）已由 WP1.5 落地于 api/actions.py，全部经受控命令框架。
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 
 from app.services import case_repository as repo
 from app.services import dashboard as dash
+from app.services import object_store, rbac_service
+from app.services.audit_chain import append_block, new_trace_id, now_iso
 from app.services.errors import CommandError
 from app.services.persistence import get_session
 from app.services.tenant import TenantContext
@@ -104,3 +106,54 @@ def get_timeline(case_id: str, instance: str | None = Query(None)):
         except CommandError as e:
             _fail(e)
         return {"caseId": case_id, "items": [r.event_raw for r in rows], "total": len(rows)}
+
+
+@router.get("/cases/{case_id}/original")
+def get_original_file(case_id: str, instance: str | None = Query(None),
+                      actor: str = Query("王莉", description="操作人（权限与审计留痕）")):
+    """只读原件查看与下载通道（FN-3-08 差距收敛 · 受权限+租户校验+审计查看事件）。"""
+    ctx = _ctx(instance)
+    with get_session() as session:
+        try:
+            rbac_service.require_permission(session, actor, "案件查看")
+            c = repo.get_case_row(session, ctx, case_id)
+            if c is None:
+                _not_found(case_id)
+
+            # 审计留痕：查看原件事件入不可篡改哈希链
+            append_block(
+                session, ts=now_iso(), trace=c.trace_id or new_trace_id(),
+                actor="human", act="REVIEW_OPENED", cs=case_id,
+                from_state=c.status, to_state="查看原件",
+                note=f"查看发票原件文件（FN-3-08 通道）· 操作人：{actor}",
+                op=actor, category="action"
+            )
+            session.commit()
+
+            file_info = c.file_raw or {}
+            pdf_name = file_info.get("pdf") or f"{case_id}.pdf"
+            sha = file_info.get("sha256")
+
+            # 1. 优先从对象库读取已落盘原件
+            local_path = object_store.find_by_digest(sha) if sha else None
+            if local_path:
+                content = object_store.read(local_path)
+                media_type = "application/pdf" if pdf_name.endswith(".pdf") else "application/octet-stream"
+            elif c.source_xml:
+                # 2. 次选 XML 原件直读
+                content = c.source_xml.encode("utf-8")
+                media_type = "application/xml; charset=utf-8"
+                if not pdf_name.endswith(".xml"):
+                    pdf_name = f"{case_id}.xml"
+            else:
+                # 3. 演示桩兜底
+                content = f"%PDF-1.4\n% Invoice-Hub Original Stub for {case_id}\n%%EOF".encode("utf-8")
+                media_type = "application/pdf"
+
+            return Response(
+                content=content,
+                media_type=media_type,
+                headers={"Content-Disposition": f'inline; filename="{pdf_name}"'}
+            )
+        except CommandError as e:
+            _fail(e)

@@ -620,12 +620,13 @@ function renderBatches(){
         <div class="text-[11px] font-medium text-ink-3 dark:text-gray-500 mb-2">文件级受理明细（样例节选）· 批次 ${b.id} · 共 ${b.files} 件</div>
         <div class="space-y-1.5">
           ${b.detail.map((d, dIdx)=>`
-            <div class="flex items-center gap-3 px-3 py-2 rounded-card bg-card dark:bg-dcard border ${d.bad?'border-danger/40':'border-line dark:border-dline'} text-[12px]">
-              <span class="num font-medium min-w-[240px] truncate ${d.bad?'text-danger':''}" title="${d.f}">${d.bad?'🛑 ':'📄 '}${d.f}</span>
+            <div class="flex items-center gap-3 px-3 py-2 rounded-card bg-card dark:bg-dcard border ${d.bad?'border-danger/40':(d.st==='NEEDS_REVIEW'||d.needs_review)?'border-warning/60 bg-warning-light/10':'border-line dark:border-dline'} text-[12px]">
+              <span class="num font-medium min-w-[240px] truncate ${d.bad?'text-danger':(d.st==='NEEDS_REVIEW'||d.needs_review)?'text-warning':''}" title="${d.f}">${d.bad?'🛑 ':(d.st==='NEEDS_REVIEW'||d.needs_review)?'⚠️ ':'📄 '}${d.f}</span>
               <span class="text-ink-3 dark:text-gray-500 min-w-[170px] whitespace-nowrap">${d.carrier}</span>
               ${d.case ? `<a href="case-detail.html?case=${d.case}" class="num text-primary hover:underline whitespace-nowrap">${d.case}</a>` : '<span class="text-ink-4 whitespace-nowrap">—</span>'}
               ${d.st ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[d.st].cls} whitespace-nowrap">${STATUS[d.st].label}</span>` : ''}
               ${d.conf!=null ? confBadge(d.conf) : ''}
+              ${d.supporting_badge ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-cyan-50 dark:bg-[#132738] text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 whitespace-nowrap" title="演示口径：规则切分">📎 ${d.supporting_badge}</span>` : ''}
               ${d.note ? `<span class="text-[11.5px] ${d.bad?'text-danger':'text-ink-3 dark:text-gray-500'} truncate" title="${d.note}">${d.note}</span>` : ''}
               ${d.bad ? `
                 <span class="inline-flex items-center gap-1.5 ml-auto shrink-0">
@@ -754,10 +755,25 @@ function startPipeline(){
     }
     if(i >= steps.length){
       document.getElementById('pl-state').innerHTML = '<span class="text-success font-medium">✓ 受理完成 · 耗时 3.0s</span>';
+      const hasMixed = uploadFiles.some(f => /送货单|签收单|合同|mixed|supporting|附单/i.test(f.name));
+      const hasLowConf = uploadFiles.some(f => /模糊|low_conf|unclear/i.test(f.name));
+      const mockSt = hasLowConf ? 'NEEDS_REVIEW' : 'RECOGNIZED';
       document.getElementById('pl-status-badge').innerHTML =
-        `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS.RECOGNIZED.cls}">${STATUS.RECOGNIZED.label}</span> ` +
+        `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[mockSt].cls}">${STATUS[mockSt].label}</span> ` +
         fieldSourceBadge('xml_direct', false);
       const donePanel = document.getElementById('pl-done');
+      if (hasMixed && !donePanel.querySelector('.ihub-supp-notice')) {
+        const sNotice = document.createElement('div');
+        sNotice.className = 'ihub-supp-notice mt-2 text-[12px] text-cyan-800 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 px-3 py-1.5 rounded-card border border-cyan-200 dark:border-cyan-900/50 flex items-center justify-between';
+        sNotice.innerHTML = `<span>📎 包含支持文档附件 2 页（已清洗剥离）· 已作为案件 Supporting Attachment 存证（未送入主 OCR 引擎）</span><span class="text-[10px] px-1 py-0.5 rounded bg-surface border text-ink-3">演示口径：规则切分</span>`;
+        donePanel.appendChild(sNotice);
+      }
+      if (hasLowConf && !donePanel.querySelector('.ihub-lowconf-notice')) {
+        const lcNotice = document.createElement('div');
+        lcNotice.className = 'ihub-lowconf-notice mt-2 text-[12px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-card border border-amber-200 dark:border-amber-900/50';
+        lcNotice.textContent = '⚠️ 扫描图像置信度低于 80%（发票内容不清，S5 第 1 条）：强制转入人工介入复核队列（不可自动放行）';
+        donePanel.appendChild(lcNotice);
+      }
       if (!donePanel.querySelector('.ihub-demo-notice')) {
         const dNotice = document.createElement('div');
         dNotice.className = 'ihub-demo-notice mt-2 text-[11.5px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-card border border-amber-200 dark:border-amber-900/50';
@@ -765,7 +781,7 @@ function startPipeline(){
         donePanel.appendChild(dNotice);
       }
       donePanel.classList.remove('hidden');
-      toast(`✓ 受理完成：案件 INV-CN-2026-0390 已创建（RECOGNIZED）· 操作已写入不可篡改审计日志`);
+      toast(`✓ 受理完成：案件 INV-CN-2026-0390 已创建（${mockSt}）· 操作已写入不可篡改审计日志`);
       plRunning = false;
       uploadFiles = [];
       renderFileList();   /* 清空已受理文件并复位「提交受理」按钮 */
@@ -889,18 +905,24 @@ window.toggleDetail = function(i){
         b.detail = det.files_detail.map(f => ({
           f: f.file, carrier: f.carrier || '—', case: f.case_id,
           st: f.status_snapshot, conf: f.conf, note: f.note, bad: f.bad,
+          needs_review: f.needs_review,
+          supporting_badge: f.supporting_badge,
+          supporting_pages_count: f.supporting_pages_count,
+          has_supporting_docs: f.has_supporting_docs,
           seq: f.seq, steps: f.steps, disposition: f.disposition
         }));
         listHost.innerHTML = b.detail.map((d, dIdx) => {
           const hasFailedSteps = d.bad || d.disposition === 'FAILED' || (d.steps || []).some(s => s.status === 'FAILED');
+          const isReview = d.st === 'NEEDS_REVIEW' || d.needs_review || (d.conf != null && d.conf < 80);
           return `
-          <div class="flex items-center gap-3 px-3 py-2 rounded-card bg-card dark:bg-dcard border ${d.bad?'border-danger/40':'border-line dark:border-dline'} text-[12px]">
-            <span class="num font-medium min-w-[240px] truncate ${d.bad?'text-danger':''}" title="${d.f}">${d.bad?'🛑 ':'📄 '}${d.f}</span>
+          <div class="flex items-center gap-3 px-3 py-2 rounded-card bg-card dark:bg-dcard border ${d.bad?'border-danger/40':isReview?'border-warning/60 bg-warning-light/10':'border-line dark:border-dline'} text-[12px]">
+            <span class="num font-medium min-w-[240px] truncate ${d.bad?'text-danger':isReview?'text-warning':''}" title="${d.f}">${d.bad?'🛑 ':isReview?'⚠️ ':'📄 '}${d.f}</span>
             <span class="text-ink-3 dark:text-gray-500 min-w-[170px] whitespace-nowrap">${d.carrier}</span>
             ${d.case ? `<a href="case-detail.html?case=${d.case}" class="num text-primary hover:underline whitespace-nowrap">${d.case}</a>` : '<span class="text-ink-4 whitespace-nowrap">—</span>'}
             ${d.st && STATUS[d.st] ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium ${STATUS[d.st].cls} whitespace-nowrap">${STATUS[d.st].label}</span>` : ''}
             ${d.conf!=null ? confBadge(d.conf) : ''}
-            ${d.note ? `<span class="text-[11.5px] ${d.bad?'text-danger':'text-ink-3 dark:text-gray-500'} truncate" title="${d.note}">${d.note}</span>` : ''}
+            ${d.supporting_badge ? `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-cyan-50 dark:bg-[#132738] text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 whitespace-nowrap" title="演示口径：规则切分">📎 ${d.supporting_badge}</span>` : ''}
+            ${d.note ? `<span class="text-[11.5px] ${d.bad?'text-danger':isReview?'text-warning font-medium':'text-ink-3 dark:text-gray-500'} truncate" title="${d.note}">${d.note}</span>` : ''}
             ${hasFailedSteps ? `
               <span class="inline-flex items-center gap-1.5 ml-auto shrink-0">
                 <button type="button" class="ihub-retry-steps-btn px-2 py-0.5 rounded text-[11px] font-medium border border-warning text-warning hover:bg-warning hover:text-white transition-colors" data-seq="${d.seq}" data-batch="${b.id}" onclick="ihRetryFileSteps(event, '${b.id}', ${d.seq}, ${i})">⏩ 只重试相关步骤</button>
@@ -1218,6 +1240,9 @@ window.startPipeline = function(){
       `<span class="text-success font-medium">✓ 受理完成 · 批次 ${out.batch_id} · 生成案件 ${okN} 个${dupN ? ` · 摘要幂等跳过 ${dupN} 件` : ''}</span>`;
     const done = document.getElementById('pl-done');
     done.classList.remove('hidden');
+    const suppBadge = f0.supporting_badge || (s5.detail && s5.detail.supporting_badge) ||
+      (s5.detail && s5.detail.supporting_docs_stripped ? '包含支持文档附件（已清洗剥离）' : null);
+    const isNeedsReview = stTxt === 'NEEDS_REVIEW' || (f0.conf != null && f0.conf < 80);
     done.innerHTML = `
       <div class="flex items-center gap-3 flex-wrap">
         <span class="text-[13px]">已生成票据案件：</span>
@@ -1226,6 +1251,15 @@ window.startPipeline = function(){
         ${sourceBadgeHtml}
         ${f0.caseId ? `<a href="case-detail.html?case=${f0.caseId}" class="px-3 py-1.5 rounded-card border border-primary text-primary text-[12.5px] font-medium hover:bg-primary-light dark:hover:bg-[#1B2A4A]">查看案件 →</a>` : ''}
       </div>
+      ${suppBadge ? `
+      <div class="mt-2 text-[12px] text-cyan-800 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 px-3 py-1.5 rounded-card border border-cyan-200 dark:border-cyan-900/50 flex items-center justify-between">
+        <span>📎 ${suppBadge} · 已作为案件 Supporting Attachment 存证（未送入主 OCR 引擎）</span>
+        <span class="text-[10px] px-1 py-0.5 rounded bg-surface border text-ink-3">演示口径：规则切分</span>
+      </div>` : ''}
+      ${isNeedsReview ? `
+      <div class="mt-2 text-[12px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-card border border-amber-200 dark:border-amber-900/50">
+        ⚠️ 扫描图像置信度低于 80%（发票内容不清，S5 第 1 条）：强制转入人工介入复核队列（不可自动放行）
+      </div>` : ''}
       <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">处置意见：${out.opinion || '（未填写处置意见）'} · 受理规则 ${out.intake_rules_version || '—'} · 数据来源：${srcCode === 'ocr' ? 'OCR（自托管 OCR-VLM · SPI stub 演示口径）' : '平台内置 XML/OFD 文本层直读（免 Provider）'}</div>
       <div class="mt-1.5 text-[11px] text-ink-3 dark:text-gray-500 leading-relaxed">
         ⚖️ 以上受理各步均为<b>规则引擎确定性判断（非模型推断）</b>；后续识别环节如含大模型输出，将一律标注「AI 生成」+ 来源模型版本 + 置信度 —— 大模型生成的建议不自动执行业务操作，请人工确认。<br>

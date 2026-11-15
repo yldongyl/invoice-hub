@@ -16,6 +16,7 @@ from backend.tests.test_scenarios_m3_core import (  # noqa: F401
     test_s_m3_03_tampered_sm2_failed_receipt_archived,
     test_s_m3_04_multi_source_conflict_edit_adopt_xml,
     test_s_m3_05_five_elements_missing_all_rejected,
+    test_s_m3_06_manual_verify_timeout_case_persisted,
 )
 
 pytestmark = pytest.mark.scenario

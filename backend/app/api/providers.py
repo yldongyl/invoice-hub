@@ -47,11 +47,47 @@ class RouteEvalBody(BaseModel):
     doc_type_hint: Optional[str] = None
 
 
+class RegisterProviderBody(BaseModel):
+    provider_id: str
+    display_name: str
+    provider_label: str = "商业厂商"
+    type: str = "OCR 识别"
+    deploy_mode: str = "API（SaaS）"
+    capabilities: Optional[dict[str, Any]] = None
+    compliance_note: Optional[str] = None
+    credentials: Optional[dict[str, Any]] = None
+    actor: str = "human"
+    opinion: Optional[str] = None
+
+
 @router.get("/providers")
 def get_providers():
     with get_session() as s:
         items = provider_service.list_providers(s)
         return {"total": len(items), "providers": items}
+
+
+@router.post("/providers")
+def register_provider(body: RegisterProviderBody, request: Request):
+    try:
+        with get_session() as s:
+            actor = identity_service.bind_actor(request.state.ihub_session, body.actor)
+            identity_service.require_session_permission(s, request.state.ihub_session, gc.ACTION_PERMS["publish"])
+            return provider_service.register_provider(
+                s,
+                provider_id=body.provider_id,
+                display_name=body.display_name,
+                provider_label=body.provider_label,
+                provider_type=body.type,
+                deploy_mode=body.deploy_mode,
+                capabilities=body.capabilities,
+                compliance_note=body.compliance_note,
+                credentials=body.credentials,
+                actor=actor,
+                opinion=body.opinion,
+            )
+    except CommandError as e:
+        _fail(e)
 
 
 @router.get("/providers/metrics/sla")

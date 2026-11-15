@@ -163,7 +163,7 @@
         <span id="kpi-falseauto" class="num text-[28px] font-semibold leading-none text-danger">0.02%</span>
         <span id="kpi-falseauto-target" class="text-[12px] text-ink-2 dark:text-gray-400 mb-0.5">/ 上限 ≤ 0.05%</span>
       </div>
-      <div class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">✔ 未突破红线 · 连续 90 天达标 · 不允许以放松校验换取自动化率</div>
+      <div id="kpi-falseauto-sub" class="mt-2 text-[12px] text-ink-2 dark:text-gray-400">✔ 未突破红线 · 连续 90 天达标（演示口径） · 不允许以放松校验换取自动化率</div>
     </div>
     <!-- 待人工复核案件 -->
     <div class="rounded-card bg-card dark:bg-dcard border border-line dark:border-dline shadow-card p-4">
@@ -172,7 +172,7 @@
         <span id="kpi-review" class="num text-[28px] font-semibold leading-none text-warning">37</span>
         <span class="text-[12px] text-ink-3 dark:text-gray-500 mb-0.5">个 InvoiceCase</span>
       </div>
-      <div id="kpi-review-sub" class="mt-2 text-[12px] text-ink-2 dark:text-gray-400"><span class="text-danger font-medium">6 个高风险</span>（BLOCKED）· 平均等待 24 分钟 · SLA 内</div>
+      <div id="kpi-review-sub" class="mt-2 text-[12px] text-ink-2 dark:text-gray-400"><span class="text-danger font-medium">6 个高风险</span>（BLOCKED）· 平均等待 18 分钟 · SLA 内</div>
     </div>
   </section>
 
@@ -312,7 +312,7 @@
       <div class="text-[14px] font-semibold">目标采购平台适配状态 <span class="text-[12px] text-ink-3 dark:text-gray-500 font-normal ml-2">中台定位：补充票据输入 / 合规 / 字段治理 / 跨地区适配能力，不替代采购流程平台</span></div>
       <span class="text-[12px] text-primary"><a href="api-portal.html" class="hover:underline">Adapter API 契约文档 →</a></span>
     </div>
-    <div class="mt-3 grid grid-cols-5 gap-3 text-[13px]">
+    <div id="adapter-bar" class="mt-3 grid grid-cols-5 gap-3 text-[13px]">
       <div class="flex items-center gap-2.5 p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]">
         <span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">✓</span>
         <span><b class="block">SAP Ariba</b><span class="block text-[11px] text-ink-2 dark:text-gray-400">cXML InvoiceDetailRequest · 已实联</span></span>
@@ -341,8 +341,11 @@
   </footer>
 </main>
 
+<div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-card bg-ink-1 dark:bg-gray-200 text-white dark:text-ink-1 text-[13px] shadow-cardhover opacity-0 pointer-events-none translate-y-2 max-w-[720px] text-center transition-all duration-200"></div>
+
 <!-- M2 WP2.3 接线：REST 消费 + demo-mode 回退（ui-design 原型脚本保留为 fallback 数据源） -->
 <script src="js/auth-guard.js"></script>
+<script src="js/toast.js"></script>
 <script src="js/api-client.js"></script>
 <script src="js/demo-mode.js"></script>
 <script>
@@ -366,7 +369,9 @@ const DATA = {
     donutScope: 'CN Extension · 中国',
     kpi: { total:'128,462', totalSub:'▲ 12.4% 环比上月 · 数电票 XML 直读占比 62%',
            touchless:'86.2', touchlessSub:'▲ 3.1pp 环比 · 口径：正确的自动完成率（STP Accuracy）',
-           falseAuto:'0.02%', review:'37', reviewRisk:'6 个高风险' },
+           falseAuto:'0.02%', falseAutoLimit:'0.05%', withinRedline:true,
+           review:'37', reviewRisk:'6 个高风险',
+           liveNeedsReview:3, liveBlocked:2, avgWait:'18 分钟' },
     donut: [
       { name:'数电票（XML 直读）', value:62, color:'#165DFF', note:'结构化原件 + SM2 验签' },
       { name:'增值税专票 / 普票',  value:27, color:'#00B42A', note:'OCR Provider + 授权查验' },
@@ -390,13 +395,22 @@ const DATA = {
         evidence:'<b>验签结果</b>：XML 原件 SM2 签名校验不通过（证书链无法验证）。<br>来源：查验 Provider「百望云」· 授权查验渠道 · 结果已留存可验证回执<br><b>AI 建议（仅供参考）</b>：疑似篡改票，建议阻断并要求供应商重开 —— 置信度 94%，<u>须人工确认后执行，系统不自动写回</u>。' },
       { level:'warning', title:'价税合计口径冲突', meta:'INV-CN-2026-0381 · 2 小时前',
         evidence:'<b>冲突详情</b>：票面 OCR「价税合计 ¥5,650.00」 vs XML 直读「¥5,680.00」，差额 ¥30.00。<br>命中规则：amount_tax_sum_check · 冲突解释：不含税金额 + 税额 ≠ 价税合计（尾差超容差 ±0.06）<br>置信度已降至 82%，路由至人工复核。' }
+    ],
+    adapters: [
+      { id:'ariba', name:'SAP Ariba', display:'cXML InvoiceDetailRequest · 已实联', status_code:'已对接 ✓ (live)', glyph:'✓' },
+      { id:'oracle', name:'Oracle Payables', display:'AP Invoice Import · 已实联', status_code:'已对接 ✓ (live)', glyph:'✓' },
+      { id:'coupa', name:'Coupa Invoicing', display:'Invoice API · 适配中', status_code:'适配中 ◐ (wip)', glyph:'◐' },
+      { id:'s4', name:'S/4HANA Supplier Invoice', display:'Supplier Invoice API · 规划中', status_code:'规划中 ○ (plan)', glyph:'○' },
+      { id:'custom', name:'自研应付系统', display:'REST / JSON / MQ · 已对接', status_code:'已对接 ✓ (live)', glyph:'✓' }
     ]
   },
   os: {
     donutScope: 'Core + Regional Ext · 海外',
     kpi: { total:'46,208', totalSub:'▲ 8.7% 环比上月 · PDF 文本层直读占比 41%',
            touchless:'81.7', touchlessSub:'▲ 2.2pp 环比 · 口径：正确的自动完成率（STP Accuracy）',
-           falseAuto:'0.03%', review:'22', reviewRisk:'4 个高风险' },
+           falseAuto:'0.03%', falseAutoLimit:'0.05%', withinRedline:true,
+           review:'22', reviewRisk:'4 个高风险',
+           liveNeedsReview:1, liveBlocked:1, avgWait:'14 分钟' },
     donut: [
       { name:'Supplier Invoice（VAT/GST）', value:71, color:'#165DFF', note:'新加坡 Ariba 案例链路已验证' },
       { name:'Credit Note',                 value:19, color:'#00B42A', note:'冲减原票，生命周期管理' },
@@ -420,6 +434,13 @@ const DATA = {
         evidence:'<b>案件调查（INVESTIGATING）</b>：Invoice Gross S$84,200.00 vs PO Net S$78,600.00，差异 S$5,600.00。<br>系统已自动收集证据：PO 行项目 + 收货单（GRN）3 条 + GST 9% 税率映射；初步线索：差异 = GST 税额 + 运费行。<br><b>AI 建议（仅供参考）</b>：疑似口径差异而非错误 —— 置信度 88%，结论须人工确认后受控处置。' },
       { level:'warning', title:'Credit Note 未关联原票', meta:'INV-SG-2026-0123 · AWS Singapore · 1 小时前',
         evidence:'<b>Link 缺失</b>：Credit Note 未找到「冲减 → 原票」关系；候选原票 INV-SG-2026-0101（供应商 + 金额匹配度 92%）。<br>来源：对象模型 Link 校验规则 v1.4<br>待复核员确认关联后，方可进入 Ariba 建档。' }
+    ],
+    adapters: [
+      { id:'ariba', name:'SAP Ariba', display:'cXML InvoiceDetailRequest · 已实联', status_code:'已对接 ✓ (live)', glyph:'✓' },
+      { id:'oracle', name:'Oracle Payables', display:'AP Invoice Import · 已实联', status_code:'已对接 ✓ (live)', glyph:'✓' },
+      { id:'coupa', name:'Coupa Invoicing', display:'Invoice API · 适配中', status_code:'适配中 ◐ (wip)', glyph:'◐' },
+      { id:'s4', name:'S/4HANA Supplier Invoice', display:'Supplier Invoice API · 规划中', status_code:'规划中 ○ (plan)', glyph:'○' },
+      { id:'custom', name:'自研应付系统', display:'REST / JSON / MQ · 已对接', status_code:'已对接 ✓ (live)', glyph:'✓' }
     ]
   }
 };
@@ -435,9 +456,22 @@ function renderKPI(d){
   document.getElementById('kpi-touchless-bar').style.width = d.kpi.touchless + '%';
   document.getElementById('kpi-touchless-sub').textContent = d.kpi.touchlessSub;
   document.getElementById('kpi-falseauto').textContent = d.kpi.falseAuto;
+  if (document.getElementById('kpi-falseauto-target')) {
+    document.getElementById('kpi-falseauto-target').textContent = `/ 上限 ≤ ${d.kpi.falseAutoLimit || '0.05%'}`;
+  }
+  const faSub = document.getElementById('kpi-falseauto-sub');
+  if (faSub) {
+    const isWithin = d.kpi.withinRedline !== false;
+    const mark = isWithin ? '✔ 未突破红线' : '✖ 突破红线告警';
+    faSub.textContent = `${mark} · 连续 90 天达标（演示口径） · 不允许以放松校验换取自动化率`;
+  }
   document.getElementById('kpi-review').textContent = d.kpi.review;
+  const avgWaitText = d.kpi.avgWait ? `平均等待 ${d.kpi.avgWait}` : '平均等待 18 分钟';
+  const liveNote = (d.kpi.liveBlocked !== undefined && d.kpi.liveNeedsReview !== undefined)
+    ? ` · ${d.kpi.liveBlocked} 阻断 / ${d.kpi.liveNeedsReview} 待审`
+    : '';
   document.getElementById('kpi-review-sub').innerHTML =
-    `<span class="text-danger font-medium">${d.kpi.reviewRisk}</span>（BLOCKED）· 平均等待 24 分钟 · SLA 内`;
+    `<span class="text-danger font-medium">${d.kpi.reviewRisk}</span>（BLOCKED${liveNote}）· ${avgWaitText} · SLA 内`;
 }
 
 function renderDonut(d){
@@ -523,22 +557,86 @@ function renderAlerts(d){
     </div>`).join('');
 }
 
+const ADAPTER_IDS = {
+  'SAP Ariba': 'ariba',
+  'Oracle Payables': 'oracle',
+  'Coupa Invoicing': 'coupa',
+  'S/4HANA Supplier Invoice': 's4',
+  '自研应付系统': 'custom'
+};
+
+function renderAdapterBar(items){
+  const el = document.getElementById('adapter-bar');
+  if (!el || !items || !items.length) return;
+  el.innerHTML = items.map(a => {
+    const aid = a.id || ADAPTER_IDS[a.name] || a.name;
+    const isLive = a.glyph === '✓' || (a.status_code && a.status_code.includes('live'));
+    const isWip = a.glyph === '◐' || (a.status_code && a.status_code.includes('wip'));
+    const cardCls = isLive
+      ? 'flex items-center gap-2.5 p-3 rounded-card border border-line dark:border-dline bg-success-light dark:bg-[#1C2E22]'
+      : 'flex items-center gap-2.5 p-3 rounded-card border border-line dark:border-dline';
+    let glyphEl = '';
+    if (isLive) {
+      glyphEl = `<span class="w-5 h-5 rounded-full bg-success text-white flex items-center justify-center text-[12px] shrink-0">${a.glyph || '✓'}</span>`;
+    } else if (isWip) {
+      glyphEl = `<span class="w-5 h-5 rounded-full bg-warning-light dark:bg-[#3A2E1C] text-warning flex items-center justify-center text-[12px] shrink-0 border border-warning">${a.glyph || '◐'}</span>`;
+    } else {
+      glyphEl = `<span class="w-5 h-5 rounded-full bg-surface dark:bg-[#23282F] text-ink-3 dark:text-gray-500 flex items-center justify-center text-[12px] shrink-0 border border-line dark:border-dline">${a.glyph || '○'}</span>`;
+    }
+    const subTextCls = isLive ? 'text-ink-2 dark:text-gray-400' : 'text-ink-3 dark:text-gray-500';
+    return `<div data-adapter-id="${aid}" class="${cardCls}">
+      ${glyphEl}
+      <span><b class="block">${a.name}</b><span class="block text-[11px] ${subTextCls}">${a.display}</span></span>
+    </div>`;
+  }).join('');
+}
+
+function renderBellBadge(count){
+  const badge = document.getElementById('msg-bell-badge');
+  if (!badge) return;
+  if (!count || count <= 0) {
+    badge.classList.add('hidden');
+  } else {
+    badge.classList.remove('hidden');
+    badge.textContent = count;
+  }
+}
+
 /* ════════════════ 实例切换 / 深色模式 ════════════════ */
 /* M2 WP2.3 接线：后台可达时数据入口 = GET /v1/dashboard?instance=（KPI/环形/趋势/Top5/告警/
  * 适配条一次返回，全量联动换数据 FN-8-11/FN-0-11）；失败回退页内 DATA 常量（demo-mode，P03 §4 验收②）。
  * 渲染函数与交互（行点击深链/瓷贴/告警展开/适配状态条）保持原型口径不变。 */
 function mapApiToPage(api){
   const k = api.kpi;
+  const p = k.pending;
   return {
     donutScope: api.donut_scope,
-    kpi: { total: k.total, totalSub: k.total_sub, touchless: k.touchless, touchlessSub: k.touchless_sub,
-           falseAuto: k.false_auto.rate, review: k.pending.display, reviewRisk: k.pending.risk_display },
+    kpi: {
+      total: k.total,
+      totalSub: k.total_sub,
+      touchless: k.touchless,
+      touchlessSub: k.touchless_sub,
+      falseAuto: k.false_auto.rate,
+      falseAutoLimit: k.false_auto.limit,
+      withinRedline: k.false_auto.within_redline,
+      noRelaxNote: k.false_auto.no_relax_note,
+      review: p.display,
+      reviewRisk: p.risk_display,
+      liveNeedsReview: p.live_needs_review,
+      liveBlocked: p.live_blocked,
+      avgWait: p.avg_wait_display || '—（演示口径：样本不足）'
+    },
     donut: api.donut,
     line: api.trend_7d,
-    cases: api.top_cases.map(c => ({ id: c.caseId, region: c.region, supplier: c.supplier,
-                                     amount: c.amount, status: c.status, conf: c.conf,
-                                     risk: c.risk, provider: c.provider })),
-    alerts: api.alerts.map(a => ({ level: a.level, title: a.title, meta: a.meta, evidence: a.evidence }))
+    cases: api.top_cases.map(c => ({
+      id: c.caseId, region: c.region, supplier: c.supplier,
+      amount: c.amount, status: c.status, conf: c.conf,
+      risk: c.risk, provider: c.provider
+    })),
+    alerts: api.alerts.map(a => ({
+      level: a.level, title: a.title, meta: a.meta, evidence: a.evidence
+    })),
+    adapters: (api.adapter_status && api.adapter_status.items) ? api.adapter_status.items : null
   };
 }
 async function loadData(key){
@@ -561,6 +659,8 @@ async function switchInstance(key){
   cn.className = key === 'cn' ? active : idle;
   os.className = key === 'os' ? active : idle;
   renderKPI(d); renderDonut(d); renderLine(d); renderCases(d); renderAlerts(d);
+  renderAdapterBar(d.adapters);
+  renderBellBadge(d.alerts ? d.alerts.length : 0);
 }
 
 function toggleDark(){

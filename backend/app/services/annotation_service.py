@@ -306,7 +306,22 @@ def toggle_data_stay_in_domain(session, actor: str, new_state: bool) -> dict:
         )
 
     _DATA_STAY_IN_DOMAIN = True
+    trace = new_trace_id()
+    msg = f"标注数据不出客户控制域确认为开启状态（FN-8-13 / 蓝图 §10）· 操作人：{actor}"
+    blk = audit_chain.append_block(
+        session,
+        ts=now_iso(),
+        trace=trace,
+        actor="human",
+        act="POLICY_PUBLISHED",
+        cs=None,
+        category="compliance",
+        note=msg,
+        op="platform-admin/data-compliance-guard",
+    )
     return {
         "data_stay_in_domain": True,
-        "message": "标注数据不出客户控制域保持开启",
+        "audit_blk": blk.blk,
+        "trace": trace,
+        "message": "标注数据不出客户控制域已确认开启并记入不可篡改审计链",
     }
