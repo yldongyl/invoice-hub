@@ -261,7 +261,14 @@ def _move(path: Path, dest_dir: Path):
     dest_dir.mkdir(parents=True, exist_ok=True)
     target = dest_dir / path.name
     if target.exists():
-        target = dest_dir / f"{path.stem}.{object_store.sha256_of(path.read_bytes())[:8]}{path.suffix}"
+        # 同名冲突→按内容摘要改名；复位后二次 demo-drop 内容也相同（摘要一致）时
+        # 继续叠加序号，保证历史留档永不被覆盖（append-only 演示口径）
+        digest = object_store.sha256_of(path.read_bytes())[:8]
+        target = dest_dir / f"{path.stem}.{digest}{path.suffix}"
+        n = 2
+        while target.exists():
+            target = dest_dir / f"{path.stem}.{digest}-{n}{path.suffix}"
+            n += 1
     path.rename(target)
 
 

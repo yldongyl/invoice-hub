@@ -62,6 +62,16 @@ def _run(argv, cwd=BACKEND):
     return subprocess.call(argv, cwd=str(cwd))
 
 
+def _run_service(argv):
+    """agent/mcp 服务直跑：子进程 PYTHONPATH 注入 仓库根 + backend，
+    使 `agent.main`/`mcp.main` 可从顶层包导入（backend/ 目录级 editable 安装仅覆盖 app 包）。"""
+    env = os.environ.copy()
+    extra = os.pathsep.join([str(ROOT), str(BACKEND)])
+    env["PYTHONPATH"] = f"{extra}{os.pathsep}{env.get('PYTHONPATH', '')}".rstrip(os.pathsep)
+    print(f"$ (cd backend) {' '.join(argv)}", flush=True)
+    return subprocess.call(argv, cwd=str(BACKEND), env=env)
+
+
 def cmd_seed(a):
     return _run([PYTHON_BIN, "-m", "app.services.seed_loader"])
 
@@ -78,14 +88,14 @@ def cmd_run_agent(a):
     print("启动 agent 服务（LangGraph 域 · 端口 8001 · 零 DB 直连）...")
     argv = [PYTHON_BIN, "-m", "uvicorn", "agent.main:app",
             "--host", getattr(a, "host", "0.0.0.0"), "--port", str(getattr(a, "port", 8001))]
-    return _run(argv)
+    return _run_service(argv)
 
 
 def cmd_run_mcp(a):
     print("启动 MCP Server（streamable-http 协议 · 端口 8002 · 零 DB 直连）...")
     argv = [PYTHON_BIN, "-m", "uvicorn", "mcp.main:app",
             "--host", getattr(a, "host", "0.0.0.0"), "--port", str(getattr(a, "port", 8002))]
-    return _run(argv)
+    return _run_service(argv)
 
 
 def cmd_run_workers(a):
