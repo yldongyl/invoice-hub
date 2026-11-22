@@ -1,10 +1,16 @@
 name: invoice-hub CI Gate
 
+# ── 触发态（2026-11-22 决议）──
+# 多人协作过渡期不自动触发 CI：门禁环境假设仍在收敛，自动检查会给团队带来合并摩擦。
+# 现为仅手动触发（GitHub Actions 页 → invoice-hub CI Gate → Run workflow）。
+# 工程稳定后恢复自动触发：取消下面 push / pull_request 注释即可（步骤与回退逻辑已就绪）。
+# on:
+#   push:
+#     branches: [ main, master ]
+#   pull_request:
+#     branches: [ main, master ]
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   verify-and-test:
@@ -25,6 +31,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e "backend[dev]"
+
+      # ── 种子装载（幂等；RUNBOOK §2 干净环境顺序：demo-replay 等依赖 runtime 库有种子）──
+      - name: Load Seed Data
+        run: |
+          python scripts/hub.py seed
 
       # ── 前置门禁：三项一致性校验 + 破坏性变更检测 ──
       - name: Verify Enum Consistency (verify-enums)

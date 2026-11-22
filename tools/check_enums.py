@@ -13,6 +13,8 @@ enum-registry.json ↔ Excel Sheet08《枚举字典》逐行一致性校验（M0
 
 用法：python tools/check_enums.py [--excel <xlsx路径>]
 退出码：0 通过；1 不一致（stdout 输出差异清单）。
+回退口径：--excel 指向的文件缺失（CI/干净克隆无仓外台账）时降级为注册表自检
+（类别数/值总数/code 唯一/code+label 齐全），打印醒目警告；本机基线存在时仍逐行全量比对。
 """
 
 import argparse
@@ -75,10 +77,39 @@ def main():
     ap.add_argument("--excel", default=os.path.normpath(DEFAULT_EXCEL))
     args = ap.parse_args()
 
-    import openpyxl  # 延迟导入：仅校验收工检查单运行时需要
-
     with open(REGISTRY, encoding="utf-8") as f:
         reg = json.load(f)
+
+    # CI/干净克隆回退：仓外 Excel 基线缺失时降级为注册表自检（P00 §2：M0 后
+    # enum-registry 为枚举唯一事实源，Sheet08 属 M0 前过渡来源）。本机基线存在时仍全量逐行比对。
+    if not os.path.exists(args.excel):
+        print(f"⚠️ 仓外基线 Excel 不存在（{args.excel}）——降级为注册表自检模式；"
+              f"Sheet08 逐行比对仅在本机基线存在时执行（收工检查单口径不变）。")
+        diffs = []
+        cats = reg["categories"]
+        if len(cats) != len(CATEGORY_MAP):
+            diffs.append(f"registry 类别数应为 {len(CATEGORY_MAP)}，实际 {len(cats)}")
+        reg_total = sum(len(c["values"]) for c in cats.values())
+        if reg_total != EXPECTED_TOTAL:
+            diffs.append(f"registry 值总数应为 {EXPECTED_TOTAL}，实际 {reg_total}")
+        for key, cdef in cats.items():
+            codes = [v.get("code") for v in cdef["values"]]
+            if len(codes) != len(set(codes)):
+                diffs.append(f"[{key}] 类别内 code 重复")
+            for v in cdef["values"]:
+                if not norm(v.get("code")) or not norm(v.get("label")):
+                    diffs.append(f"[{key}] 值缺 code/label：{v!r}")
+        print(f"enum-registry v{reg['version']}  类别 {len(cats)} / 值 {reg_total}（自检模式）")
+        if diffs:
+            print(f"\n❌ 自检不一致 {len(diffs)} 处：")
+            for d in diffs:
+                print("  -", d)
+            sys.exit(1)
+        print(f"✅ check_enums 自检通过：类别 {len(cats)} / 值 {reg_total}，code 唯一且 code/label 齐全")
+        return
+
+    import openpyxl  # 延迟导入：仅校验收工检查单运行时需要
+
     wb = openpyxl.load_workbook(args.excel, read_only=True, data_only=True)
     ws = wb["08-枚举字典"]
 

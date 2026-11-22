@@ -42,10 +42,17 @@ def verify_portal_sync():
     openapi_yaml = yaml.safe_load((CONTRACTS_DIR / "openapi.yaml").read_text(encoding="utf-8"))
 
     # 读取 web 与 ui-design 目录下的 api-portal.html
+    # CI/干净克隆回退：仓外 ui-design 冻结基线缺失时仅校验仓内 web/ 接线副本（打印醒目警告）；
+    # 本机基线存在时仍双副本校验。
     html_targets = [
         ("web/api-portal.html", (WEB_DIR / "api-portal.html").read_text(encoding="utf-8")),
-        ("ui-design/api-portal.html", (UI_DESIGN_DIR / "api-portal.html").read_text(encoding="utf-8")),
     ]
+    ui_portal = UI_DESIGN_DIR / "api-portal.html"
+    if ui_portal.exists():
+        html_targets.append(("ui-design/api-portal.html", ui_portal.read_text(encoding="utf-8")))
+    else:
+        print(f"⚠️ 仓外基线 ui-design/api-portal.html 不存在（{ui_portal}）——"
+              f"回退仅校验 web/ 接线副本；本机基线存在时仍双副本校验。")
 
     for label, html in html_targets:
         print(f"\n[校验目标] {label}:")

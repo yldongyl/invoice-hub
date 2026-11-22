@@ -24,6 +24,9 @@ matching-mapping.html QUEUE；ui-design/ 只读不改。
 
 用法：python tools/check_seeds_vs_ui.py [--ui <ui-design路径>] [--quiet]
 退出码：0 全绿（含已登记豁免）；1 存在未登记差异或枚举违例；2 依赖/文件缺失。
+回退口径：--ui 目录缺失（CI/干净克隆无仓外 ui-design）时回退对照仓内 web/ 接线副本
+（ADR-0003，demo-mode 内嵌常量口径），打印醒目警告；接线副本中的 JS 渲染模板占位行
+（${...}）属渲染代码非数据常量，比对前剔除。本机 ui-design 存在时仍对照冻结基线。
 """
 
 import argparse
@@ -677,6 +680,8 @@ def check_adapters(r, dash_html, adapters_seed, enum_codes):
     tail = dash_html.split("目标采购平台适配状态", 1)[1]
     pairs = re.findall(
         r'<b class="block">([^<]+)</b><span class="block text-\[11px\][^"]*">([^<]+)</span>', tail)
+    # web/ 接线副本含 JS 渲染模板行（${a.name}/${a.display} 占位）——属渲染代码非数据常量，剔除
+    pairs = [(pn, pd) for pn, pd in pairs if "${" not in pn and "${" not in pd]
     adapters = adapters_seed["adapters"]
     if len(pairs) != len(adapters):
         r.fail(f"适配状态条页面 {len(pairs)} 行 vs seed {len(adapters)} 条")
@@ -770,7 +775,14 @@ def main():
     args = ap.parse_args()
 
     if not os.path.isdir(args.ui):
-        die(f"ui-design 路径不存在: {args.ui}")
+        # CI/干净克隆回退：仓外 ui-design 冻结基线缺失时对照仓内 web/ 接线副本（ADR-0003）。
+        web_fallback = os.path.join(ROOT, "web")
+        if os.path.isdir(web_fallback):
+            print(f"⚠️ 仓外基线 ui-design 不存在（{args.ui}）——回退对照仓内 web/ 接线副本"
+                  f"（demo-mode 内嵌常量口径）；本机基线存在时仍对照冻结基线。")
+            args.ui = web_fallback
+        else:
+            die(f"ui-design 路径不存在: {args.ui}")
 
     enum_reg = load_json(os.path.join(CONTRACTS, "enum-registry.json"))
     enum_codes = {k: {v["code"] for v in cat["values"]} for k, cat in enum_reg["categories"].items()}
